@@ -1,17 +1,19 @@
 @php
     $translation = $row->translate();
     $layout_style = $layout_style ?? '';
+    $previewImageId = $row->banner_image_id ?: $row->image_id;
+    $previewImageUrl = $row->banner_image_url ?: $row->image_url;
 @endphp
 <div class="tourCard -type-1 rounded-4  {{$wrap_class ?? ''}}">
     <div class="tourCard__image">
         <div class="cardImage ratio ratio-1:1">
             <a @if(!empty($blank)) target="_blank" @endif href="{{$row->getDetailUrl()}}">
                 <div class="cardImage__content">
-                    @if($row->image_url)
+                    @if($previewImageUrl)
                         @if(!empty($disable_lazyload))
-                            <img  src="{{$row->image_url}}" class="img-responsive rounded-4 col-12 js-lazy" alt="">
+                            <img  src="{{$previewImageUrl}}" class="img-responsive rounded-4 col-12 js-lazy" alt="">
                         @else
-                            {!! get_image_tag($row->image_id,'medium',['class'=>'img-responsive rounded-4 col-12 js-lazy','alt'=>$translation->title]) !!}
+                            {!! get_image_tag($previewImageId,'medium',['class'=>'img-responsive rounded-4 col-12 js-lazy','alt'=>$translation->title]) !!}
                         @endif
                     @endif
                 </div>

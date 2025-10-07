@@ -1,3 +1,6 @@
+@php
+    $previewImageUrl = $row->banner_image_url ?: $row->image_url;
+@endphp
 <div class="item-list">
     @if($row->discount_percent)
         <div class="sale_info">{{$row->discount_percent}}</div>
@@ -11,8 +14,8 @@
             @endif
             <div class="thumb-image">
                 <a href="{{$row->getDetailUrl()}}" target="_blank">
-                    @if($row->image_url)
-                        <img src="{{$row->image_url}}" class="img-responsive" alt="{{$row->title}}">
+                    @if($previewImageUrl)
+                        <img src="{{$previewImageUrl}}" class="img-responsive" alt="{{$row->title}}">
                     @endif
                 </a>
                 <div class="service-wishlist {{$row->isWishList()}}" data-id="{{$row->id}}" data-type="{{$row->type}}">
