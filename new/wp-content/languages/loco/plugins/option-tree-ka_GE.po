@@ -1,0 +1,2171 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Traveler Option Tree\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-09-28 19:50+0000\n"
+"PO-Revision-Date: 2025-09-28 19:52+0000\n"
+"Last-Translator: \n"
+"Language-Team: ქართული\n"
+"Language: ka_GE\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Loco https://localise.biz/\n"
+"X-Loco-Version: 2.8.0; wp-6.8.2; php-8.2.28\n"
+"X-Domain: option-tree"
+
+#: includes/ot-functions-docs-page.php:742
+msgid ""
+" Adding a layout is ridiculously easy, follow these steps and you'll be on "
+"your way to having a WordPress super theme."
+msgstr ""
+"განლაგების დამატება წარმოუდგენლად მარტივია, მიჰყევით ამ ნაბიჯებს და თქვენ "
+"WordPress-ის სუპერ თემის შექმნის გზაზე იქნებით."
+
+#. %1$s: the word Note wrapped in a strong attribute, %2$s: number of posts being deleted
+#: includes/class-ot-cleanup.php:144
+#, php-format
+msgid ""
+"%1$s: Your server is running in safe mode. Which means this page will "
+"automatically reload after deleting %2$s posts, you can filter this number "
+"using %3$s if your server is having trouble processing that many at one time."
+msgstr ""
+"%1$s: თქვენი სერვერი უსაფრთხო რეჟიმში მუშაობს. ეს ნიშნავს, რომ ეს გვერდი "
+"ავტომატურად გადაიტვირთება %2$s პოსტის წაშლის შემდეგ. თუ თქვენს სერვერს "
+"ერთდროულად ამდენი პოსტის დამუშავების პრობლემა აქვს, შეგიძლიათ ეს რიცხვი %3$s-"
+"ის გამოყენებით გაფილტროთ."
+
+#: includes/ot-functions-docs-page.php:756
+#: includes/ot-functions-docs-page.php:797
+msgid "Activating a Layout"
+msgstr "განლაგების გააქტიურება"
+
+#. %1$s: example (value) placeholder, %2$s: list of condition examples
+#: includes/ot-functions-docs-page.php:91
+#, php-format
+msgid ""
+"Add a comma separated list (no spaces) of conditions in which the field will "
+"be visible, leave this setting empty to always show the field. In these "
+"examples, %1$s is a placeholder for your condition, which can be in the form "
+"of %2$s."
+msgstr ""
+"დაამატეთ მძიმით გამოყოფილი (შორისების გარეშე) სია იმ პირობებისა, რომლებშიც "
+"ველი ხილული იქნება. ველის ყოველთვის საჩვენებლად ეს პარამეტრი ცარიელი დატოვეთ."
+" ამ მაგალითებში %1$s თქვენი პირობის ჩანაცვლების ველია, რომელიც შეიძლება იყოს "
+"%2$s-ის სახით."
+
+#. %s: example value
+#: includes/ot-functions-docs-page.php:76
+#, php-format
+msgid ""
+"Add a comma separated list of any registered taxonomy like %s. This will "
+"only affect the following option types: Taxonomy Checkbox, & Taxonomy Select."
+msgstr ""
+"დაამატეთ ნებისმიერი რეგისტრირებული ტაქსონომიის, მაგალითად %s-ის, მძიმით "
+"გამოყოფილი სია. ეს მხოლოდ შემდეგ ვარიანტების ტიპებზე იმოქმედებს: ტაქსონომიის "
+"ველი და ტაქსონომიის არჩევა."
+
+#. %1$s: format, %2$s: range, %3$s: interval minimum
+#: includes/ot-functions-docs-page.php:82
+#, php-format
+msgid ""
+"Add a comma separated list of options in the following format %1$s (slide "
+"from %2$s in intervals of %3$s). The three values represent the minimum, "
+"maximum, and step options and will only affect the Numeric Slider option "
+"type."
+msgstr ""
+"დაამატეთ მძიმით გამოყოფილი ვარიანტების სია შემდეგი ფორმატით %1$s (სლაიდი "
+"%2$s-დან %3$s ინტერვალებით). სამი მნიშვნელობა წარმოადგენს მინიმალურ, "
+"მაქსიმალურ და საფეხურის ვარიანტებს და გავლენას მოახდენს მხოლოდ რიცხვითი "
+"სლაიდერის ვარიანტის ტიპზე."
+
+#. %1$s: example value, %2$s: post_type, %3$s: using any as a value
+#: includes/ot-functions-docs-page.php:64
+#, php-format
+msgid ""
+"Add a comma separated list of post type like %1$s. This will only affect the "
+"following option types: Custom Post Type Checkbox, & Custom Post Type Select."
+" Below are the default post types available with WordPress and that are also "
+"compatible with OptionTree. You can also add your own custom %2$s. At this "
+"time %3$s does not seem to return results properly and is something I plan "
+"on looking into."
+msgstr ""
+"დაამატეთ პოსტის ტიპების მძიმით გამოყოფილი სია, მაგალითად %1$s. ეს მხოლოდ "
+"შემდეგ ვარიანტების ტიპებზე იმოქმედებს: მორგებული პოსტის ტიპის მონიშვნის ველი "
+"და მორგებული პოსტის ტიპის არჩევა. ქვემოთ მოცემულია WordPress-თან "
+"ხელმისაწვდომი პოსტის ნაგულისხმევი ტიპები, რომლებიც ასევე თავსებადია "
+"OptionTree-სთან. ასევე შეგიძლიათ დაამატოთ თქვენი საკუთარი მორგებული %2$s. ამ "
+"დროისთვის, როგორც ჩანს, %3$s სწორად არ აბრუნებს შედეგებს და ვაპირებ, რომ ეს "
+"საკითხი გამოვიკვლიო."
+
+#. %1$s: file name, %2$s: hook type, %3$s: function name
+#: includes/ot-functions-docs-page.php:880
+#, php-format
+msgid ""
+"Add a variation of the following code to your %1$s. You'll obviously need to "
+"fill it in with all your custom array values. It's important to note here "
+"that we use the %2$s filter because if you were to call the %3$s function "
+"before OptionTree was loaded the sky would fall on your head."
+msgstr ""
+"დაამატეთ შემდეგი კოდის ვარიაცია თქვენს %1$s-ს. ცხადია, თქვენ უნდა შეავსოთ "
+"იგი თქვენი მასივის ყველა მორგებული მნიშვნელობით. აქ მნიშვნელოვანია აღინიშნოს,"
+" რომ ჩვენ ვიყენებთ %2$s ფილტრს, რადგან თუ OptionTree-ს ჩატვირთვამდე %3$s "
+"ფუნქციას გამოიძახებთ, ცა თავზე ჩამოგივარდებათ."
+
+#. %s: file name
+#: includes/ot-functions-docs-page.php:1005
+#, php-format
+msgid ""
+"Add a variation of the following code to your %s. You'll obviously need to "
+"fill it in with all your custom array values for contextual help (optional), "
+"sections (required), and settings (required)."
+msgstr ""
+"დაამატეთ შემდეგი კოდის ვარიაცია თქვენს %s ფაილში. ცხადია, თქვენ დაგჭირდებათ "
+"მისი შევსება თქვენი ყველა მორგებული მასივის მნიშვნელობით კონტექსტური "
+"დახმარებისთვის (არასავალდებულო), სექციებისთვის (აუცილებელია) და "
+"პარამეტრებისთვის (აუცილებელია)."
+
+#: includes/ot-functions-docs-page.php:86
+msgid "Add and optional class to any option type."
+msgstr "ნებისმიერ ოფციის ტიპს დაამატეთ არჩევითი კლასი."
+
+#: includes/ot-functions-settings-page.php:131
+msgid "Add Contextual Help Content"
+msgstr "კონტექსტური დახმარების კონტენტის დამატება"
+
+#: includes/ot-functions-settings-page.php:93
+msgid "Add Section"
+msgstr "სექციის დამატება"
+
+#: includes/ot-functions-settings-page.php:94
+msgid "Add Setting"
+msgstr "პარამეტრის დამატება"
+
+#. %s: file name
+#: includes/ot-functions-docs-page.php:957
+#, php-format
+msgid "Add the following code to the beginning of your %s."
+msgstr "დაამატეთ შემდეგი კოდი თქვენი %s-ის დასაწყისში."
+
+#. %s: file name
+#: includes/ot-functions-docs-page.php:866
+#: includes/ot-functions-docs-page.php:991
+#, php-format
+msgid "Add the following code to your %s."
+msgstr "დაამატეთ შემდეგი კოდი თქვენს %s ფაილში."
+
+#: includes/ot-functions-docs-page.php:753
+#: includes/ot-functions-docs-page.php:794
+msgid "Adding a new layout is as easy as repeating the steps above."
+msgstr ""
+"ახალი განლაგების დამატება ისეთივე მარტივია, როგორც ზემოთ მოცემული ნაბიჯების "
+"გამეორება."
+
+#: includes/ot-functions-settings-page.php:47
+msgid ""
+"All of the settings can be sorted and rearranged to your liking with Drag & "
+"Drop. Don't worry about the order in which you create your settings, you can "
+"always reorder them."
+msgstr ""
+"ყველა პარამეტრის დახარისხება და თქვენი სურვილისამებრ გადათრევა შესაძლებელია "
+"გადათრევისა და ჩაშვების ფუნქციის გამოყენებით. არ ინერვიულოთ პარამეტრების "
+"შექმნის თანმიმდევრობაზე, მათი თანმიმდევრობის შეცვლა ყოველთვის შეგიძლიათ."
+
+#: includes/ot-functions-docs-page.php:128
+#: includes/ot-functions-docs-page.php:475
+msgid "and"
+msgstr "და"
+
+#: includes/ot-functions-docs-page.php:779
+#: includes/ot-functions-docs-page.php:792
+#: includes/ot-functions-docs-page.php:802
+#: includes/ot-functions-docs-page.php:816
+#: includes/ot-functions-settings-page.php:38
+msgid "Appearance->Theme Options"
+msgstr "გარეგნობა -> თემის პარამეტრები"
+
+#: includes/ot-functions-docs-page.php:586
+msgid "array"
+msgstr "მასივი"
+
+#: includes/ot-functions-docs-page.php:644
+msgid "Array Examples"
+msgstr "მასივის მაგალითები"
+
+#: includes/ot-functions-settings-page.php:436
+msgid ""
+"As well, you can activate, remove, and drag & drop the order; all situations "
+"require you to click \"Save Layouts\" for the changes to be applied."
+msgstr ""
+"ასევე, შეგიძლიათ გაააქტიუროთ, წაშალოთ და გადაათრიოთ და ჩააგდოთ შეკვეთა; "
+"ყველა სიტუაციაში ცვლილებების გამოსაყენებლად საჭიროა დააწკაპუნოთ „განლაგების "
+"შენახვაზე“."
+
+#. %1$s: directory name, %2$s: file name
+#: includes/ot-functions-docs-page.php:862
+#: includes/ot-functions-docs-page.php:987
+#, php-format
+msgid ""
+"As well, you'll probably want to create a directory named %1$s to put your "
+"%2$s into which will help keep you file structure nice and tidy."
+msgstr ""
+"ასევე, სავარაუდოდ, მოგინდებათ შექმნათ %1$s სახელწოდების დირექტორია, რომელშიც "
+"თქვენი %2$s განთავსდება, რაც თქვენი ფაილის სტრუქტურის მოწესრიგებასა და "
+"მოწესრიგებაში დაგეხმარებათ."
+
+#. %1$s: option id, %2$s: variable name, %3$s: function name
+#: includes/ot-functions-docs-page.php:647
+#, php-format
+msgid ""
+"Assigns the value of %1$s to the variable %2$s. It then echos an unordered "
+"list of links (navigation) using %3$s."
+msgstr ""
+"%1$s-ის მნიშვნელობას ანიჭებს %2$s ცვლადს. შემდეგ ის %3$s-ის გამოყენებით "
+"ასახავს ბმულების დაულაგებელ სიას (ნავიგაცია)."
+
+#: includes/ot-functions-docs-page.php:124
+msgid "Background"
+msgstr "ფონი"
+
+#: includes/ot-functions-docs-page.php:590
+#: includes/ot-functions-docs-page.php:594
+msgid "boolean"
+msgstr "ლოგიკური"
+
+#: includes/ot-functions-docs-page.php:130
+msgid "Border"
+msgstr "საზღვარი"
+
+#: includes/ot-functions-docs-page.php:136
+msgid "Box Shadow"
+msgstr "ყუთის ჩრდილი"
+
+#. %s: number of media posts being deleted
+#: includes/class-ot-cleanup.php:139
+#, php-format
+msgid ""
+"By clicking the button below, OptionTree will delete %s records and "
+"consolidate them into one single OptionTree media post for uploading "
+"attachments to. Additionally, the attachments will have their parent ID "
+"updated to the correct media post."
+msgstr ""
+"ქვემოთ მოცემულ ღილაკზე დაწკაპუნებით, OptionTree წაშლის %s ჩანაწერს და "
+"გააერთიანებს მათ ერთ OptionTree მედია პოსტში დანართების ასატვირთად. გარდა "
+"ამისა, დანართებს ექნებათ მშობელი ID სწორი მედია პოსტით."
+
+#: includes/ot-functions-docs-page.php:142
+msgid "Category Checkbox"
+msgstr "კატეგორიის მონიშვნის ველი"
+
+#: includes/ot-functions-docs-page.php:145
+msgid "Category Select"
+msgstr "კატეგორიის არჩევა"
+
+#: includes/ot-functions-docs-page.php:148
+msgid "Checkbox"
+msgstr "მონიშვნის ველი"
+
+#: includes/ot-functions-docs-page.php:49
+msgid "Choices"
+msgstr "არჩევანი"
+
+#: includes/ot-functions-docs-page.php:803
+msgid ""
+"Choose a layout from the select list and click the \"Activate Layout\" "
+"button."
+msgstr "აირჩიეთ განლაგება სიიდან და დააჭირეთ ღილაკს „განლაგების გააქტიურება“."
+
+#. %1$s: and value, %2$s: or value
+#: includes/ot-functions-docs-page.php:97
+#, php-format
+msgid ""
+"Choose the logical operator to compute the result of the conditions. Your "
+"options are %1$s and %2$s."
+msgstr ""
+"პირობების შედეგის გამოსათვლელად აირჩიეთ ლოგიკური ოპერატორი. თქვენი "
+"ვარიანტებია %1$s და %2$s."
+
+#: includes/class-ot-cleanup.php:216
+msgid "Clean up script has completed, the page will now reload..."
+msgstr "სკრიპტის გასუფთავება დასრულდა, გვერდი ახლა ხელახლა ჩაიტვირთება..."
+
+#: includes/ot-functions-docs-page.php:762
+msgid "Click on the activate layout button in the actions list."
+msgstr "დააწკაპუნეთ განლაგების გააქტიურების ღილაკზე მოქმედებების სიაში."
+
+#: includes/ot-functions-docs-page.php:771
+msgid "Click on the delete layout button in the actions list."
+msgstr "დააწკაპუნეთ განლაგების წაშლის ღილაკზე მოქმედებების სიაში."
+
+#: includes/ot-functions-docs-page.php:50
+msgid ""
+"Click the \"Add Choice\" button to add an item to the choices array. This "
+"will only affect the following option types: Checkbox, Radio, Select & "
+"Select Image."
+msgstr ""
+"დააწკაპუნეთ ღილაკზე „არჩევანის დამატება“, რათა დაამატოთ ელემენტი არჩევანის "
+"მასივში. ეს გავლენას მოახდენს მხოლოდ შემდეგ ტიპის ვარიანტებზე: მონიშვნის "
+"ველი, რადიო, არჩევა და სურათის არჩევა."
+
+#: includes/ot-functions-docs-page.php:53
+msgid ""
+"Click the \"Add Setting\" button found inside a newly created setting to add "
+"an item to the settings array. This will only affect the List Item type."
+msgstr ""
+"პარამეტრების მასივში ელემენტის დასამატებლად დააწკაპუნეთ ღილაკზე „პარამეტრის "
+"დამატება“, რომელიც ახლად შექმნილ პარამეტრშია განთავსებული. ეს მხოლოდ სიის "
+"ელემენტის ტიპზე იმოქმედებს."
+
+#: includes/ot-functions-docs-page.php:151
+msgid "Colorpicker"
+msgstr "ფერების ამომრჩევი"
+
+#: includes/ot-functions-docs-page.php:154
+msgid "Colorpicker Opacity"
+msgstr "ფერის ამომრჩევის გამჭვირვალობა"
+
+#: includes/ot-functions-docs-page.php:88
+msgid "Condition"
+msgstr "მდგომარეობა"
+
+#: includes/class-ot-cleanup.php:147
+msgid "Consolidate Posts"
+msgstr "პოსტების კონსოლიდაცია"
+
+#: includes/ot-functions-settings-page.php:100
+msgid "Contextual Help"
+msgstr "კონტექსტური დახმარება"
+
+#: includes/ot-functions-settings-page.php:104
+msgid "Contextual Help Sidebar"
+msgstr "კონტექსტური დახმარების გვერდითი ზოლი"
+
+#. %s: file name
+#: includes/ot-functions-docs-page.php:983
+#, php-format
+msgid ""
+"Create a file and name it anything you want, maybe %s, or use the built in "
+"file export to create it for you. Remember, you should always check the file "
+"for errors before including it in your theme."
+msgstr ""
+"შექმენით ფაილი და დაარქვით ნებისმიერი სახელი, მაგალითად %s, ან გამოიყენეთ "
+"ჩაშენებული ფაილის ექსპორტის ფუნქცია მის შესაქმნელად. გახსოვდეთ, რომ თემაში "
+"ჩართვამდე ყოველთვის უნდა შეამოწმოთ ფაილი შეცდომების გამოსავლენად."
+
+#. %s: file name
+#: includes/ot-functions-docs-page.php:858
+#, php-format
+msgid "Create a file and name it anything you want, maybe %s."
+msgstr "შექმენით ფაილი და დაარქვით ნებისმიერი სახელი, მაგალითად %s."
+
+#: includes/ot-functions-docs-page.php:853
+msgid "Create and include your custom meta boxes file."
+msgstr "შექმენით და ჩართეთ თქვენი მორგებული მეტა-ყუთების ფაილი."
+
+#: includes/ot-functions-docs-page.php:746
+#: includes/ot-functions-docs-page.php:787
+msgid "Creating a Layout"
+msgstr "განლაგების შექმნა"
+
+#: includes/ot-functions-docs-page.php:160
+msgid "CSS"
+msgstr "CSS"
+
+#: includes/ot-functions-docs-page.php:85
+msgid "CSS Class"
+msgstr "CSS კლასი"
+
+#: includes/ot-functions-docs-page.php:184
+msgid "Custom Post Type Checkbox"
+msgstr "მორგებული პოსტის ტიპის მონიშვნის ველი"
+
+#: includes/ot-functions-docs-page.php:190
+msgid "Custom Post Type Select"
+msgstr "მორგებული პოსტის ტიპის არჩევა"
+
+#: includes/ot-functions-docs-page.php:196
+msgid "Date Picker"
+msgstr "თარიღის ამომრჩევი"
+
+#: includes/ot-functions-docs-page.php:199
+msgid "Date Time Picker"
+msgstr "თარიღის დროის ამომრჩევი"
+
+#: includes/ot-functions-docs-page.php:540
+#: includes/ot-functions-docs-page.php:586
+#: includes/ot-functions-docs-page.php:590
+#: includes/ot-functions-docs-page.php:594
+#: includes/ot-functions-docs-page.php:598
+msgid "Default"
+msgstr "ნაგულისხმევი"
+
+#: includes/ot-functions-docs-page.php:536
+#: includes/ot-functions-docs-page.php:582
+msgid "Default:"
+msgstr "ნაგულისხმევი:"
+
+#. %1$s: the post type, %2$s: the post ID
+#: includes/class-ot-cleanup.php:208
+#, php-format
+msgid "Deleting %1$s post %2$s."
+msgstr "%1$s პოსტის %2$s წაშლა."
+
+#: includes/ot-functions-docs-page.php:765
+#: includes/ot-functions-docs-page.php:806
+msgid "Deleting a Layout"
+msgstr "განლაგების წაშლა"
+
+#. %s: table name
+#: includes/class-ot-cleanup.php:247
+#, php-format
+msgid "Deleting the outdated and unused %s table..."
+msgstr "მოძველებული და გამოუყენებელი %s ცხრილის წაშლა..."
+
+#: includes/ot-functions-docs-page.php:46
+#: includes/ot-functions-docs-page.php:524
+#: includes/ot-functions-docs-page.php:570
+msgid "Description"
+msgstr "აღწერა"
+
+#: includes/ot-functions-docs-page.php:202
+msgid "Dimension"
+msgstr "განზომილება"
+
+#. %1$s: directory name, %2$s: file type
+#: includes/ot-functions-docs-page.php:949
+#, php-format
+msgid "Download the latest version of %1$s and unarchive the %2$s directory."
+msgstr ""
+"ჩამოტვირთეთ %1$s-ის უახლესი ვერსია და მოხსენით %2$s დირექტორია არქივიდან."
+
+#: includes/class-ot-cleanup.php:242
+msgid "Drop Table"
+msgstr "ჩამოსაშლელი ცხრილი"
+
+#: includes/ot-functions-docs-page.php:590
+msgid "Echo the output."
+msgstr "გამომავალი სიგნალის ექო."
+
+#: includes/ot-functions-docs-page.php:774
+#: includes/ot-functions-docs-page.php:811
+msgid "Edit Layout Data"
+msgstr "განლაგების მონაცემების რედაქტირება"
+
+#: includes/ot-functions-docs-page.php:785
+msgid "End-Users Mode"
+msgstr "საბოლოო მომხმარებლის რეჟიმი"
+
+#: includes/ot-functions-docs-page.php:808
+msgid "End-Users mode does not allow deleting layouts."
+msgstr "საბოლოო მომხმარებლის რეჟიმი განლაგებების წაშლის საშუალებას არ იძლევა."
+
+#: includes/ot-functions-docs-page.php:540
+msgid ""
+"Enter a default return value. This is just incase the request returns null."
+msgstr ""
+"შეიყვანეთ ნაგულისხმევი დაბრუნებული მნიშვნელობა. ეს მხოლოდ იმ შემთხვევაში, თუ "
+"მოთხოვნა null-ს დააბრუნებს."
+
+#: includes/ot-functions-docs-page.php:47
+msgid ""
+"Enter a detailed description for the users to read on the Theme Options page,"
+" HTML is allowed. This is also where you enter content for both the "
+"Textblock & Textblock Titled option types."
+msgstr ""
+"თემის პარამეტრების გვერდზე შეიყვანეთ დეტალური აღწერა, რომლის წაკითხვაც "
+"მომხმარებლებს შეუძლიათ. HTML დაშვებულია. აქ ასევე შეიყვანთ შინაარსს როგორც "
+"ტექსტური ბლოკის, ასევე ტექსტური ბლოკის სათაურის მქონე ვარიანტის ტიპებისთვის."
+
+#: includes/ot-functions-docs-page.php:793
+msgid ""
+"Enter a name for your layout in the text field and hit \"New Layout\", "
+"you've created your first layout."
+msgstr ""
+"ტექსტურ ველში შეიყვანეთ თქვენი განლაგების სახელი და დააჭირეთ ღილაკს „ახალი "
+"განლაგება“, თქვენ შექმენით თქვენი პირველი განლაგება."
+
+#: includes/ot-functions-docs-page.php:752
+msgid ""
+"Enter a name for your layout in the text field and hit \"Save Layouts\", "
+"you've created your first layout."
+msgstr ""
+"ტექსტურ ველში შეიყვანეთ თქვენი განლაგების სახელი და დააჭირეთ ღილაკს "
+"„განლაგების შენახვა“, თქვენ შექმენით თქვენი პირველი განლაგება."
+
+#: includes/ot-functions-docs-page.php:59
+msgid ""
+"Enter a numeric value for the number of rows in your textarea. This will "
+"only affect the following option types: CSS, Textarea, & Textarea Simple."
+msgstr ""
+"შეიყვანეთ რიცხვითი მნიშვნელობა თქვენს ტექსტურ არეალში სტრიქონების "
+"რაოდენობისთვის. ეს მხოლოდ შემდეგ ტიპებზე იმოქმედებს: CSS, ტექსტური არეა და "
+"ტექსტური არეა Simple."
+
+#: includes/ot-functions-docs-page.php:582
+msgid "Enter a unique Option Key to get a returned value or array."
+msgstr ""
+"დაბრუნებული მნიშვნელობის ან მასივის მისაღებად შეიყვანეთ უნიკალური ოფციის "
+"გასაღები."
+
+#: includes/ot-functions-docs-page.php:536
+msgid "Enter the options unique identifier."
+msgstr "შეიყვანეთ პარამეტრების უნიკალური იდენტიფიკატორი."
+
+#. %s: file name
+#: includes/ot-functions-docs-page.php:236
+#, php-format
+msgid ""
+"Example filter to add new units to the Measurement option type. Added to %s."
+msgstr ""
+"მაგალითის ფილტრი გაზომვის ვარიანტის ტიპში ახალი ერთეულების დასამატებლად. "
+"დამატებულია %s-ში."
+
+#. %s: file name
+#: includes/ot-functions-docs-page.php:252
+#, php-format
+msgid ""
+"Example filter to completely change the units in the Measurement option type."
+" Added to %s."
+msgstr ""
+"მაგალითის ფილტრი გაზომვის ვარიანტის ტიპში ერთეულების სრულად შესაცვლელად. "
+"დამატებულია %s-ში."
+
+#. %s: file name
+#: includes/ot-functions-docs-page.php:379
+#, php-format
+msgid "Example filters to alter the Textarea option type. Added to %s."
+msgstr ""
+"ტექსტური არეალის ოფციის ტიპის შესაცვლელად ფილტრების მაგალითები. დამატებულია "
+"%s-ში."
+
+#: includes/ot-functions-settings-page.php:300
+msgid "Export Settings File"
+msgstr "პარამეტრების ფაილის ექსპორტი"
+
+#. %1$s: visual path to import, %2$s: visual path to layouts
+#: includes/ot-functions-settings-page.php:397
+#, php-format
+msgid ""
+"Export your Layouts by highlighting this text and doing a copy/paste into a "
+"blank .txt file. Then save the file for importing into another install of "
+"WordPress later. Alternatively, you could just paste it into the %1$s %2$s "
+"textarea on another web site."
+msgstr ""
+"განლაგებების ექსპორტისთვის გამოიყენეთ ეს ტექსტი ამ ტექსტის მონიშვნით და "
+"ცარიელ .txt ფაილში კოპირებით/ჩასმით. შემდეგ შეინახეთ ფაილი WordPress-ის სხვა "
+"ინსტალაციაში იმპორტისთვის. ალტერნატიულად, შეგიძლიათ უბრალოდ ჩასვათ ის სხვა "
+"ვებსაიტის %1$s %2$s ტექსტურ არეალში."
+
+#. %1$s: visual path to import, %2$s: visual path to settings
+#: includes/ot-functions-settings-page.php:327
+#, php-format
+msgid ""
+"Export your Settings by highlighting this text and doing a copy/paste into a "
+"blank .txt file. Then save the file for importing into another install of "
+"WordPress later. Alternatively, you could just paste it into the %1$s %1$s "
+"textarea on another web site."
+msgstr ""
+"პარამეტრების ექსპორტისთვის გამოიყენეთ ეს ტექსტის მონიშვნა და ცარიელ .txt "
+"ფაილში კოპირება/ჩასმა. შემდეგ შეინახეთ ფაილი WordPress-ის სხვა ინსტალაციაში "
+"იმპორტისთვის. ალტერნატიულად, შეგიძლიათ უბრალოდ ჩასვათ ის სხვა ვებსაიტის %1$s "
+"%1$s ტექსტურ არეალში."
+
+#. %1$s: file name, %2$s: link to I18n docs, %3$s: link to internal docs
+#: includes/ot-functions-settings-page.php:291
+#, php-format
+msgid ""
+"Export your Settings into a fully functional %1$s file. If you want to add "
+"your own custom %2$s text domain to the file, enter it into the text field "
+"before exporting. For more information on how to use this file read the "
+"documentation on %3$s. Remember, you should always check the file for errors "
+"before including it in your theme."
+msgstr ""
+"ექსპორტირება მოახდინეთ თქვენი პარამეტრების სრულად ფუნქციონალურ %1$s ფაილში. "
+"თუ გსურთ ფაილს დაამატოთ თქვენი საკუთარი %2$s ტექსტური დომენი, "
+"ექსპორტირებამდე შეიყვანეთ ის ტექსტურ ველში. ამ ფაილის გამოყენების შესახებ "
+"დამატებითი ინფორმაციისთვის იხილეთ %3$s-ის დოკუმენტაცია. გახსოვდეთ, რომ "
+"თემაში ჩართვამდე ყოველთვის უნდა შეამოწმოთ ფაილი შეცდომების გამოსავლენად."
+
+#. %1$s: visual path to import, %2$s: visual path to theme options
+#: includes/ot-functions-settings-page.php:362
+#, php-format
+msgid ""
+"Export your Theme Options data by highlighting this text and doing a "
+"copy/paste into a blank .txt file. Then save the file for importing into "
+"another install of WordPress later. Alternatively, you could just paste it "
+"into the %1$s %2$s textarea on another web site."
+msgstr ""
+"თქვენი თემის პარამეტრების მონაცემების ექსპორტისთვის გამოიყენეთ ეს ტექსტი ამ "
+"ტექსტის მონიშვნით და ცარიელ .txt ფაილში კოპირებით/ჩასმით. შემდეგ შეინახეთ "
+"ფაილი WordPress-ის სხვა ინსტალაციაში იმპორტისთვის. ალტერნატიულად, შეგიძლიათ "
+"უბრალოდ ჩასვათ ის სხვა ვებსაიტის %1$s %2$s ტექსტურ არეალში."
+
+#. %1$s: file name, %2$s: directory path
+#: includes/ot-functions-docs-page.php:974
+#, php-format
+msgid ""
+"For a list of all the OptionTree UI display filters refer to the %1$s file "
+"found in the %2$s directory of this plugin. This file is the starting point "
+"for developing themes with Theme Mode."
+msgstr ""
+"OptionTree-ის ინტერფეისის ყველა ფილტრის სიისთვის იხილეთ %1$s ფაილი, რომელიც "
+"მდებარეობს ამ დანამატის %2$s დირექტორიაში. ეს ფაილი თემის რეჟიმით თემების "
+"შემუშავების საწყისი წერტილია."
+
+#: includes/ot-functions-docs-page.php:744
+msgid "For Developers"
+msgstr "დეველოპერებისთვის"
+
+#. %s: dynamic sidebar name
+#: includes/ot-functions-docs-page.php:336
+#, php-format
+msgid ""
+"For example, if we create a WordPress theme that provides the ability to "
+"change the Blog Sidebar and we don't want to have the footer sidebars "
+"available on this area, we can unset those sidebars either manually or by "
+"using a regular expression if we have a common name like %s."
+msgstr ""
+"მაგალითად, თუ ჩვენ შევქმნით WordPress თემას, რომელიც იძლევა ბლოგის გვერდითი "
+"პანელის შეცვლის შესაძლებლობას და არ გვინდა, რომ ქვედა კოლონტიტულის გვერდითი "
+"პანელები ამ არეალში იყოს ხელმისაწვდომი, შეგვიძლია გავაუქმოთ ეს გვერდითი "
+"პანელები ხელით ან რეგულარული გამოსახულების გამოყენებით, თუ გვაქვს საერთო "
+"სახელი, როგორიცაა %s."
+
+#: includes/ot-functions-docs-page.php:208
+msgid "Gallery"
+msgstr "გალერეა"
+
+#: includes/ot-functions-settings-page.php:45
+msgid ""
+"Give two sections the same ID, give two settings the same ID, give two "
+"contextual help content areas the same ID, don't create any settings, or "
+"have a section at the end of the settings list."
+msgstr ""
+"ორ სექციას მიანიჭეთ ერთი და იგივე ID, ორ პარამეტრს მიანიჭეთ ერთი და იგივე ID,"
+" კონტექსტური დახმარების ორ არეს მიანიჭეთ ერთი და იგივე ID, არ შექმნათ "
+"არანაირი პარამეტრი ან პარამეტრების სიის ბოლოს დატოვოთ სექცია."
+
+#. %s: link to theme options
+#: includes/ot-functions-settings-page.php:37
+#, php-format
+msgid ""
+"Go to the %s page if you want to save data, this page is for adding settings."
+msgstr ""
+"თუ გსურთ მონაცემების შენახვა, გადადით %s გვერდზე, ეს გვერდი პარამეტრების "
+"დასამატებლადაა განკუთვნილი."
+
+#. %s: visual path to the page
+#: includes/ot-functions-docs-page.php:778
+#: includes/ot-functions-docs-page.php:791
+#: includes/ot-functions-docs-page.php:801
+#: includes/ot-functions-docs-page.php:815
+#, php-format
+msgid "Go to the %s page."
+msgstr "გადადით %s გვერდზე."
+
+#. %s: visual path to the page
+#: includes/ot-functions-docs-page.php:750
+#: includes/ot-functions-docs-page.php:760
+#: includes/ot-functions-docs-page.php:769
+#, php-format
+msgid "Go to the %s tab."
+msgstr "გადადით %s ჩანართზე."
+
+#: includes/ot-functions-docs-page.php:211
+msgid "Google Fonts"
+msgstr "Google-ის შრიფტები"
+
+#: includes/ot-functions-docs-page.php:843
+#: includes/ot-functions-docs-page.php:938
+msgid "How-to-guide"
+msgstr "როგორ მივიღოთ"
+
+#: includes/ot-functions-docs-page.php:31
+msgid "ID"
+msgstr "პირადობის მოწმობა"
+
+#: includes/ot-functions-settings-page.php:104
+msgid ""
+"If you decide to add contextual help to the Theme Option page, enter the "
+"optional \"Sidebar\" HTML here. This would be an extremely useful place to "
+"add links to your themes documentation or support forum. Only after you've "
+"added some content below will this display to the user."
+msgstr ""
+"თუ გადაწყვეტთ თემის პარამეტრების გვერდზე კონტექსტური დახმარების დამატებას, "
+"აქ შეიყვანეთ „გვერდითი ზოლის“ HTML კოდი. ეს ძალიან სასარგებლო ადგილი იქნება "
+"თქვენი თემის დოკუმენტაციაში ან დამხმარე ფორუმზე ბმულების დასამატებლად. ეს "
+"მხოლოდ ქვემოთ მოცემული კონტენტის დამატების შემდეგ გამოჩნდება "
+"მომხმარებლისთვის."
+
+#. %s: table name
+#: includes/class-ot-cleanup.php:238
+#, php-format
+msgid ""
+"If you have upgraded from an old 1.x version of OptionTree at some point, "
+"you have an extra %s table in your database that can be removed. It's not "
+"hurting anything, but does not need to be there. If you want to remove it. "
+"Click the button below."
+msgstr ""
+"თუ ოდესმე განაახლეთ OptionTree-ის ძველი 1.x ვერსიიდან, თქვენს მონაცემთა "
+"ბაზაში გექნებათ დამატებითი %s ცხრილი, რომლის წაშლაც შესაძლებელია. ის არაფერს "
+"აზიანებს, მაგრამ არც არის აუცილებელი, რომ იქ იყოს. თუ გსურთ მისი წაშლა, "
+"დააჭირეთ ქვემოთ მოცემულ ღილაკს."
+
+#: includes/ot-functions-docs-page.php:782
+msgid ""
+"If you want to edit a new layout, first create it then save your theme "
+"options."
+msgstr ""
+"თუ გსურთ ახალი განლაგების რედაქტირება, ჯერ შექმენით ის და შემდეგ შეინახეთ "
+"თემის პარამეტრები."
+
+#. %s: link to documentation
+#: includes/ot-functions-settings-page.php:41
+#, php-format
+msgid ""
+"If you're unsure or not completely positive that you should be editing these "
+"settings, you should read the %s first."
+msgstr ""
+"თუ არ ხართ დარწმუნებული ან სრულიად დარწმუნებული არ ხართ, რომ უნდა შეცვალოთ "
+"ეს პარამეტრები, ჯერ უნდა წაიკითხოთ %s."
+
+#. %1$s: function name, %2$s: emphasis on not, %3$s: function name, %4$s: function name
+#: includes/ot-functions-docs-page.php:623
+#, php-format
+msgid ""
+"If you're using the plugin version of OptionTree it is highly recommended to "
+"include a %1$s check in your code, as described in the examples below. If "
+"you've integrated OptionTree directly into your themes root directory, you "
+"will %2$s need to wrap your code with %3$s, as you're guaranteed to have the "
+"%4$s function available."
+msgstr ""
+"თუ იყენებთ OptionTree-ს დანამატის ვერსიას, მკაცრად რეკომენდებულია თქვენს "
+"კოდში %1$s შემოწმების ჩართვა, როგორც ეს აღწერილია ქვემოთ მოცემულ მაგალითებში."
+" თუ OptionTree პირდაპირ თქვენი თემის root დირექტორიაში გაქვთ ინტეგრირებული, "
+"%2$s დაგჭირდებათ თქვენი კოდის %3$s-ით შეფუთვა, რადგან გარანტირებულია, რომ "
+"%4$s ფუნქცია ხელმისაწვდომი იქნება."
+
+#: includes/ot-functions-settings-page.php:252
+msgid "Import Layouts"
+msgstr "განლაგებების იმპორტი"
+
+#: includes/ot-functions-settings-page.php:165
+msgid "Import Settings"
+msgstr "იმპორტის პარამეტრები"
+
+#: includes/ot-functions-settings-page.php:209
+msgid "Import Theme Options"
+msgstr "თემის იმპორტის პარამეტრები"
+
+#: includes/ot-functions-docs-page.php:170
+msgid "Input"
+msgstr "შეყვანა"
+
+#: includes/ot-functions-docs-page.php:568
+msgid "instead"
+msgstr "სამაგიეროდ"
+
+#: includes/ot-functions-docs-page.php:598
+msgid "integer"
+msgstr "მთელი რიცხვი"
+
+#: includes/ot-functions-docs-page.php:849
+msgid ""
+"It's important to note that Meta Boxes do not support WYSIWYG editors at "
+"this time and if you set one of your options to Textarea it will "
+"automatically revert to a Textarea Simple until a valid solution is found. "
+"WordPress released this statement regarding the wp_editor() function:"
+msgstr ""
+"მნიშვნელოვანია აღინიშნოს, რომ Meta Boxes ამ ეტაპზე არ უჭერს მხარს WYSIWYG "
+"რედაქტორებს და თუ ერთ-ერთ პარამეტრს Textarea-ზე დააყენებთ, ის ავტომატურად "
+"დაუბრუნდება Textarea Simple-ს, სანამ სწორი გადაწყვეტა არ მოიძებნება. "
+"WordPress-მა გამოაქვეყნა ეს განცხადება wp_editor() ფუნქციასთან დაკავშირებით:"
+
+#: includes/ot-functions-docs-page.php:736
+msgid "It's Super Simple"
+msgstr "ეს ძალიან მარტივია"
+
+#: includes/ot-functions-docs-page.php:217
+msgid "JavaScript"
+msgstr "JavaScript"
+
+#: includes/ot-functions-docs-page.php:28
+msgid "Label"
+msgstr "ეტიკეტი"
+
+#: includes/ot-functions-settings-page.php:398
+msgid "Layouts"
+msgstr "განლაგებები"
+
+#: includes/ot-functions-docs-page.php:738
+msgid ""
+"Layouts make your theme awesome! With theme options data that you can "
+"save/import/export you can package themes with different color variations, "
+"or make it easy to do A/B testing on text and so much more. Basically, you "
+"save a snapshot of your data as a layout."
+msgstr ""
+"განლაგებები თქვენს თემას შესანიშნავს ხდის! თემის პარამეტრების მონაცემებით, "
+"რომელთა შენახვა/იმპორტი/ექსპორტი შეგიძლიათ, შეგიძლიათ თემები სხვადასხვა "
+"ფერის ვარიაციებით შეფუთოთ, ან გაამარტივოთ ტექსტზე A/B ტესტირება და ბევრი "
+"სხვა რამ. ძირითადად, თქვენ ინახავთ თქვენი მონაცემების სნეპშოტს განლაგების "
+"სახით."
+
+#: includes/ot-functions-docs-page.php:223
+msgid "Link Color"
+msgstr "ბმულის ფერი"
+
+#: includes/ot-functions-docs-page.php:226
+msgid "List Item"
+msgstr "სიის ერთეული"
+
+#: includes/ot-functions-docs-page.php:229
+#: includes/ot-functions-docs-page.php:670
+msgid "Measurement"
+msgstr "გაზომვა"
+
+#: includes/ot-functions-docs-page.php:79
+msgid "Min, Max, & Step"
+msgstr "მინ., მაქს. და ნაბიჯი"
+
+#: includes/ot-functions-docs-page.php:780
+#: includes/ot-functions-docs-page.php:817
+msgid ""
+"Modify and save your theme options and the layout will be updated "
+"automatically."
+msgstr ""
+"შეცვალეთ და შეინახეთ თქვენი თემის პარამეტრები და განლაგება ავტომატურად "
+"განახლდება."
+
+#: includes/class-ot-cleanup.php:132
+msgid "Multiple Media Posts"
+msgstr "მრავალი მედია პოსტი"
+
+#: includes/ot-functions-docs-page.php:536
+#: includes/ot-functions-docs-page.php:540
+#: includes/ot-functions-docs-page.php:582
+#: includes/ot-functions-docs-page.php:586
+msgid "None"
+msgstr "არცერთი"
+
+#: includes/ot-functions-docs-page.php:624
+msgid "not"
+msgstr "არა"
+
+#: includes/class-ot-cleanup.php:145
+msgid "Note"
+msgstr "შენიშვნა"
+
+#: includes/ot-functions-docs-page.php:598
+msgid ""
+"Numeric offset key for the $item_id array, -1 will return all values (an "
+"array starts at 0)."
+msgstr ""
+"$item_id მასივისთვის რიცხვითი ოფსეტის გასაღები, -1, დააბრუნებს ყველა "
+"მნიშვნელობას (მასივი იწყება 0-დან)."
+
+#: includes/ot-functions-docs-page.php:269
+msgid "Numeric Slider"
+msgstr "რიცხვითი სლაიდერი"
+
+#: includes/ot-functions-docs-page.php:272
+msgid "On/Off"
+msgstr "ჩართვა/გამორთვა"
+
+#: includes/ot-functions-docs-page.php:851
+msgid ""
+"Once instantiated, the WYSIWYG editor cannot be moved around in the DOM. "
+"What this means in practical terms, is that you cannot put it in meta-boxes "
+"that can be dragged and placed elsewhere on the page."
+msgstr ""
+"ინსტანცირების შემდეგ, WYSIWYG რედაქტორის DOM-ში გადატანა შეუძლებელია. "
+"პრაქტიკულად ეს ნიშნავს, რომ მისი მეტა-ველებში განთავსება შეუძლებელია, "
+"რომელთა გადათრევა და გვერდის სხვა ადგილას განთავსებაა შესაძლებელი."
+
+#: includes/ot-functions-docs-page.php:740
+msgid ""
+"Once you have created all your different layouts, or theme variations, you "
+"can save them to a separate text file for repackaging with your theme. "
+"Alternatively, you could just make different variations for yourself and "
+"change your theme with the click of a button, all without deleting your "
+"previous options data."
+msgstr ""
+"მას შემდეგ, რაც შექმნით ყველა თქვენს განსხვავებულ განლაგებას ან თემის "
+"ვარიაციას, შეგიძლიათ შეინახოთ ისინი ცალკე ტექსტურ ფაილში, რათა ხელახლა "
+"შეფუთოთ თქვენს თემასთან ერთად. ალტერნატიულად, შეგიძლიათ უბრალოდ შექმნათ "
+"სხვადასხვა ვარიაციები და შეცვალოთ თქვენი თემა ღილაკზე დაწკაპუნებით, წინა "
+"პარამეტრების მონაცემების წაშლის გარეშე."
+
+#: includes/ot-functions-settings-page.php:247
+msgid ""
+"Only after you've imported the Settings should you try and update your "
+"Layouts."
+msgstr ""
+"მხოლოდ პარამეტრების იმპორტის შემდეგ უნდა სცადოთ თქვენი განლაგების განახლება."
+
+#: includes/ot-functions-settings-page.php:204
+msgid ""
+"Only after you've imported the Settings should you try and update your Theme "
+"Options."
+msgstr ""
+"მხოლოდ პარამეტრების იმპორტის შემდეგ უნდა სცადოთ თემის პარამეტრების განახლება."
+
+#: includes/ot-functions-docs-page.php:94
+msgid "Operator"
+msgstr "ოპერატორი"
+
+#: includes/ot-functions-docs-page.php:38
+msgid "Option Types"
+msgstr "ოფციონის ტიპები"
+
+#: includes/ot-functions-docs-page.php:540
+#: includes/ot-functions-docs-page.php:586
+#: includes/ot-functions-docs-page.php:590
+#: includes/ot-functions-docs-page.php:594
+#: includes/ot-functions-docs-page.php:598
+msgid "optional"
+msgstr "სურვილისამებრ"
+
+#: includes/ot-functions-docs-page.php:950 includes/class-ot-settings.php:267
+msgid "OptionTree"
+msgstr "OptionTree"
+
+#: includes/class-ot-cleanup.php:83 includes/class-ot-cleanup.php:96
+#: includes/class-ot-cleanup.php:126
+msgid "OptionTree Cleanup"
+msgstr "OptionTree-ის გაწმენდა"
+
+#. %s: internal admin page URL
+#: includes/class-ot-cleanup.php:99
+#, php-format
+msgid ""
+"OptionTree has outdated data that should be removed. Please go to %s for "
+"more information."
+msgstr ""
+"OptionTree-ს აქვს მოძველებული მონაცემები, რომლებიც უნდა წაიშალოს. დამატებითი "
+"ინფორმაციისთვის ეწვიეთ %s-ს."
+
+#: ot-loader.php:18
+msgid ""
+"OptionTree is installed as a plugin and also embedded in your current theme. "
+"Please deactivate the plugin to load the theme dependent version of "
+"OptionTree, and remove this warning."
+msgstr ""
+"OptionTree დაინსტალირებულია დანამატის სახით და ასევე ჩაშენებულია თქვენს "
+"მიმდინარე თემაში. გთხოვთ, გამორთოთ დანამატი OptionTree-ს თემაზე დამოკიდებული "
+"ვერსიის ჩასატვირთად და წაშალოთ ეს გაფრთხილება."
+
+#: includes/ot-functions-settings-page.php:42
+msgid "OptionTree->Documentation"
+msgstr "OptionTree->დოკუმენტაცია"
+
+#: includes/ot-functions-settings-page.php:442
+msgid "OptionTree->Documentation->Layouts Overview"
+msgstr "OptionTree->დოკუმენტაცია->განლაგების მიმოხილვა"
+
+#: includes/ot-functions-settings-page.php:328
+#: includes/ot-functions-settings-page.php:363
+#: includes/ot-functions-settings-page.php:398
+msgid "OptionTree->Settings->Import"
+msgstr "OptionTree->პარამეტრები->იმპორტი"
+
+#: includes/ot-functions-docs-page.php:751
+#: includes/ot-functions-docs-page.php:761
+#: includes/ot-functions-docs-page.php:770
+msgid "OptionTree->Settings->Layouts"
+msgstr "OptionTree->პარამეტრები->განლაგება"
+
+#: includes/class-ot-cleanup.php:235
+msgid "Outdated Table"
+msgstr "მოძველებული ცხრილი"
+
+#: includes/ot-functions-docs-page.php:176
+msgid "Output"
+msgstr "გამომავალი"
+
+#: includes/ot-functions-docs-page.php:278
+msgid "Page Checkbox"
+msgstr "გვერდის მონიშვნის ველი"
+
+#: includes/ot-functions-docs-page.php:281
+msgid "Page Select"
+msgstr "გვერდის არჩევა"
+
+#: includes/ot-functions-docs-page.php:532
+#: includes/ot-functions-docs-page.php:578
+msgid "Parameters"
+msgstr "პარამეტრები"
+
+#: includes/ot-functions-docs-page.php:284
+msgid "Post Checkbox"
+msgstr "პოსტის მონიშვნის ველი"
+
+#: includes/ot-functions-docs-page.php:287
+msgid "Post Select"
+msgstr "პოსტის არჩევა"
+
+#: includes/ot-functions-docs-page.php:61
+msgid "Post Type"
+msgstr "პოსტის ტიპი"
+
+#. %1$s: directory name, %2$s: directory path
+#: includes/ot-functions-docs-page.php:953
+#, php-format
+msgid ""
+"Put the %1$s directory in the root of your theme. For example, the server "
+"path would be %2$s."
+msgstr ""
+"თემის ძირში მოათავსეთ %1$s დირექტორია. მაგალითად, სერვერის გზა იქნება %2$s."
+
+#: includes/ot-functions-docs-page.php:290
+msgid "Radio"
+msgstr "რადიო"
+
+#: includes/ot-functions-docs-page.php:293
+msgid "Radio Image"
+msgstr "რადიოს სურათი"
+
+#: includes/class-ot-cleanup.php:176
+msgid "Reloading..."
+msgstr "ხელახლა ჩატვირთვა..."
+
+#: includes/ot-functions-docs-page.php:536
+#: includes/ot-functions-docs-page.php:582
+msgid "required"
+msgstr "საჭირო"
+
+#: includes/class-ot-settings.php:361
+msgid "Reset Options"
+msgstr "პარამეტრების გადატვირთვა"
+
+#. %s: option id
+#: includes/ot-functions-docs-page.php:637
+#, php-format
+msgid ""
+"Returns the value of %s, but also has a default value if it returns empty."
+msgstr ""
+"აბრუნებს %s-ის მნიშვნელობას, მაგრამ ასევე აქვს ნაგულისხმევი მნიშვნელობა, თუ "
+"ცარიელს აბრუნებს."
+
+#. %s: option id
+#: includes/ot-functions-docs-page.php:629
+#, php-format
+msgid "Returns the value of %s."
+msgstr "აბრუნებს %s-ის მნიშვნელობას."
+
+#: includes/ot-functions-docs-page.php:58
+msgid "Rows"
+msgstr "რიგები"
+
+#: includes/ot-functions-settings-page.php:95
+#: includes/ot-functions-settings-page.php:132
+msgid "Save Changes"
+msgstr "ცვლილებების შენახვა"
+
+#: includes/ot-functions-settings-page.php:479
+msgid "Save Layouts"
+msgstr "განლაგების შენახვა"
+
+#: includes/ot-functions-docs-page.php:781
+#: includes/ot-functions-docs-page.php:818
+msgid ""
+"Saving theme options data will update the currently active layout, so before "
+"you start saving make sure you want to modify the current layout."
+msgstr ""
+"თემის პარამეტრების მონაცემების შენახვა განაახლებს ამჟამად აქტიურ განლაგებას, "
+"ამიტომ შენახვის დაწყებამდე დარწმუნდით, რომ გსურთ მიმდინარე განლაგების შეცვლა."
+
+#: includes/ot-functions-docs-page.php:326
+msgid "Select"
+msgstr "არჩევა"
+
+#: ot-loader.php:732 includes/ot-functions-docs-page.php:498
+msgid "Send to OptionTree"
+msgstr "გაგზავნა OptionTree-ში"
+
+#: includes/ot-functions-docs-page.php:56
+msgid ""
+"Setting the standard value for your option only works for some option types. "
+"Those types are one that have a single string value saved to them and not an "
+"array of values."
+msgstr ""
+"თქვენი ოფციისთვის სტანდარტული მნიშვნელობის დაყენება მხოლოდ ზოგიერთი ტიპის "
+"ოფციისთვის მუშაობს. ეს ტიპები ისეთებია, რომლებსაც შენახული აქვთ ერთი "
+"სტრიქონული მნიშვნელობა და არა მნიშვნელობების მასივი."
+
+#: includes/ot-functions-docs-page.php:52
+#: includes/ot-functions-settings-page.php:328
+msgid "Settings"
+msgstr "პარამეტრები"
+
+#: includes/ot-functions-docs-page.php:329
+msgid "Sidebar Select"
+msgstr "გვერდითი ზოლის არჩევა"
+
+#: includes/ot-functions-docs-page.php:339
+msgid "Slider"
+msgstr "სლაიდერი"
+
+#: includes/ot-functions-docs-page.php:342
+msgid "Social Links"
+msgstr "სოციალური ბმულები"
+
+#. %s: table name
+#: includes/class-ot-cleanup.php:271
+#, php-format
+msgid "Something went wrong. The %s table was not deleted."
+msgstr "რაღაც არასწორად წარიმართა. %s ცხრილი არ წაიშალა."
+
+#: includes/ot-functions-docs-page.php:348
+msgid "Spacing"
+msgstr "ინტერვალი"
+
+#: includes/ot-functions-docs-page.php:55
+msgid "Standard"
+msgstr "სტანდარტული"
+
+#: includes/ot-functions-docs-page.php:944
+msgid "Step 1: Include the plugin & turn on theme mode."
+msgstr "ნაბიჯი 1: ჩართეთ მოდული და ჩართეთ თემის რეჟიმი."
+
+#: includes/ot-functions-docs-page.php:979
+msgid "Step 2: Create Theme Options without using the UI Builder."
+msgstr "ნაბიჯი 2: შექმენით თემის პარამეტრები UI Builder-ის გამოყენების გარეშე."
+
+#: includes/ot-functions-docs-page.php:536
+#: includes/ot-functions-docs-page.php:540
+#: includes/ot-functions-docs-page.php:582
+msgid "string"
+msgstr "სტრიქონი"
+
+#: includes/ot-functions-docs-page.php:626
+msgid "String Examples"
+msgstr "სტრიქონების მაგალითები"
+
+#: includes/ot-functions-docs-page.php:354
+msgid "Tab"
+msgstr "ჩანართი"
+
+#: includes/ot-functions-docs-page.php:357
+msgid "Tag Checkbox"
+msgstr "თეგის მონიშვნის ველი"
+
+#: includes/ot-functions-docs-page.php:360
+msgid "Tag Select"
+msgstr "თეგის არჩევა"
+
+#: includes/ot-functions-docs-page.php:73
+msgid "Taxonomy"
+msgstr "ტაქსონომია"
+
+#: includes/ot-functions-docs-page.php:363
+msgid "Taxonomy Checkbox"
+msgstr "ტაქსონომიის მონიშვნის ველი"
+
+#: includes/ot-functions-docs-page.php:366
+msgid "Taxonomy Select"
+msgstr "ტაქსონომიის შერჩევა"
+
+#: includes/ot-functions-docs-page.php:369
+msgid "Text"
+msgstr "ტექსტი"
+
+#: includes/ot-functions-docs-page.php:372
+msgid "Textarea"
+msgstr "ტექსტური არე"
+
+#: includes/ot-functions-docs-page.php:447
+msgid "Textarea Simple"
+msgstr "ტექსტური არეალი მარტივი"
+
+#: includes/ot-functions-docs-page.php:465
+msgid "Textblock"
+msgstr "ტექსტური ბლოკი"
+
+#: includes/ot-functions-docs-page.php:468
+msgid "Textblock Titled"
+msgstr "სათაურის მქონე ტექსტური ბლოკი"
+
+#. %s: table name
+#: includes/class-ot-cleanup.php:256
+#, php-format
+msgid "The %s table has been successfully deleted. The page will now reload..."
+msgstr "%s ცხრილი წარმატებით წაიშალა. გვერდი ახლა ხელახლა ჩაიტვირთება..."
+
+#. %1$s: function name, %2$s: filter name, %3$s: filter name list
+#: includes/ot-functions-docs-page.php:127
+#, php-format
+msgid ""
+"The Background option type is for adding background styles to your theme "
+"either dynamically via the CSS option type below or manually with %1$s. The "
+"Background option type has filters that allow you to remove fields or change "
+"the defaults. For example, you can filter %2$s to remove unwanted fields "
+"from all Background options or an individual one. You can also filter %3$s. "
+"These filters allow you to fine tune the select lists for your specific "
+"needs."
+msgstr ""
+"ფონის ვარიანტის ტიპი განკუთვნილია თქვენს თემაში ფონის სტილის დასამატებლად, "
+"როგორც დინამიურად, ქვემოთ მოცემული CSS ვარიანტის ტიპის მეშვეობით, ასევე "
+"ხელით %1$s-ის გამოყენებით. ფონის ვარიანტის ტიპს აქვს ფილტრები, რომლებიც "
+"საშუალებას გაძლევთ წაშალოთ ველები ან შეცვალოთ ნაგულისხმევი პარამეტრები. "
+"მაგალითად, შეგიძლიათ გაფილტროთ %2$s, რათა წაშალოთ არასასურველი ველები ფონის "
+"ყველა ვარიანტიდან ან ცალკეულიდან. ასევე შეგიძლიათ გაფილტროთ %3$s. ეს "
+"ფილტრები საშუალებას გაძლევთ დახვეწოთ არჩეული სიები თქვენი კონკრეტული "
+"საჭიროებებისთვის."
+
+#. %1$s: pixel unit, %2$s: percentage unit, %3$s: em unit, %4$s: point unit, %5$s: filter name, %6$s: hidden, %7$s: dashed, %8$s: solid, %9$s: double, %10$s: groove, %11$s: ridge, %12$s: inset, %13$s: outset, %14$s: filter name
+#: includes/ot-functions-docs-page.php:133
+#, php-format
+msgid ""
+"The Border option type is used to set width, unit, style, and color values. "
+"The text input excepts a numerical value and the unit select lets you choose "
+"the unit of measurement to add to that value. Currently the default units "
+"are %1$s, %2$s, %3$s, and %4$s. However, you can change them with the %5$s "
+"filter. The style select lets you choose the border style. The default "
+"styles are %6$s, %7$s, %8$s, %9$s, %10$s, %11$s, %12$s, and %13$s. However, "
+"you can change them with the %14$s filter. The colorpicker saves a "
+"hexadecimal color code."
+msgstr ""
+"საზღვრის ოფციის ტიპი გამოიყენება სიგანის, ერთეულის, სტილისა და ფერის "
+"მნიშვნელობების დასაყენებლად. ტექსტის შეყვანა გამორიცხავს რიცხვით "
+"მნიშვნელობას და ერთეულის არჩევა საშუალებას გაძლევთ აირჩიოთ საზომი ერთეული, "
+"რომელიც ამ მნიშვნელობას დაემატება. ამჟამად ნაგულისხმევი ერთეულებია %1$s, "
+"%2$s, %3$s და %4$s. თუმცა, მათი შეცვლა შეგიძლიათ %5$s ფილტრით. სტილის არჩევა "
+"საშუალებას გაძლევთ აირჩიოთ საზღვრის სტილი. ნაგულისხმევი სტილებია %6$s, %7$s, "
+"%8$s, %9$s, %10$s, %11$s, %12$s და %13$s. თუმცა, მათი შეცვლა შეგიძლიათ %14$s "
+"ფილტრით. ფერის ამომრჩევი ინახავს თექვსმეტობით ფერის კოდს."
+
+#. %1$s: inset, %2$s: offset-x, %3$s: offset-y, %4$s: blur-radius, %5$s: spread-radius, %6$s: color
+#: includes/ot-functions-docs-page.php:139
+#, php-format
+msgid ""
+"The Box Shadow option type is used to set %1$s, %2$s, %3$s, %4$s, %5$s, and "
+"%6$s values."
+msgstr ""
+"Box Shadow ოფციის ტიპი გამოიყენება %1$s, %2$s, %3$s, %4$s, %5$s და %6$s "
+"მნიშვნელობების დასაყენებლად."
+
+#: includes/ot-functions-docs-page.php:143
+msgid ""
+"The Category Checkbox option type displays a list of category IDs. It allows "
+"the user to check multiple category IDs and will return that value as an "
+"array for use in a custom function or loop."
+msgstr ""
+"კატეგორიის ველის ოფციის ტიპი აჩვენებს კატეგორიის ID-ების სიას. ის საშუალებას "
+"აძლევს მომხმარებელს შეამოწმოს მრავალი კატეგორიის ID და დააბრუნებს ამ "
+"მნიშვნელობას მასივის სახით, რომელიც გამოყენებული იქნება მორგებულ ფუნქციაში "
+"ან ციკლში."
+
+#: includes/ot-functions-docs-page.php:146
+msgid ""
+"The Category Select option type displays a list of category IDs. It allows "
+"the user to select only one category ID and will return that value for use "
+"in a custom function or loop."
+msgstr ""
+"კატეგორიის არჩევის ოფციის ტიპი აჩვენებს კატეგორიის ID-ების სიას. ის "
+"საშუალებას აძლევს მომხმარებელს აირჩიოს მხოლოდ ერთი კატეგორიის ID და "
+"დააბრუნებს ამ მნიშვნელობას მორგებულ ფუნქციაში ან ციკლში გამოსაყენებლად."
+
+#: includes/ot-functions-docs-page.php:149
+msgid ""
+"The Checkbox option type displays a group of choices. It allows the user to "
+"check multiple choices and will return that value as an array for use in a "
+"custom function or loop."
+msgstr ""
+"Checkbox-ის ოფციის ტიპი აჩვენებს არჩევანის ჯგუფს. ის საშუალებას აძლევს "
+"მომხმარებელს მონიშნოს მრავალი არჩევანი და დააბრუნებს ამ მნიშვნელობას მასივის "
+"სახით, რომელიც გამოყენებული იქნება მორგებულ ფუნქციაში ან ციკლში."
+
+#: includes/ot-functions-docs-page.php:1010
+msgid ""
+"The code below is a boilerplate to get your started. For a full list of the "
+"available option types click the \"Option Types\" tab above. Also a quick "
+"note, you don't need to put OptionTree in theme mode to manually create "
+"options but you will want to hide the docs and settings as each time you "
+"load the admin area the settings be written over with the code below if "
+"they've changed in any way. However, this ensures your settings do not get "
+"tampered with by the end-user."
+msgstr ""
+"ქვემოთ მოცემული კოდი დასაწყებად სტანდარტულია. ხელმისაწვდომი ვარიანტების "
+"ტიპების სრული სიის სანახავად დააწკაპუნეთ ზემოთ მოცემულ ჩანართზე „ვარიანტების "
+"ტიპები“. ასევე, მოკლე შენიშვნა: ვარიანტების ხელით შესაქმნელად არ გჭირდებათ "
+"OptionTree-ს თემის რეჟიმში გადაყვანა, მაგრამ დოკუმენტებისა და პარამეტრების "
+"დამალვა დაგჭირდებათ, რადგან ყოველ ჯერზე, როდესაც ადმინისტრატორის არე "
+"ჩატვირთავთ, პარამეტრები ჩაიწერება ქვემოთ მოცემული კოდით, თუ ისინი რაიმე "
+"ფორმით შეიცვალა. თუმცა, ეს უზრუნველყოფს, რომ საბოლოო მომხმარებელი არ შეცვლის "
+"თქვენს პარამეტრებს."
+
+#. %1$s: range minimum, %2$s: range maximum, %3$s: minimum increment
+#: includes/ot-functions-docs-page.php:157
+#, php-format
+msgid ""
+"The Colorpicker Opacity option type saves a hexadecimal color code with an "
+"opacity value from %1$s to %2$s in increments of %3$s. Though the value is "
+"saved as hexadecimal, if used within the CSS option type the color and "
+"opacity values will be converted into a valid RGBA CSS value."
+msgstr ""
+"Colorpicker Opacity ოფციის ტიპი ინახავს თექვსმეტობით ფერის კოდს %1$s-დან "
+"%2$s-მდე გამჭვირვალობის მნიშვნელობით %3$s-ის ინტერვალებით. მიუხედავად იმისა, "
+"რომ მნიშვნელობა ინახება თექვსმეტობითად, თუ გამოყენებული იქნება CSS ოფციის "
+"ტიპში, ფერისა და გამჭვირვალობის მნიშვნელობები გარდაიქმნება ვალიდურ RGBA CSS "
+"მნიშვნელობებად."
+
+#: assets/theme-mode/demo-theme-options.php:170
+#, php-format
+msgid ""
+"The Colorpicker Opacity option type saves an rgba color value for use in CSS."
+" To add opacity to other colorpickers add the %1$s class to the %2$s array."
+msgstr ""
+"ფერის ამომრჩევის გამჭვირვალობის ოფციის ტიპი ინახავს rgba ფერის მნიშვნელობას "
+"CSS-ში გამოსაყენებლად. სხვა ფერის ამომრჩევებისთვის გამჭვირვალობის "
+"დასამატებლად, %1$s კლასი დაამატეთ %2$s მასივს."
+
+#: includes/ot-functions-docs-page.php:152
+msgid ""
+"The Colorpicker option type saves a hexadecimal color code for use in CSS. "
+"Use it to modify the color of something in your theme."
+msgstr ""
+"Colorpicker ოფციის ტიპი ინახავს თექვსმეტობით ფერის კოდს CSS-ში "
+"გამოსაყენებლად. გამოიყენეთ ის თქვენს თემაში არსებული რაღაცის ფერის "
+"შესაცვლელად."
+
+#. %1$s: file name, %2$s: command name, %3$s: permission mode, %4$s: permission mode
+#: includes/ot-functions-docs-page.php:163
+#, php-format
+msgid ""
+"The CSS option type is a textarea that when used properly can add dynamic "
+"CSS to your theme from within OptionTree. Unfortunately, due server "
+"limitations you will need to create a file named %1$s at the root level of "
+"your theme and change permissions using %2$s so the server can write to the "
+"file. I have had the most success setting this single file to %3$s but feel "
+"free to play around with permissions until everything is working. A good "
+"starting point is %4$s. When the server can save to the file, CSS will "
+"automatically be updated when you save your Theme Options."
+msgstr ""
+"CSS ვარიანტის ტიპი არის ტექსტური არე, რომელსაც სწორად გამოყენების "
+"შემთხვევაში შეუძლია თქვენს თემას დინამიური CSS დაამატოს OptionTree-დან. "
+"სამწუხაროდ, სერვერის შეზღუდვების გამო, თქვენ დაგჭირდებათ ფაილის შექმნა %1$s "
+"სახელით თქვენი თემის ძირეულ დონეზე და ნებართვების შეცვლა %2$s-ის გამოყენებით,"
+" რათა სერვერმა შეძლოს ფაილში ჩაწერა. მე ყველაზე მეტად ამ ერთი ფაილის %3$s-ზე "
+"დაყენებაში მივაღწიე წარმატებას, მაგრამ თავისუფლად შეგიძლიათ ნებართვებით "
+"იმუშაოთ, სანამ ყველაფერი არ იმუშავებს. კარგი საწყისი წერტილია %4$s. როდესაც "
+"სერვერი შეძლებს ფაილში შენახვას, CSS ავტომატურად განახლდება, როდესაც თქვენ "
+"შეინახავთ თქვენს თემის პარამეტრებს."
+
+#. %1$s: post_type
+#: includes/ot-functions-docs-page.php:187
+#, php-format
+msgid ""
+"The Custom Post Type Select option type displays a list of IDs from any "
+"available WordPress post type or custom post type. It allows the user to "
+"check multiple post IDs for use in a custom function or loop. Requires at "
+"least one valid %1$s in the %1$s field."
+msgstr ""
+"„მორგებული პოსტის ტიპის არჩევის“ ოფციის ტიპი აჩვენებს ნებისმიერი "
+"ხელმისაწვდომი WordPress პოსტის ტიპის ან მორგებული პოსტის ტიპის ID-ების სიას. "
+"ის საშუალებას აძლევს მომხმარებელს, შეამოწმოს მრავალი პოსტის ID მორგებულ "
+"ფუნქციაში ან ციკლში გამოსაყენებლად. საჭიროა მინიმუმ ერთი ვალიდური %1$s %1$s "
+"ველში."
+
+#. %s: post_type
+#: includes/ot-functions-docs-page.php:193
+#, php-format
+msgid ""
+"The Custom Post Type Select option type displays a list of IDs from any "
+"available WordPress post type or custom post type. It will return a single "
+"post ID for use in a custom function or loop. Requires at least one valid "
+"%1$s in the %1$s field."
+msgstr ""
+"„მორგებული პოსტის ტიპის არჩევის“ ოფციის ტიპი აჩვენებს ნებისმიერი "
+"ხელმისაწვდომი WordPress პოსტის ტიპის ან მორგებული პოსტის ტიპის ID-ების სიას. "
+"ის დააბრუნებს ერთ პოსტის ID-ს მორგებულ ფუნქციაში ან ციკლში გამოსაყენებლად. "
+"საჭიროა მინიმუმ ერთი ვალიდური %1$s %1$s ველში."
+
+#: includes/ot-functions-docs-page.php:197
+msgid ""
+"The Date Picker option type is tied to a standard form input field which "
+"displays a calendar pop-up that allow the user to pick any date when focus "
+"is given to the input field. The returned value is a date formatted string."
+msgstr ""
+"თარიღის ამომრჩევის ოფციის ტიპი დაკავშირებულია სტანდარტული ფორმის შეყვანის "
+"ველთან, რომელიც აჩვენებს კალენდრის ამომხტარ ფანჯარას, რომელიც მომხმარებელს "
+"საშუალებას აძლევს აირჩიოს ნებისმიერი თარიღი, როდესაც ფოკუსი შეყვანის ველზეა "
+"მონიშნული. დაბრუნებული მნიშვნელობა არის თარიღის ფორმატირებული სტრიქონი."
+
+#: includes/ot-functions-docs-page.php:200
+msgid ""
+"The Date Time Picker option type is tied to a standard form input field "
+"which displays a calendar pop-up that allow the user to pick any date and "
+"time when focus is given to the input field. The returned value is a date "
+"and time formatted string."
+msgstr ""
+"თარიღისა და დროის ამომრჩევის ოფციის ტიპი დაკავშირებულია სტანდარტული ფორმის "
+"შეყვანის ველთან, რომელიც აჩვენებს კალენდრის ამომხტარ ფანჯარას, რომელიც "
+"მომხმარებელს საშუალებას აძლევს აირჩიოს ნებისმიერი თარიღი და დრო, როდესაც "
+"ფოკუსი ენიჭება შეყვანის ველს. დაბრუნებული მნიშვნელობა არის თარიღისა და დროის "
+"ფორმატირებული სტრიქონი."
+
+#. %1$s: pixel unit, %2$s: percentage unit, %3$s: em unit, %4$s: point unit, %5$s: filter name
+#: includes/ot-functions-docs-page.php:205
+#, php-format
+msgid ""
+"The Dimension option type is used to set width and height values. The text "
+"inputs except numerical values and the select lets you choose the unit of "
+"measurement to add to that value. Currently the default units are %1$s, %2$s,"
+" %3$s, and %4$s. However, you can change them with the %5$s filter."
+msgstr ""
+"განზომილების ოფციის ტიპი გამოიყენება სიგანისა და სიმაღლის მნიშვნელობების "
+"დასაყენებლად. ტექსტის შეყვანა, რიცხვითი მნიშვნელობებისა და შერჩევის გარდა, "
+"საშუალებას გაძლევთ აირჩიოთ გაზომვის ერთეული, რომელიც ამ მნიშვნელობას "
+"დაემატება. ამჟამად ნაგულისხმევი ერთეულებია %1$s, %2$s, %3$s და %4$s. თუმცა, "
+"მათი შეცვლა %5$s ფილტრით შეგიძლიათ."
+
+#: includes/ot-functions-docs-page.php:209
+msgid ""
+"The Gallery option type saves a comma separated list of image attachment IDs."
+" You will need to create a front-end function to display the images in your "
+"theme."
+msgstr ""
+"გალერეის ოფციის ტიპი ინახავს სურათების დანართის ID-ების მძიმით გამოყოფილ "
+"სიას. თქვენს თემაში სურათების საჩვენებლად, თქვენ უნდა შექმნათ წინა პლანის "
+"ფუნქცია."
+
+#. %1$s: HTML Document HEAD, %2$s: array key, %3$s: filter name, %4$s: parameter name, %5$s: parameter name, %6$s: parameter name, %7$s: function name
+#: includes/ot-functions-docs-page.php:214
+#, php-format
+msgid ""
+"The Google Fonts option type will dynamically enqueue any number of Google "
+"Web Fonts into the document %1$s. As well, once the option has been saved "
+"each font family will automatically be inserted into the %2$s array for the "
+"Typography option type. You can further modify the font stack by using the "
+"%3$s filter, which is passed the %4$s, %5$s, and %6$s parameters. The %6$s "
+"parameter is being passed from %7$s, so it will be the ID of a Typography "
+"option type. This will allow you to add additional web safe fonts to "
+"individual font families on an as-need basis."
+msgstr ""
+"Google Fonts-ის ოფციის ტიპი დინამიურად განათავსებს Google Web Fonts-ის "
+"ნებისმიერ რაოდენობას დოკუმენტში %1$s. ასევე, ოფციის შენახვის შემდეგ, "
+"თითოეული შრიფტის ოჯახი ავტომატურად ჩაირთვება %2$s მასივში ტიპოგრაფიის ოფციის "
+"ტიპისთვის. შრიფტების დასტის შემდგომი შეცვლა შეგიძლიათ %3$s ფილტრის "
+"გამოყენებით, რომელსაც გადაეცემა %4$s, %5$s და %6$s პარამეტრები. %6$s "
+"პარამეტრი გადაეცემა %7$s-დან, ამიტომ ის იქნება ტიპოგრაფიის ოფციის ტიპის ID. "
+"ეს საშუალებას მოგცემთ, საჭიროებისამებრ დაამატოთ დამატებითი ვებ-უსაფრთხო "
+"შრიფტები ცალკეულ შრიფტების ოჯახებს."
+
+#: includes/ot-functions-docs-page.php:32
+msgid ""
+"The ID field is a unique alphanumeric key used to differentiate each theme "
+"option (underscores are acceptable). Also, the plugin will change all text "
+"you write in this field to lowercase and replace spaces and special "
+"characters with an underscore automatically."
+msgstr ""
+"ID ველი არის უნიკალური ასო-ციფრული გასაღები, რომელიც გამოიყენება თემის "
+"თითოეული ვარიანტის დიფერენცირებისთვის (დასაშვებია ქვედა ხაზის გამოყენება). "
+"ასევე, მოდული ავტომატურად შეცვლის ამ ველში დაწერილ ყველა ტექსტს პატარა "
+"ასოებით და ჩაანაცვლებს ინტერვალებსა და სპეციალურ სიმბოლოებს ქვედა ხაზით."
+
+#. %s: file name
+#: includes/ot-functions-docs-page.php:220
+#, php-format
+msgid ""
+"The JavaScript option type is a textarea that uses the %s code editor to "
+"highlight your JavaScript and display errors as you type."
+msgstr ""
+"JavaScript-ის ოფციის ტიპი არის ტექსტური არე, რომელიც იყენებს %s კოდის "
+"რედაქტორს თქვენი JavaScript-ის გამოსაყოფად და აკრეფისას შეცდომების "
+"საჩვენებლად."
+
+#: includes/ot-functions-docs-page.php:29
+msgid ""
+"The Label field should be a short but descriptive block of text 100 "
+"characters or less with no HTML."
+msgstr ""
+"„ეტიკეტის“ ველი უნდა იყოს მოკლე, მაგრამ აღწერილობითი ტექსტის ბლოკი, 100 ან "
+"ნაკლები სიმბოლოსგან, HTML კოდის გარეშე."
+
+#: includes/ot-functions-docs-page.php:224
+msgid "The Link Color option type is used to set all link color states."
+msgstr ""
+"ბმულის ფერის ოფციის ტიპი გამოიყენება ბმულის ყველა ფერის მდგომარეობის "
+"დასაყენებლად."
+
+#: includes/ot-functions-docs-page.php:227
+msgid ""
+"The List Item option type replaced the Slider option type and allows for a "
+"great deal of customization. You can add settings to the List Item and those "
+"settings will be displayed to the user when they add a new List Item. "
+"Typical use is for creating sliding content or blocks of code for custom "
+"layouts."
+msgstr ""
+"სიის ელემენტის ოფციის ტიპმა ჩაანაცვლა სლაიდერის ოფციის ტიპი და დიდი "
+"პერსონალიზაციის საშუალებას იძლევა. თქვენ შეგიძლიათ დაამატოთ პარამეტრები სიის "
+"ელემენტს და ეს პარამეტრები გამოჩნდება მომხმარებლისთვის, როდესაც ისინი "
+"დაამატებენ ახალ სიის ელემენტს. ტიპიური გამოყენებაა მორგებული განლაგებისთვის "
+"სლაიდერის კონტენტის ან კოდის ბლოკების შესაქმნელად."
+
+#. %1$s: pixel unit, %2$s: percentage unit, %3$s: em unit, %4$s: point unit, %5$s: filter name
+#: includes/ot-functions-docs-page.php:232
+#, php-format
+msgid ""
+"The Measurement option type is a mix of input and select fields. The text "
+"input excepts a value and the select lets you choose the unit of measurement "
+"to add to that value. Currently the default units are %1$s, %2$s, %3$s, and "
+"%4$s. However, you can change them with the %5$s filter."
+msgstr ""
+"გაზომვის ვარიანტის ტიპი წარმოადგენს შეყვანისა და შერჩევის ველების ნაზავს. "
+"ტექსტის შეყვანა გამორიცხავს მნიშვნელობას და შერჩევა საშუალებას გაძლევთ "
+"აირჩიოთ გაზომვის ერთეული, რომელიც ამ მნიშვნელობას დაემატება. ამჟამად "
+"ნაგულისხმევი ერთეულებია %1$s, %2$s, %3$s და %4$s. თუმცა, მათი შეცვლა %5$s "
+"ფილტრით შეგიძლიათ."
+
+#. %s: option type name
+#: includes/ot-functions-docs-page.php:669
+#, php-format
+msgid ""
+"The next two examples demonstrate how to use the %s option type. The "
+"Measurement option type is an array with two key/value pairs. The first is "
+"the value of measurement and the second is the unit of measurement."
+msgstr ""
+"შემდეგი ორი მაგალითი აჩვენებს, თუ როგორ გამოვიყენოთ %s ოფციის ტიპი. გაზომვის "
+"ოფციის ტიპი არის მასივი ორი გასაღების/მნიშვნელობის წყვილით. პირველი არის "
+"გაზომვის მნიშვნელობა, ხოლო მეორე - გაზომვის ერთეული."
+
+#: includes/ot-functions-docs-page.php:270
+msgid ""
+"The Numeric Slider option type displays a jQuery UI slider. It will return a "
+"single numerical value for use in a custom function or loop."
+msgstr ""
+"რიცხვითი სლაიდერის ოფციის ტიპი აჩვენებს jQuery UI სლაიდერს. ის დააბრუნებს "
+"ერთ რიცხვით მნიშვნელობას მორგებულ ფუნქციაში ან ციკლში გამოსაყენებლად."
+
+#. %1$s: on value, %2$s: off value
+#: includes/ot-functions-docs-page.php:275
+#, php-format
+msgid ""
+"The On/Off option type displays a simple switch that can be used to turn "
+"things on or off. The saved return value is either %1$s or %2$s."
+msgstr ""
+"ჩართვა/გამორთვის ოფციის ტიპი აჩვენებს მარტივ გადამრთველს, რომლის გამოყენებაც "
+"შესაძლებელია ნივთების ჩასართავად ან გამოსართავად. შენახული დაბრუნებული "
+"მნიშვნელობაა %1$s ან %2$s."
+
+#: includes/ot-functions-docs-page.php:279
+msgid ""
+"The Page Checkbox option type displays a list of page IDs. It allows the "
+"user to check multiple page IDs for use in a custom function or loop."
+msgstr ""
+"გვერდის მონიშვნის ველის ოფციის ტიპი აჩვენებს გვერდის ID-ების სიას. ის "
+"საშუალებას აძლევს მომხმარებელს, შეამოწმოს მრავალი გვერდის ID მორგებულ "
+"ფუნქციაში ან ციკლში გამოსაყენებლად."
+
+#: includes/ot-functions-docs-page.php:282
+msgid ""
+"The Page Select option type displays a list of page IDs. It will return a "
+"single page ID for use in a custom function or loop."
+msgstr ""
+"გვერდის არჩევის ოფციის ტიპი აჩვენებს გვერდის ID-ების სიას. ის დააბრუნებს ერთ "
+"გვერდის ID-ს მორგებულ ფუნქციაში ან ციკლში გამოსაყენებლად."
+
+#: includes/ot-functions-docs-page.php:285
+msgid ""
+"The Post Checkbox option type displays a list of post IDs. It allows the "
+"user to check multiple post IDs for use in a custom function or loop."
+msgstr ""
+"პოსტის ველის ოფციის ტიპი აჩვენებს პოსტის ID-ების სიას. ის საშუალებას აძლევს "
+"მომხმარებელს, შეამოწმოს პოსტის მრავალი ID მორგებულ ფუნქციაში ან ციკლში "
+"გამოსაყენებლად."
+
+#: includes/ot-functions-docs-page.php:288
+msgid ""
+"The Post Select option type displays a list of post IDs. It will return a "
+"single post ID for use in a custom function or loop."
+msgstr ""
+"პოსტის არჩევის ოფციის ტიპი აჩვენებს პოსტის ID-ების სიას. ის დააბრუნებს ერთ "
+"პოსტის ID-ს მორგებულ ფუნქციაში ან ციკლში გამოსაყენებლად."
+
+#. %s: filter name
+#: includes/ot-functions-docs-page.php:296
+#, php-format
+msgid ""
+"the Radio Images option type is primarily used for layouts. However, you can "
+"filter the image list using %s. As well, you can add your own custom images "
+"using the choices array."
+msgstr ""
+"რადიო სურათების ოფციის ტიპი ძირითადად გამოიყენება განლაგებისთვის. თუმცა, "
+"სურათების სიის გაფილტვრა %s-ის გამოყენებით შეგიძლიათ. ასევე, არჩევანის "
+"მასივის გამოყენებით შეგიძლიათ დაამატოთ თქვენი საკუთარი სურათები."
+
+#: includes/ot-functions-docs-page.php:291
+msgid ""
+"The Radio option type displays a group of choices. It allows the user to "
+"choose one and will return that value as a string for use in a custom "
+"function or loop."
+msgstr ""
+"რადიოს ოფციის ტიპი აჩვენებს არჩევანის ჯგუფს. ის მომხმარებელს საშუალებას "
+"აძლევს აირჩიოს ერთი და დააბრუნებს ამ მნიშვნელობას სტრიქონის სახით, რომელიც "
+"გამოყენებული იქნება მორგებულ ფუნქციაში ან ციკლში."
+
+#: includes/ot-functions-docs-page.php:327
+msgid ""
+"The Select option type is used to list anything you want that would be "
+"chosen from a select list."
+msgstr ""
+"არჩევის ვარიანტის ტიპი გამოიყენება არჩევანის სიიდან არჩეული ნებისმიერი "
+"ნივთის ჩამოსათვლელად."
+
+#: includes/ot-functions-docs-page.php:340
+msgid ""
+"The Slider option type is technically deprecated. Use the List Item option "
+"type instead, as it's infinitely more customizable. Typical use is for "
+"creating sliding image content."
+msgstr ""
+"სლაიდერის ოფციის ტიპი ტექნიკურად მოძველებულია. მის ნაცვლად გამოიყენეთ სიის "
+"ელემენტის ოფციის ტიპი, რადგან ის გაცილებით უფრო მორგებადია. ტიპიური "
+"გამოყენებაა სლაიდერის სურათის კონტენტის შესაქმნელად."
+
+#. %1$s: filter name, %2$s: boolean value, %3$s: filter name, %4$s: filter name
+#: includes/ot-functions-docs-page.php:345
+#, php-format
+msgid ""
+"The Social Links option type utilizes a drag & drop interface to create a "
+"list of social links. There are a few filters that make extending this "
+"option type easy. You can set the %1$s filter to %2$s and turn off loading "
+"default values. Use the %3$s filter to change the default values that are "
+"loaded. To filter the settings array use the %4$s filter."
+msgstr ""
+"სოციალური ბმულების ოფციის ტიპი იყენებს გადათრევისა და ჩაშვების ინტერფეისს "
+"სოციალური ბმულების სიის შესაქმნელად. არსებობს რამდენიმე ფილტრი, რომელიც ამ "
+"ოფციის ტიპის გაფართოებას აადვილებს. შეგიძლიათ %1$s ფილტრი დააყენოთ %2$s-ზე "
+"და გამორთოთ ნაგულისხმევი მნიშვნელობების ჩატვირთვა. გამოიყენეთ %3$s ფილტრი "
+"ჩატვირთული ნაგულისხმევი მნიშვნელობების შესაცვლელად. პარამეტრების მასივის "
+"გასაფილტრად გამოიყენეთ %4$s ფილტრი."
+
+#. %1$s: pixel unit, %2$s: percentage unit, %3$s: em unit, %4$s: point unit, %5$s: filter name
+#: includes/ot-functions-docs-page.php:351
+#, php-format
+msgid ""
+"The Spacing option type is used to set spacing values such as padding or "
+"margin in the form of top, right, bottom, and left. The text inputs except "
+"numerical values and the select lets you choose the unit of measurement to "
+"add to that value. Currently the default units are %1$s, %2$s, %3$s, and "
+"%4$s. However, you can change them with the %5$s filter."
+msgstr ""
+"ინტერვალის ოფციის ტიპი გამოიყენება ინტერვალის მნიშვნელობების დასაყენებლად, "
+"როგორიცაა შევსება ან ზღვარი ზედა, მარჯვენა, ქვედა და მარცხენა ფორმით. "
+"ტექსტის შეყვანა, რიცხვითი მნიშვნელობებისა და შერჩევის გარდა, საშუალებას "
+"გაძლევთ აირჩიოთ გაზომვის ერთეული, რომელიც ამ მნიშვნელობას დაემატება. ამჟამად "
+"ნაგულისხმევი ერთეულებია %1$s, %2$s, %3$s და %4$s. თუმცა, მათი შეცვლა %5$s "
+"ფილტრით შეგიძლიათ."
+
+#: includes/ot-functions-docs-page.php:355
+msgid ""
+"The Tab option type will break a section or metabox into tabbed content."
+msgstr "Tab ოფციის ტიპი სექციას ან მეტაველს ჩანართებიან კონტენტად დაყოფს."
+
+#: includes/ot-functions-docs-page.php:358
+msgid ""
+"The Tag Checkbox option type displays a list of tag IDs. It allows the user "
+"to check multiple tag IDs and will return that value as an array for use in "
+"a custom function or loop."
+msgstr ""
+"ტეგის ველის ოფციის ტიპი აჩვენებს ტეგის ID-ების სიას. ის საშუალებას აძლევს "
+"მომხმარებელს შეამოწმოს მრავალი ტეგის ID და დააბრუნებს ამ მნიშვნელობას "
+"მასივის სახით, რომელიც გამოყენებული იქნება მორგებულ ფუნქციაში ან ციკლში."
+
+#: includes/ot-functions-docs-page.php:361
+msgid ""
+"The Tag Select option type displays a list of tag IDs. It allows the user to "
+"select only one tag ID and will return that value for use in a custom "
+"function or loop."
+msgstr ""
+"ტეგის არჩევის ოფციის ტიპი აჩვენებს ტეგების ID-ების სიას. ის მომხმარებელს "
+"საშუალებას აძლევს აირჩიოს მხოლოდ ერთი ტეგის ID და დააბრუნებს ამ მნიშვნელობას "
+"მორგებულ ფუნქციაში ან ციკლში გამოსაყენებლად."
+
+#: includes/ot-functions-docs-page.php:364
+msgid ""
+"The Taxonomy Checkbox option type displays a list of taxonomy IDs. It allows "
+"the user to check multiple taxonomy IDs and will return that value as an "
+"array for use in a custom function or loop."
+msgstr ""
+"ტაქსონომიის ველის ოფციის ტიპი აჩვენებს ტაქსონომიის ID-ების სიას. ის "
+"საშუალებას აძლევს მომხმარებელს შეამოწმოს მრავალი ტაქსონომიის ID და "
+"დააბრუნებს ამ მნიშვნელობას მასივის სახით, რომელიც გამოყენებული იქნება "
+"მორგებულ ფუნქციაში ან ციკლში."
+
+#: includes/ot-functions-docs-page.php:367
+msgid ""
+"The Taxonomy Select option type displays a list of taxonomy IDs. It allows "
+"the user to select only one taxonomy ID and will return that value for use "
+"in a custom function or loop."
+msgstr ""
+"ტაქსონომიის არჩევის ოფციის ტიპი აჩვენებს ტაქსონომიის ID-ების სიას. ის "
+"მომხმარებელს საშუალებას აძლევს აირჩიოს მხოლოდ ერთი ტაქსონომიის ID და "
+"დააბრუნებს ამ მნიშვნელობას მორგებულ ფუნქციაში ან ციკლში გამოსაყენებლად."
+
+#: includes/ot-functions-docs-page.php:370
+msgid ""
+"The Text option type is used to save string values. For example, any "
+"optional or required text that is of reasonably short character length."
+msgstr ""
+"ტექსტის ოფციის ტიპი გამოიყენება სტრიქონის მნიშვნელობების შესანახად. "
+"მაგალითად, ნებისმიერი არასავალდებულო ან სავალდებულო ტექსტი, რომლის "
+"სიმბოლოების სიგრძე საკმაოდ მოკლეა."
+
+#. %1$s: filter name, %2$s: filter name, %3$s: filter name, %4$s: filter name
+#: includes/ot-functions-docs-page.php:375
+#, php-format
+msgid ""
+"The Textarea option type is a large string value used for custom code or "
+"text in the theme and has a WYSIWYG editor that can be filtered to change "
+"the how it is displayed. For example, you can filter %1$s, %2$s, %3$s, and "
+"%4$s."
+msgstr ""
+"Textarea ოფციის ტიპი არის დიდი სტრიქონული მნიშვნელობა, რომელიც გამოიყენება "
+"თემაში მორგებული კოდის ან ტექსტისთვის და აქვს WYSIWYG რედაქტორი, რომლის "
+"ფილტრაციაც შესაძლებელია მისი ჩვენების შესაცვლელად. მაგალითად, შეგიძლიათ "
+"გაფილტროთ %1$s, %2$s, %3$s და %4$s."
+
+#: includes/ot-functions-docs-page.php:448
+msgid ""
+"The Textarea Simple option type is a large string value used for custom code "
+"or text in the theme. The Textarea Simple does not have a WYSIWYG editor."
+msgstr ""
+"Textarea Simple ოფციის ტიპი არის დიდი სტრიქონული მნიშვნელობა, რომელიც "
+"გამოიყენება თემაში მორგებული კოდის ან ტექსტისთვის. Textarea Simple-ს არ აქვს "
+"WYSIWYG რედაქტორი."
+
+#: includes/ot-functions-docs-page.php:466
+msgid ""
+"The Textblock option type is used only on the Theme Option page. It will "
+"allow you to create & display HTML, but has no title above the text block. "
+"You can then use the Textblock to add a more detailed set of instruction on "
+"how the options are used in your theme. You would never use this in your "
+"themes template files as it does not save a value."
+msgstr ""
+"Textblock-ის ვარიანტის ტიპი გამოიყენება მხოლოდ თემის პარამეტრების გვერდზე. "
+"ის საშუალებას მოგცემთ შექმნათ და აჩვენოთ HTML, მაგრამ ტექსტის ბლოკის ზემოთ "
+"სათაური არ აქვს. შემდეგ შეგიძლიათ გამოიყენოთ Textblock, რათა დაამატოთ უფრო "
+"დეტალური ინსტრუქციები იმის შესახებ, თუ როგორ გამოიყენება პარამეტრები თქვენს "
+"თემაში. თქვენ არასდროს გამოიყენებთ ამას თქვენი თემის შაბლონის ფაილებში, "
+"რადგან ის არ ინახავს მნიშვნელობას."
+
+#: includes/ot-functions-docs-page.php:469
+msgid ""
+"The Textblock Titled option type is used only on the Theme Option page. It "
+"will allow you to create & display HTML, and has a title above the text "
+"block. You can then use the Textblock Titled to add a more detailed set of "
+"instruction on how the options are used in your theme. You would never use "
+"this in your themes template files as it does not save a value."
+msgstr ""
+"ტექსტის ბლოკის სათაურის ოფციის ტიპი გამოიყენება მხოლოდ თემის პარამეტრების "
+"გვერდზე. ის საშუალებას გაძლევთ შექმნათ და აჩვენოთ HTML და ტექსტის ბლოკის "
+"ზემოთ აქვს სათაური. შემდეგ შეგიძლიათ გამოიყენოთ ტექსტის ბლოკის სათაური, რათა "
+"დაამატოთ უფრო დეტალური ინსტრუქციები იმის შესახებ, თუ როგორ გამოიყენება "
+"ოფციები თქვენს თემაში. თქვენ არასდროს გამოიყენებთ ამას თქვენი თემის შაბლონის "
+"ფაილებში, რადგან ის არ ინახავს მნიშვნელობას."
+
+#. %1$s: function name, %2$s: filter name, %3$s: filter name list
+#: includes/ot-functions-docs-page.php:474
+#, php-format
+msgid ""
+"The Typography option type is for adding typography styles to your theme "
+"either dynamically via the CSS option type above or manually with %1$s. The "
+"Typography option type has filters that allow you to remove fields or change "
+"the defaults. For example, you can filter %2$s to remove unwanted fields "
+"from all Background options or an individual one. You can also filter %3$s. "
+"These filters allow you to fine tune the select lists for your specific "
+"needs."
+msgstr ""
+"ტიპოგრაფიის ვარიანტის ტიპი განკუთვნილია თქვენს თემაში ტიპოგრაფიის სტილის "
+"დასამატებლად, როგორც დინამიურად, ზემოთ მოცემული CSS ვარიანტის ტიპის "
+"მეშვეობით, ასევე ხელით %1$s-ის გამოყენებით. ტიპოგრაფიის ვარიანტის ტიპს აქვს "
+"ფილტრები, რომლებიც საშუალებას გაძლევთ წაშალოთ ველები ან შეცვალოთ "
+"ნაგულისხმევი პარამეტრები. მაგალითად, შეგიძლიათ გაფილტროთ %2$s, რათა წაშალოთ "
+"არასასურველი ველები ყველა ფონის ვარიანტიდან ან ცალკეულიდან. ასევე შეგიძლიათ "
+"გაფილტროთ %3$s. ეს ფილტრები საშუალებას გაძლევთ დახვეწოთ არჩეული სიები თქვენი "
+"კონკრეტული საჭიროებებისთვის."
+
+#. %1$s: button text, %2$s: the FTP protocol
+#: includes/ot-functions-docs-page.php:497
+#, php-format
+msgid ""
+"The Upload option type is used to upload any WordPress supported media. "
+"After uploading, users are required to press the \"%1$s\" button in order to "
+"populate the input with the URI of that media. There is one caveat of this "
+"feature. If you import the theme options and have uploaded media on one site "
+"the old URI will not reflect the URI of your new site. You will have to re-"
+"upload or %2$s any media to your new server and change the URIs if necessary."
+msgstr ""
+"ატვირთვის ოფციის ტიპი გამოიყენება WordPress-ის მიერ მხარდაჭერილი ნებისმიერი "
+"მედიის ასატვირთად. ატვირთვის შემდეგ, მომხმარებლებმა უნდა დააჭირონ ღილაკს "
+"„%1$s“, რათა შეიყვანონ შეყვანილი ინფორმაცია ამ მედიის URI-ით. ამ ფუნქციას "
+"აქვს ერთი გაფრთხილება. თუ თემის ვარიანტებს იმპორტს და ერთ საიტზე ატვირთული "
+"გაქვთ მედია, ძველი URI არ ასახავს თქვენი ახალი საიტის URI-ს. თქვენ მოგიწევთ "
+"ნებისმიერი მედიის ხელახლა ატვირთვა ან %2$s თქვენს ახალ სერვერზე და "
+"საჭიროების შემთხვევაში URI-ების შეცვლა."
+
+#: includes/ot-functions-settings-page.php:292
+msgid "Theme Mode"
+msgstr "თემის რეჟიმი"
+
+#: includes/ot-functions-settings-page.php:363 includes/ot-functions.php:336
+msgid "Theme Options"
+msgstr "თემის პარამეტრები"
+
+#. %1$s: directory name, %2$s: directory name, %3$s: file type
+#: includes/ot-functions-docs-page.php:941
+#, php-format
+msgid ""
+"There are a few simple steps you need to take in order to use OptionTree as "
+"a theme included module. In the code below I'll show you a basic demo of how "
+"to include the entire plugin as a module, which will allow you to have the "
+"most up-to-date version of OptionTree without ever needing to hack the core "
+"of the plugin. If you would like to see some demo code, there is a directory "
+"named %1$s inside the %2$s directory that contains a file named %3$s you can "
+"reference."
+msgstr ""
+"OptionTree-ს თემატურ მოდულად გამოსაყენებლად რამდენიმე მარტივი ნაბიჯის "
+"გადადგმაა საჭირო. ქვემოთ მოცემულ კოდში გაჩვენებთ მთლიანი დანამატის მოდულად "
+"ჩართვის საბაზისო დემო ვერსიის ნიმუშს, რაც საშუალებას მოგცემთ გქონდეთ "
+"OptionTree-ს უახლესი ვერსია დანამატის ბირთვის გატეხვის გარეშე. თუ გსურთ დემო "
+"კოდის ნახვა, %2$s დირექტორიაში არის %1$s სახელწოდების დირექტორია, რომელიც "
+"შეიცავს %3$s სახელწოდების ფაილს, რომლის მითითებაც შეგიძლიათ."
+
+#. %1$s: directory name, %2$s: directory name, %3$s: file type
+#: includes/ot-functions-docs-page.php:846
+#, php-format
+msgid ""
+"There are a few simple steps you need to take in order to use OptionTree's "
+"built in Meta Box API. In the code below I'll show you a basic demo of how "
+"to create your very own custom meta box using any number of the option types "
+"you have at your disposal. If you would like to see some demo code, there is "
+"a directory named %1$s inside the %2$s directory that contains a file named "
+"%3$s you can reference."
+msgstr ""
+"OptionTree-ის ჩაშენებული Meta Box API-ის გამოსაყენებლად რამდენიმე მარტივი "
+"ნაბიჯის გადადგმაა საჭირო. ქვემოთ მოცემულ კოდში გაჩვენებთ საბაზისო დემო "
+"ვერსიის ნიმუშს, თუ როგორ შექმნათ თქვენი საკუთარი მეტა ველი, თქვენს "
+"განკარგულებაში არსებული ნებისმიერი ტიპის ოფციონის გამოყენებით. თუ გსურთ დემო "
+"კოდის ნახვა, %2$s დირექტორიაში არის %1$s სახელწოდების დირექტორია, რომელიც "
+"შეიცავს %3$s სახელწოდების ფაილს, რომლის მითითებაც შეგიძლიათ."
+
+#. %1$s: number of media posts, %2$s: media post type, %3$s: table name
+#: includes/class-ot-cleanup.php:135
+#, php-format
+msgid ""
+"There are currently %1$s OptionTree media posts in your database. At some "
+"point in the past, a version of OptionTree added multiple %2$s media post "
+"objects cluttering up your %3$s table. There is no associated risk or harm "
+"that these posts have caused other than to add size to your overall database."
+" Thankfully, there is a way to remove all these orphaned media posts and get "
+"your database cleaned up."
+msgstr ""
+"ამჟამად თქვენს მონაცემთა ბაზაში არის %1$s OptionTree მედია პოსტი. წარსულში, "
+"OptionTree-ს ერთ-ერთმა ვერსიამ დაამატა რამდენიმე %2$s მედია პოსტის ობიექტი, "
+"რამაც თქვენი %3$s ცხრილი გადატვირთა. ამ პოსტებმა არ გამოიწვია რაიმე "
+"დაკავშირებული რისკი ან ზიანი, გარდა იმისა, რომ გაზარდეს თქვენი მონაცემთა "
+"ბაზის ზომა. საბედნიეროდ, არსებობს გზა, რომ წაშალოთ ყველა ეს ობოლი მედია "
+"პოსტი და გაწმინდოთ თქვენი მონაცემთა ბაზა."
+
+#: includes/ot-functions-settings-page.php:44
+msgid ""
+"Things could break or be improperly displayed to the end-user if you do one "
+"of the following:"
+msgstr ""
+"შესაძლოა, ინფორმაცია გაფუჭდეს ან საბოლოო მომხმარებლისთვის არასწორად იყოს "
+"ნაჩვენები, თუ შემდეგიდან ერთ-ერთს გააკეთებთ:"
+
+#: includes/class-ot-cleanup.php:141
+msgid ""
+"This could take a while to fully process depending on how many records you "
+"have in your database, so please be patient and wait for the script to "
+"finish."
+msgstr ""
+"ამის სრულად დამუშავებას შეიძლება გარკვეული დრო დასჭირდეს, თქვენს მონაცემთა "
+"ბაზაში არსებული ჩანაწერების რაოდენობის მიხედვით, ამიტომ გთხოვთ, მოთმინება "
+"გამოიჩინოთ და დაელოდოთ სკრიპტის დასრულებას."
+
+#. %1$s: filter name, %2$s: tags list
+#: includes/ot-functions-docs-page.php:431
+#, php-format
+msgid ""
+"This example alters the %1$s filter on the textarea WYSIWYG. The default is "
+"%2$s which means show those quicktags. It also means you can filter in your "
+"own custom quicktags."
+msgstr ""
+"ეს მაგალითი ცვლის %1$s ფილტრს WYSIWYG ტექსტურ არეზე. ნაგულისხმევი "
+"მნიშვნელობაა %2$s, რაც ნიშნავს, რომ ნაჩვენებია ეს სწრაფი ტეგები. ეს ასევე "
+"ნიშნავს, რომ შეგიძლიათ გაფილტროთ თქვენივე მორგებული სწრაფი ტეგები."
+
+#. option ID: pixel unit, %2$s: file name
+#: includes/ot-functions-docs-page.php:167
+#, php-format
+msgid ""
+"This example assumes you have an option with the ID of %1$s. Which means "
+"this option will automatically insert the value of %1$s into the %2$s when "
+"the Theme Options are saved."
+msgstr ""
+"ეს მაგალითი ვარაუდობს, რომ თქვენ გაქვთ %1$s ID-ის მქონე ოფცია. ეს ნიშნავს, "
+"რომ თემის პარამეტრების შენახვისას ეს ოფცია ავტომატურად ჩასვამს %1$s-ის "
+"მნიშვნელობას %2$s-ში."
+
+#: includes/ot-functions-docs-page.php:696
+msgid "This example displays a very basic slider loop."
+msgstr "ეს მაგალითი აჩვენებს ძალიან მარტივ სლაიდერის ციკლს."
+
+#. %1$s: filter name, %2$s: field name, %3$s: file name
+#: includes/ot-functions-docs-page.php:300
+#, php-format
+msgid ""
+"This example executes the %1$s filter on layout images attached to the %2$s "
+"field. Added to %3$s."
+msgstr ""
+"ეს მაგალითი %1$s ფილტრს ასრულებს %2$s ველზე მიმაგრებულ განლაგების სურათებზე. "
+"დამატებულია %3$s-ში."
+
+#. %1$s: filter name, %2$s: boolean value, %3$s: paragraph tag
+#: includes/ot-functions-docs-page.php:383
+#, php-format
+msgid ""
+"This example keeps WordPress from executing the %1$s filter on the line "
+"breaks. The default is %2$s which means it wraps line breaks with an HTML "
+"%3$s tag."
+msgstr ""
+"ეს მაგალითი ხელს უშლის WordPress-ს ხაზის წყვეტებზე %1$s ფილტრის შესრულებაში. "
+"ნაგულისხმევი პარამეტრია %2$s, რაც ნიშნავს, რომ ის ხაზის წყვეტებს HTML %3$s "
+"თეგით ახვევს."
+
+#. %1$s: filter name, %2$s: boolean value
+#: includes/ot-functions-docs-page.php:399
+#, php-format
+msgid ""
+"This example keeps WordPress from executing the %1$s filter on the textarea "
+"WYSIWYG. The default is %2$s which means show the buttons."
+msgstr ""
+"ეს მაგალითი ხელს უშლის WordPress-ს %1$s ფილტრის WYSIWYG ტექსტურ არეზე "
+"შესრულებაში. ნაგულისხმევი მნიშვნელობაა %2$s, რაც ნიშნავს ღილაკების ჩვენებას."
+
+#. %1$s: filter name, %2$s: boolean value
+#: includes/ot-functions-docs-page.php:415
+#, php-format
+msgid ""
+"This example keeps WordPress from executing the %1$s filter on the textarea "
+"WYSIWYG. The default is %2$s which means show the tinymce."
+msgstr ""
+"ეს მაგალითი ხელს უშლის WordPress-ს %1$s ფილტრის WYSIWYG ტექსტურ არეზე "
+"შესრულებაში. ნაგულისხმევი მნიშვნელობაა %2$s, რაც ნიშნავს tinymce-ის ჩვენებას."
+
+#. %1$s: function name, %2$s: boolean value, %3$s: paragraph tag, %4$s: file name
+#: includes/ot-functions-docs-page.php:451
+#, php-format
+msgid ""
+"This example tells WordPress to execute the %1$s filter on the line breaks. "
+"The default is %2$s which means it does not wraps line breaks with an HTML "
+"%3$s tag. Added to %4$s."
+msgstr ""
+"ეს მაგალითი WordPress-ს ეუბნება, რომ ხაზის წყვეტებზე %1$s ფილტრი შეასრულოს. "
+"ნაგულისხმევი პარამეტრია %2$s, რაც ნიშნავს, რომ ის ხაზის წყვეტებს HTML %3$s "
+"თეგით არ ახვევს. დამატებულია %4$s-ში."
+
+#: includes/ot-functions-docs-page.php:477
+msgid ""
+"This example would filter <code>ot_recognized_font_families</code> to build "
+"your own font stack. Added to <code>functions.php</code>."
+msgstr ""
+"ეს მაგალითი გაფილტრავს <code>ot_recognized_font_families</code>-ს საკუთარი "
+"შრიფტების დასტის შესაქმნელად. დამატებულია <code>functions.php</code>-ში."
+
+#: includes/ot-functions-docs-page.php:566
+msgid ""
+"This function has been deprecated. That means it has been replaced by a new "
+"function or is no longer supported, and may be removed from future versions. "
+"All code that uses this function should be converted to use its replacement."
+msgstr ""
+"ეს ფუნქცია მოძველებულია. ეს ნიშნავს, რომ ის ახალი ფუნქციით შეიცვალა ან აღარ "
+"არის მხარდაჭერილი და შესაძლოა მომავალი ვერსიებიდან ამოღებული იყოს. ყველა "
+"კოდი, რომელიც ამ ფუნქციას იყენებს, უნდა გადაკეთდეს მის შემცვლელად."
+
+#: includes/ot-functions-docs-page.php:526
+msgid ""
+"This function returns a value from the \"option_tree\" array of saved values "
+"or the default value supplied. The returned value would be mixed. Meaning it "
+"could be a string, integer, boolean, or array."
+msgstr ""
+"ეს ფუნქცია აბრუნებს მნიშვნელობას შენახული მნიშვნელობების \"option_tree\" "
+"მასივიდან ან მოწოდებული ნაგულისხმევი მნიშვნელობიდან. დაბრუნებული მნიშვნელობა "
+"შერეული იქნება. ეს ნიშნავს, რომ ის შეიძლება იყოს სტრიქონი, მთელი რიცხვი, "
+"ლოგიკური რიცხვი ან მასივი."
+
+#: includes/ot-functions-docs-page.php:572
+msgid ""
+"This function returns, or echos if asked, a value from the \"option_tree\" "
+"array of saved values."
+msgstr ""
+"ეს ფუნქცია აბრუნებს, ან მოთხოვნის შემთხვევაში, იმეორებს მნიშვნელობას "
+"შენახული მნიშვნელობების \"option_tree\" მასივიდან."
+
+#. %1$s: filter name, %2$s: dynamic filter name with field_id
+#: includes/ot-functions-docs-page.php:332
+#, php-format
+msgid ""
+"This option type makes it possible for users to select a WordPress "
+"registered sidebar to use on a specific area. By using the two provided "
+"filters, %1$s, and %2$s we can be selective about which sidebars are "
+"available on a specific content area."
+msgstr ""
+"ეს ვარიანტი მომხმარებლებს საშუალებას აძლევს აირჩიონ WordPress-ის "
+"რეგისტრირებული გვერდითი ზოლი კონკრეტულ არეალში გამოსაყენებლად. მოცემული ორი "
+"ფილტრის, %1$s-ის და %2$s-ის გამოყენებით, ჩვენ შეგვიძლია შევარჩიოთ, თუ რომელი "
+"გვერდითი ზოლებია ხელმისაწვდომი კონკრეტულ კონტენტის არეალში."
+
+#. Description of the plugin
+msgid "This plugin is used for Traveler Theme."
+msgstr "ეს მოდული გამოიყენება Traveler Theme-სთვის."
+
+#: includes/class-ot-settings.php:596 includes/class-ot-meta-box.php:262
+msgid "Title"
+msgstr "სათაური"
+
+#: includes/ot-functions-settings-page.php:435
+msgid ""
+"To add a new layout enter a unique lower case alphanumeric string (dashes "
+"allowed) in the text field and click \"Save Layouts\"."
+msgstr ""
+"ახალი განლაგების დასამატებლად ტექსტურ ველში შეიყვანეთ უნიკალური პატარა ასო-"
+"ციფრული სტრიქონი (დაშვებულია ტირეები) და დააჭირეთ ღილაკს „განლაგების "
+"შენახვა“."
+
+#: includes/ot-functions-settings-page.php:250
+msgid ""
+"To import your Layouts copy and paste what appears to be a random string of "
+"alpha numeric characters into this textarea and press the \"Import Layouts\" "
+"button. Keep in mind that when you import your layouts, the active layout's "
+"saved data will write over the current data set for your Theme Options."
+msgstr ""
+"განლაგებების იმპორტისთვის, ამ ტექსტურ არეალში დააკოპირეთ და ჩასვით ასო-"
+"რიცხვითი სიმბოლოების შემთხვევითი სტრიქონი და დააჭირეთ ღილაკს „განლაგებების "
+"იმპორტი“. გაითვალისწინეთ, რომ განლაგებების იმპორტისას, აქტიური განლაგების "
+"შენახული მონაცემები ჩაიწერება თქვენი თემის პარამეტრების მიმდინარე მონაცემთა "
+"ნაკრებზე."
+
+#: includes/ot-functions-settings-page.php:163
+msgid ""
+"To import your Settings copy and paste what appears to be a random string of "
+"alpha numeric characters into this textarea and press the \"Import "
+"Settings\" button."
+msgstr ""
+"პარამეტრების იმპორტისთვის, ამ ტექსტურ არეალში დააკოპირეთ და ჩასვით ასო-"
+"ციფრული სიმბოლოების შემთხვევითი სტრიქონი და დააჭირეთ ღილაკს „პარამეტრების "
+"იმპორტი“."
+
+#: includes/ot-functions-settings-page.php:207
+msgid ""
+"To import your Theme Options copy and paste what appears to be a random "
+"string of alpha numeric characters into this textarea and press the \"Import "
+"Theme Options\" button."
+msgstr ""
+"თემის პარამეტრების იმპორტისთვის, დააკოპირეთ და ჩასვით ასო-ციფრული "
+"სიმბოლოების შემთხვევითი სტრიქონი ამ ტექსტურ არეალში და დააჭირეთ ღილაკს "
+"„თემის პარამეტრების იმპორტი“."
+
+#. Name of the plugin
+msgid "Traveler Option Tree"
+msgstr "მოგზაურის ვარიანტების ხე"
+
+#: includes/ot-functions-docs-page.php:34
+msgid "Type"
+msgstr "ტიპი"
+
+#: includes/ot-functions-docs-page.php:471
+msgid "Typography"
+msgstr "ტიპოგრაფია"
+
+#. %1$s: the post type, %2$s: the post ID
+#: includes/class-ot-cleanup.php:194
+#, php-format
+msgid "Updating Attachments parent ID for %1$s post %2$s."
+msgstr "დანართების მშობელი ID-ის განახლება %1$s პოსტისთვის %2$s."
+
+#: includes/ot-functions-docs-page.php:494
+msgid "Upload"
+msgstr "ატვირთვა"
+
+#: includes/ot-functions-docs-page.php:528
+#: includes/ot-functions-docs-page.php:574
+msgid "Usage"
+msgstr "გამოყენება"
+
+#: includes/ot-functions-docs-page.php:568
+msgid "Use"
+msgstr "გამოყენება"
+
+#: includes/ot-functions-docs-page.php:586
+msgid "Used to cut down on database queries in template files."
+msgstr ""
+"გამოიყენება შაბლონის ფაილებში მონაცემთა ბაზის მოთხოვნების შესამცირებლად."
+
+#: includes/ot-functions-docs-page.php:594
+msgid "Used to indicate the $item_id is an array of values."
+msgstr ""
+"გამოიყენება იმის აღსანიშნავად, რომ $item_id არის მნიშვნელობების მასივი."
+
+#. %s: visual path to layouts overview
+#: includes/ot-functions-settings-page.php:441
+#, php-format
+msgid ""
+"Visit %s to see a more in-depth description of what layouts are and how to "
+"use them."
+msgstr ""
+"განლაგების უფრო დეტალური აღწერისთვის და მათი გამოყენების წესის სანახავად "
+"ეწვიეთ %s-ს."
+
+#: includes/ot-functions-settings-page.php:34
+msgid "Warning!"
+msgstr "გაფრთხილება!"
+
+#: includes/ot-functions-settings-page.php:437
+msgid ""
+"When you create a new layout it will become active and any changes made to "
+"the Theme Options will be applied to it. If you switch back to a different "
+"layout immediately after creating a new layout that new layout will have a "
+"snapshot of the current Theme Options data attached to it."
+msgstr ""
+"როდესაც ახალ განლაგებას შექმნით, ის აქტიური გახდება და თემის პარამეტრებში "
+"შეტანილი ნებისმიერი ცვლილება მასზე აისახება. თუ ახალი განლაგების "
+"შექმნისთანავე სხვა განლაგებაზე გადახვალთ, ამ ახალ განლაგებას მიმაგრებული "
+"ექნება თემის პარამეტრების მიმდინარე მონაცემების სნეპშოტი."
+
+#. %s: option type tab
+#: includes/ot-functions-docs-page.php:37
+#, php-format
+msgid ""
+"You are required to choose one of the supported option types when creating a "
+"new option. Here is a list of the available option types. For more "
+"information about each type click the %s tab to the left."
+msgstr ""
+"ახალი ვარიანტის შექმნისას თქვენ უნდა აირჩიოთ მხარდაჭერილი ვარიანტებიდან ერთ-"
+"ერთი. აქ მოცემულია ხელმისაწვდომი ვარიანტების ტიპების სია. თითოეული ტიპის "
+"შესახებ დამატებითი ინფორმაციისთვის დააწკაპუნეთ მარცხნივ მდებარე %s ჩანართზე."
+
+#: includes/ot-functions-settings-page.php:46
+msgid ""
+"You can create as many settings as your project requires and use them how "
+"you see fit. When you add a setting here, it will be available on the Theme "
+"Options page for use in your theme. To separate your settings into sections, "
+"click the \"Add Section\" button, fill in the input fields, and a new "
+"navigation menu item will be created."
+msgstr ""
+"შეგიძლიათ შექმნათ თქვენი პროექტისთვის საჭირო რაოდენობის პარამეტრები და "
+"გამოიყენოთ ისინი თქვენი შეხედულებისამებრ. როდესაც აქ პარამეტრს დაამატებთ, ის "
+"ხელმისაწვდომი იქნება თემის პარამეტრების გვერდზე თქვენს თემაში გამოსაყენებლად."
+" პარამეტრების სექციებად დასაყოფად, დააწკაპუნეთ ღილაკზე „სექცია დაამატე“, "
+"შეავსეთ შეყვანის ველები და შეიქმნება ნავიგაციის მენიუს ახალი ელემენტი."
+
+#: includes/ot-functions-docs-page.php:977
+msgid ""
+"You now have OptionTree built into your theme and anytime an update is "
+"available replace the old version with the new one."
+msgstr ""
+"ახლა თქვენს თემაში ჩაშენებულია OptionTree და როდესაც განახლება ხელმისაწვდომი "
+"იქნება, ძველი ვერსია ახლით შეცვალეთ."

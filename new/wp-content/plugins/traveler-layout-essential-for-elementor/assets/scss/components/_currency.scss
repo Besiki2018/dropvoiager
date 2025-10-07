@@ -1,0 +1,30 @@
+.st-currencies {
+    &.style-2 {
+        label {
+            font-size: 14px;
+            font-weight: 600;
+            font-stretch: normal;
+            font-style: normal;
+            line-height: normal;
+            letter-spacing: 1px;
+            color: rgba(255,255,255,.6)!important;
+        }
+        .select2-currencies {
+            border-radius: 40px;
+            background-color: #350a4f;
+            height: auto !important;
+            border-color: transparent;
+            font-size: 16px;
+            font-weight: 600;
+            font-stretch: normal;
+            font-style: normal;
+            line-height: 1.5;
+            letter-spacing: normal;
+            color: #fff;
+            padding: 12px 24px;
+            outline: none;
+            position:relative;
+           background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='white' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+        }
+    }
+}

@@ -1,0 +1,15 @@
+/*
+Theme Name:     Traveler Childtheme
+Description:    Traveler Child Theme
+Theme URI:      https://travelerwp.com/
+Author:         the ShineTheme
+Author URI:     http://shinetheme.com
+Version:        1.0
+Template:       traveler
+*/
+
+
+.header .header-left .logo img {
+    max-height: 60px !important;
+	
+}

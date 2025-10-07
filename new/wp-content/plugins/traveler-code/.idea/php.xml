@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PhpIncludePathManager">
+    <include_path>
+      <path value="$PROJECT_DIR$/plugins/vendor/collizo4sky/omnipay-2checkout" />
+      <path value="$PROJECT_DIR$/plugins/vendor/omnipay/authorizenet" />
+      <path value="$PROJECT_DIR$/plugins/vendor/omnipay/common" />
+      <path value="$PROJECT_DIR$/plugins/vendor/symfony/event-dispatcher" />
+      <path value="$PROJECT_DIR$/plugins/vendor/omnipay/stripe" />
+      <path value="$PROJECT_DIR$/plugins/vendor/symfony/polyfill-mbstring" />
+      <path value="$PROJECT_DIR$/plugins/vendor/omnipay/payfast" />
+      <path value="$PROJECT_DIR$/plugins/vendor/symfony/http-foundation" />
+      <path value="$PROJECT_DIR$/plugins/vendor/omnipay/paypal" />
+      <path value="$PROJECT_DIR$/plugins/vendor/symfony/polyfill-php70" />
+      <path value="$PROJECT_DIR$/plugins/vendor/composer" />
+      <path value="$PROJECT_DIR$/plugins/vendor/alfaproject/omnipay-skrill" />
+      <path value="$PROJECT_DIR$/plugins/vendor/guzzle/guzzle" />
+      <path value="$PROJECT_DIR$/plugins/vendor/paragonie/random_compat" />
+      <path value="$PROJECT_DIR$/plugins/vendor/jaysson/omnipay-payubiz" />
+      <path value="$PROJECT_DIR$/plugins/vendor/stripe/stripe-php" />
+    </include_path>
+  </component>
+</project>

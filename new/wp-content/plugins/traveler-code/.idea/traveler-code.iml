@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="WEB_MODULE" version="4">
+  <component name="NewModuleRootManager">
+    <content url="file://$MODULE_DIR$">
+      <excludeFolder url="file://$MODULE_DIR$/plugins/vendor/alfaproject/omnipay-skrill" />
+      <excludeFolder url="file://$MODULE_DIR$/plugins/vendor/collizo4sky/omnipay-2checkout" />
+      <excludeFolder url="file://$MODULE_DIR$/plugins/vendor/composer" />
+      <excludeFolder url="file://$MODULE_DIR$/plugins/vendor/guzzle/guzzle" />
+      <excludeFolder url="file://$MODULE_DIR$/plugins/vendor/jaysson/omnipay-payubiz" />
+      <excludeFolder url="file://$MODULE_DIR$/plugins/vendor/omnipay/authorizenet" />
+      <excludeFolder url="file://$MODULE_DIR$/plugins/vendor/omnipay/common" />
+      <excludeFolder url="file://$MODULE_DIR$/plugins/vendor/omnipay/payfast" />
+      <excludeFolder url="file://$MODULE_DIR$/plugins/vendor/omnipay/paypal" />
+      <excludeFolder url="file://$MODULE_DIR$/plugins/vendor/omnipay/stripe" />
+      <excludeFolder url="file://$MODULE_DIR$/plugins/vendor/paragonie/random_compat" />
+      <excludeFolder url="file://$MODULE_DIR$/plugins/vendor/stripe/stripe-php" />
+      <excludeFolder url="file://$MODULE_DIR$/plugins/vendor/symfony/event-dispatcher" />
+      <excludeFolder url="file://$MODULE_DIR$/plugins/vendor/symfony/http-foundation" />
+      <excludeFolder url="file://$MODULE_DIR$/plugins/vendor/symfony/polyfill-mbstring" />
+      <excludeFolder url="file://$MODULE_DIR$/plugins/vendor/symfony/polyfill-php70" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+</module>
