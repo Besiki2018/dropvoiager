@@ -412,6 +412,7 @@
                 'sale_price'       => $this->sale_price,
                 'discount_percent' => $this->discount_percent ?? null,
                 'image'            => get_file_url($this->image_id,'medium'),
+                'banner_image'     => get_file_url($this->banner_image_id,'medium'),
                 'content'          => $translation->content,
                 'location'         => Location::selectRaw("id,name")->find($this->location_id) ?? null,
                 'is_featured'      => $this->is_featured ?? null,
