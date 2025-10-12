@@ -111,9 +111,6 @@
                                                 }
                                             @endphp
 
-                                                    @if(!empty($page_vendor = get_page_url ( setting_item('vendor_page_become_an_expert'))))
-                                                        <a href="{{ $page_vendor }}" class="{{$btn_expert}} button px-30 fw-400 text-14  h-50">{{ __('Become An Expert') }}</a>
-                                                    @endif
                                                     <a data-bs-toggle="modal" href="#login" class="{{$btn_login}} button px-30 fw-400 text-14  h-50 ml-20">{{ __('Sign In / Register') }}</a>
                                                 </div>
                                             @else

@@ -27,8 +27,8 @@
     }
 @endphp
 
-<div class="footer {{ $footer_classes }} {{$footerStyle}}">
-    <div class="container">
+<div class="footer {{ $footer_classes }} {{$footerStyle}} bg-light-2">
+    <div class="container border-top-light">
         @switch($footerStyle)
             @case('style_4')
             @case('style_5') @include('Layout::parts.footer-style.style_4') @break

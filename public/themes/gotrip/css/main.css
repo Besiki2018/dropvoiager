@@ -2074,9 +2074,9 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .masthead.-type-3 {
-  position: relative;
-  padding-top: 360px;
-  padding-bottom: 100px;
+
+    padding-top: 150px !important;
+    padding-bottom: 100px;
 }
 
 @media (max-width: 991px) {
@@ -9567,7 +9567,7 @@ div[data-slider] > input[type=range]::-ms-tooltip {
 }
 
 .bg-green-1 {
-  background-color: var(--color-green-1) !important;
+  background-color: var(--color-light-2) !important;
 }
 
 .bg-green-2 {

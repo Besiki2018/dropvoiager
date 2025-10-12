@@ -1,0 +1,38 @@
+/* === TBCContractica CAPS Fonts === */
+@font-face {
+  font-family: 'TBCContractica CAPS';
+  src: url('../fonts/TBCContracticaCAPS-Regular.eot');
+  src:
+    url('../fonts/TBCContracticaCAPS-Regular.eot?#iefix') format('embedded-opentype'),
+    url('../fonts/TBCContracticaCAPS-Regular.woff2') format('woff2'),
+    url('../fonts/TBCContracticaCAPS-Regular.woff') format('woff'),
+    url('../fonts/TBCContracticaCAPS-Regular.ttf') format('truetype'),
+    url('../fonts/TBCContracticaCAPS-Regular.svg#TBCContracticaCAPS-Regular') format('svg');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'TBCContractica CAPS';
+  src: url('../fonts/TBCContracticaCAPS-Medium.eot');
+  src:
+    url('../fonts/TBCContracticaCAPS-Medium.eot?#iefix') format('embedded-opentype'),
+    url('../fonts/TBCContracticaCAPS-Medium.woff2') format('woff2'),
+    url('../fonts/TBCContracticaCAPS-Medium.woff') format('woff'),
+    url('../fonts/TBCContracticaCAPS-Medium.ttf') format('truetype'),
+    url('../fonts/TBCContracticaCAPS-Medium.svg#TBCContracticaCAPS-Medium') format('svg');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* === Usage Example === */
+body {
+  font-family: 'TBCContractica CAPS', Arial, sans-serif;
+}
+
+h1, h2, h3 {
+  font-family: 'TBCContractica CAPS', Arial, sans-serif;
+  font-weight: 500;
+}

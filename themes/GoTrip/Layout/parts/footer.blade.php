@@ -7,40 +7,6 @@ if($footerStyle == "style_6"){
     $button_classes = "bg-yellow-1 text-dark-1";
 }
 ?>
-<section class="layout-pt-md layout-pb-md mailchimp {{ $mailchimp_classes }} @if((!empty($row) && !empty($row->disable_subscribe_default) ) || !empty($disable_subscribe_default)) d-none @endif">
-    <div class="container">
-        <div class="row y-gap-30 justify-between items-center">
-            <div class="col-auto">
-                <div class="row y-gap-20  flex-wrap items-center">
-                    <div class="col-auto">
-                        <div class="icon-newsletter text-60 sm:text-40 text-white"></div>
-                    </div>
-
-                    <div class="col-auto">
-                        <h4 class="text-26 text-white fw-600">{{ __('Your Travel Journey Starts Here') }}</h4>
-                        <div class="text-white">{{ __("Sign up and we'll send the best deals to you") }}</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-auto">
-                <form action="{{route('newsletter.subscribe')}}" class="subcribe-form bravo-subscribe-form bravo-form single-field -w-410 d-flex x-gap-10 y-gap-20">
-                    @csrf
-                    <div>
-                        <input class="bg-white h-60 email-input" type="text" name="email" placeholder="{{__('Your Email')}}">
-                    </div>
-                    <div>
-                        <button class="button -md h-60 {{ $button_classes }}">
-                            {{__('Subscribe')}} <i class="fa fa-spinner fa-pulse fa-fw"></i>
-                        </button>
-                    </div>
-                    <div class="form-mess"></div>
-                </form>
-            </div>
-        </div>
-    </div>
-</section>
-
 
 
 @include('Layout::parts.footer-style.index')
