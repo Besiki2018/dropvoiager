@@ -1,6 +1,8 @@
 @php
     $translation = $row->translate();
     $layout_style = $layout_style ?? '';
+    $previewImageId = $row->banner_image_id ?: $row->image_id;
+    $previewImageUrl = $row->banner_image_url ?: $row->image_url;
 @endphp
 <div class="border-top-light pt-30 {{$wrap_class ?? ''}}">
     <div class="row x-gap-20 y-gap-20">
@@ -9,11 +11,11 @@
             <div class="cardImage ratio ratio-5:4 w-250 md:w-1/1 rounded-4">
                 <div class="cardImage__content">
                     <a @if(!empty($blank)) target="_blank" @endif href="{{$row->getDetailUrl()}}" >
-                    @if($row->image_url)
+                    @if($previewImageUrl)
                         @if(!empty($disable_lazyload))
-                            <img  src="{{$row->image_url}}" class="img-responsive rounded-4 col-12 js-lazy" alt="">
+                            <img  src="{{$previewImageUrl}}" class="img-responsive rounded-4 col-12 js-lazy" alt="">
                         @else
-                            {!! get_image_tag($row->image_id,'medium',['class'=>'img-responsive rounded-4 col-12 js-lazy','alt'=>$translation->title]) !!}
+                            {!! get_image_tag($previewImageId,'medium',['class'=>'img-responsive rounded-4 col-12 js-lazy','alt'=>$translation->title]) !!}
                         @endif
                     @endif
                     </a>
