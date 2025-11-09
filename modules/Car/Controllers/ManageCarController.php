@@ -170,6 +170,13 @@ class ManageCarController extends FrontendController
             'map_lat',
             'map_lng',
             'map_zoom',
+            'service_center_address',
+            'service_center_lat',
+            'service_center_lng',
+            'service_radius_km',
+            'base_radius_km',
+            'base_price',
+            'price_per_km_outside',
             'number',
             'price',
             'sale_price',
@@ -198,6 +205,7 @@ class ManageCarController extends FrontendController
 
         if ($res) {
             if(!$request->input('lang') or is_default_lang($request->input('lang'))) {
+                $row->syncPickupLocationsFromArray($request->input('pickup_locations', []));
                 $this->saveTerms($row, $request);
             }
             do_action(Hook::AFTER_SAVING,$row,$request);

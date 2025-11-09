@@ -95,6 +95,16 @@
                 <span class="text-14  text-red-1 line-through d-inline-flex">{{ $row->display_sale_price }}</span>
                 <span class="fw-500 text-dark-1 d-inline-flex">{{ $row->display_price }}</span>
             </div>
+            @if($row->transfer_pickup_name && $row->transfer_dropoff_name)
+                <div class="text-13 text-light-1 mt-5 has-skeleton">
+                    {{ __('transfers.search.route_summary', ['from' => $row->transfer_pickup_name, 'to' => $row->transfer_dropoff_name]) }}
+                </div>
+            @endif
+            @if(!empty($row->transfer_distance_km))
+                <div class="text-13 text-light-1 mt-5 has-skeleton">
+                    {{ __('transfers.search.estimated_distance', ['km' => number_format($row->transfer_distance_km, 1)]) }}
+                </div>
+            @endif
         </div>
     </div>
 </div>

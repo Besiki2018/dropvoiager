@@ -27,18 +27,102 @@
     }
 @endphp
 
-<form action="{{ route("car.search") }}" class="gotrip_form_search bravo_form_search bravo_form form-search-all-service form {{ $classes }}" method="get">
+@php
+    $pickupLocations = collect($pickup_locations ?? $pickupLocations ?? []);
+    $selectedPickupLocation = $selected_pickup_location ?? null;
+    $selectedPickupLocationId = $selected_pickup_location_id ?? ($selectedPickupLocation->id ?? request()->input('pickup_location_id'));
+    if (!$selectedPickupLocation && $selectedPickupLocationId) {
+        $selectedPickupLocation = $pickupLocations->firstWhere('id', (int) $selectedPickupLocationId);
+    }
+    $dropoffData = $selected_dropoff ?? request()->input('dropoff', []);
+    $transferDatetime = request()->input('transfer_datetime');
+    $transferDate = '';
+    $transferTime = '';
+    if($transferDatetime){
+        try {
+            $transferCarbon = \Carbon\Carbon::parse($transferDatetime, 'Asia/Tbilisi')->setTimezone('Asia/Tbilisi');
+            $transferDate = $transferCarbon->toDateString();
+            $transferTime = $transferCarbon->format('H:i');
+        } catch (\Exception $exception) {
+            $transferDate = '';
+            $transferTime = '';
+        }
+    }
+@endphp
+
+<form action="{{ route("car.search") }}" class="gotrip_form_search bravo_form_search bravo_form form-search-all-service form {{$classes }}" method="get">
     @if( !empty(Request::query('_layout')) )
         <input type="hidden" name="_layout" value="{{Request::query('_layout')}}">
     @endif
     @php $search_style = setting_item('car_location_search_style','normal');
          $car_search_fields = setting_item_array('car_search_fields');
+         $car_search_fields = array_values(array_filter($car_search_fields, function ($field) {
+             return ($field['field'] ?? '') !== 'location' && ($field['field'] ?? '') !== 'date';
+         }));
             $space_search_fields = array_values(\Illuminate\Support\Arr::sort($car_search_fields, function ($value) {
                 return $value['position'] ?? 0;
             }));
     @endphp
     <div class="field-items">
         <div class="row w-100 m-0">
+            <div class="col-lg-3 align-self-center px-30 lg:py-20 lg:px-0">
+                <div class="searchMenu-loc item">
+                    <div>
+                        <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('transfers.form.from_label') }}</h4>
+                        <div class="text-15 text-light-1 ls-2 lh-16">
+                            <select name="pickup_location_id" class="form-control js-transfer-pickup" @if($pickupLocations->isEmpty()) disabled @endif>
+                                <option value="">{{ __('transfers.form.select_pickup_option') }}</option>
+                                @foreach($pickupLocations as $location)
+                                    @php
+                                        $payload = $location->toFrontendArray();
+                                        $label = $location->name;
+                                        if (!empty($location->car?->title)) {
+                                            $label .= ' — ' . $location->car->title;
+                                        }
+                                    @endphp
+                                    <option value="{{ $location->id }}" data-payload='@json($payload)' @if($location->id == $selectedPickupLocationId) selected @endif>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                            @if($pickupLocations->isEmpty())
+                                <small class="text-danger d-block mt-2">{{ __('transfers.form.no_pickups_available') }}</small>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 align-self-center px-30 lg:py-20 lg:px-0">
+                <div class="searchMenu-loc item">
+                    <div>
+                        <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('transfers.form.to_label') }}</h4>
+                        <div class="text-15 text-light-1 ls-2 lh-16">
+                            <input type="text" class="form-control js-transfer-dropoff-display" value="{{ $dropoffData['address'] ?? $dropoffData['name'] ?? '' }}" placeholder="{{ __('transfers.form.to_placeholder') }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <input type="hidden" name="dropoff[address]" class="js-transfer-dropoff-address" value="{{ $dropoffData['address'] ?? $dropoffData['name'] ?? '' }}">
+            <input type="hidden" name="dropoff[name]" class="js-transfer-dropoff-name" value="{{ $dropoffData['name'] ?? $dropoffData['address'] ?? '' }}">
+            <input type="hidden" name="dropoff[lat]" class="js-transfer-dropoff-lat" value="{{ $dropoffData['lat'] ?? '' }}">
+            <input type="hidden" name="dropoff[lng]" class="js-transfer-dropoff-lng" value="{{ $dropoffData['lng'] ?? '' }}">
+
+            <div class="col-lg-3 align-self-center px-30 lg:py-20 lg:px-0">
+                <div class="searchMenu-date item">
+                    <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('Date') }}</h4>
+                    <div class="text-15 text-light-1 ls-2 lh-16">
+                        <input type="date" name="transfer_date" class="form-control js-transfer-date" value="{{ $transferDate }}">
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 align-self-center px-30 lg:py-20 lg:px-0">
+                <div class="searchMenu-date item">
+                    <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('Time') }}</h4>
+                    <div class="text-15 text-light-1 ls-2 lh-16">
+                        <input type="time" name="transfer_time" class="form-control js-transfer-time" value="{{ $transferTime }}">
+                    </div>
+                </div>
+            </div>
+            <input type="hidden" name="transfer_datetime" class="js-transfer-datetime" value="{{ $transferDatetime }}">
+            <input type="hidden" class="js-transfer-pickup-payload" value='@json($selectedPickupLocation ? $selectedPickupLocation->toFrontendArray() : null)'>
             @if(!empty($car_search_fields))
                 @foreach($car_search_fields as $field)
                     <div class="col-lg-{{ $field['size'] ?? "6" }} align-self-center px-30 lg:py-20 lg:px-0">

@@ -3,10 +3,14 @@ namespace Modules\Car\Controllers;
 
 use App\Http\Controllers\Controller;
 use Modules\Car\Models\Car;
+use Modules\Car\Models\CarPickupLocation;
 use Illuminate\Http\Request;
 use Modules\Location\Models\Location;
 use Modules\Review\Models\Review;
 use Modules\Core\Models\Attributes;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Arr;
+use Carbon\Carbon;
 use DB;
 
 class CarController extends Controller
@@ -43,8 +47,72 @@ class CarController extends Controller
             $limit = !empty(setting_item("car_page_limit_item"))? setting_item("car_page_limit_item") : 9;
 
         }
-        $query = $this->carClass->search($request->input());
-        $list = $query->paginate($limit);
+        $input = $request->input();
+        $pickupLocationId = $request->input('pickup_location_id');
+        $selectedPickupLocation = null;
+        if ($pickupLocationId) {
+            $selectedPickupLocation = CarPickupLocation::with('car')->find($pickupLocationId);
+            if ($selectedPickupLocation) {
+                $input['pickup_location_id'] = $pickupLocationId;
+            }
+        }
+        $transferDatetime = Arr::get($input, 'transfer_datetime');
+        if (!$transferDatetime) {
+            $fallbackDate = Arr::get($input, 'transfer_date');
+            $fallbackTime = Arr::get($input, 'transfer_time');
+            if ($fallbackDate && $fallbackTime) {
+                try {
+                    $transferDatetime = Carbon::parse($fallbackDate . ' ' . $fallbackTime, 'Asia/Tbilisi')
+                        ->setTimezone('Asia/Tbilisi')
+                        ->toIso8601String();
+                    $input['transfer_datetime'] = $transferDatetime;
+                    $request->merge(['transfer_datetime' => $transferDatetime]);
+                } catch (\Exception $exception) {
+                    $transferDatetime = null;
+                }
+            }
+        }
+
+        $query = $this->carClass->search($input);
+
+        $dropoff = Arr::get($input, 'dropoff', []);
+        $transferDate = null;
+        if ($transferDatetime) {
+            try {
+                $transferDate = Carbon::parse($transferDatetime, 'Asia/Tbilisi')->setTimezone('Asia/Tbilisi')->toDateString();
+            } catch (\Exception $exception) {
+                $transferDate = null;
+            }
+        }
+        $dropoffLat = Arr::get($dropoff, 'lat');
+        $dropoffLng = Arr::get($dropoff, 'lng');
+        $requiresTransfer = $selectedPickupLocation && is_numeric($dropoffLat) && is_numeric($dropoffLng);
+        $transferDistanceKm = null;
+        if ($requiresTransfer) {
+            $pickupPayload = $selectedPickupLocation->toFrontendArray();
+            $transferDistanceKm = $this->carClass::resolveRouteDistanceKm($pickupPayload, $dropoff);
+            $rows = $query->get();
+            $filtered = $rows->filter(function ($car) use ($selectedPickupLocation, $dropoff, $transferDistanceKm, $transferDate, $transferDatetime) {
+                return $car->applyTransferContext(
+                    $selectedPickupLocation,
+                    $dropoff,
+                    $transferDistanceKm,
+                    $transferDate,
+                    $transferDatetime
+                );
+            })->values();
+            $currentPage = LengthAwarePaginator::resolveCurrentPage();
+            $list = new LengthAwarePaginator(
+                $filtered->forPage($currentPage, $limit)->values(),
+                $filtered->count(),
+                $limit,
+                $currentPage,
+                ['path' => $request->url(), 'query' => $request->query()]
+            );
+        } else {
+            $list = $query->paginate($limit);
+        }
+        $list->appends($request->query());
         $markers = [];
         if (!empty($list) and $for_map) {
             foreach ($list as $row) {
@@ -79,7 +147,12 @@ class CarController extends Controller
             'car_min_max_price' => $this->carClass::getMinMaxPrice(),
             'markers'            => $markers,
             "blank" => setting_item('search_open_tab') == "current_tab" ? 0 : 1 ,
-            "seo_meta"           => $this->carClass::getSeoMetaForPageList()
+            "seo_meta"           => $this->carClass::getSeoMetaForPageList(),
+            'transfer_distance_km' => $transferDistanceKm,
+            'pickup_locations' => $this->carClass::getAvailablePickupLocations(),
+            'selected_pickup_location' => $selectedPickupLocation,
+            'selected_pickup_location_id' => $selectedPickupLocation?->id ?? ($pickupLocationId ?: null),
+            'selected_dropoff' => $dropoff,
         ];
         $data['layout'] = $layout;
         $data['attributes'] = Attributes::where('service', 'car')->orderBy("position","desc")->with(['terms'=>function($query){
@@ -96,7 +169,7 @@ class CarController extends Controller
 
     public function detail(Request $request, $slug)
     {
-        $row = $this->carClass::where('slug', $slug)->with(['location','translation','hasWishList'])->first();;
+        $row = $this->carClass::where('slug', $slug)->with(['location','translation','hasWishList','pickupLocations.car'])->first();;
         if ( empty($row) or !$row->hasPermissionDetailView()) {
             return redirect('/');
         }
@@ -107,6 +180,30 @@ class CarController extends Controller
             $car_related = $this->carClass::where('location_id', $location_id)->where("status", "publish")->take($this->limitRelated ?? 4)->whereNotIn('id', [$row->id])->with(['location','translation','hasWishList'])->get();
         }
         $review_list = $row->getReviewList();
+        $selectedPickupLocation = null;
+        $pickupLocationId = $request->input('pickup_location_id');
+        if ($pickupLocationId) {
+            $selectedPickupLocation = $row->pickupLocations()->where('id', $pickupLocationId)->first();
+        }
+        $transferDatetimeRaw = $request->input('transfer_datetime');
+        $transferDatetimeDisplay = null;
+        $transferDate = null;
+        if ($transferDatetimeRaw) {
+            try {
+                $transferDatetimeDisplay = Carbon::parse($transferDatetimeRaw, 'Asia/Tbilisi')->setTimezone('Asia/Tbilisi');
+                $transferDate = $transferDatetimeDisplay->toDateString();
+            } catch (\Exception $exception) {
+                $transferDatetimeDisplay = null;
+                $transferDate = null;
+            }
+        }
+        $dropoff = $request->input('dropoff', []);
+        if ($selectedPickupLocation && is_numeric(Arr::get($dropoff, 'lat')) && is_numeric(Arr::get($dropoff, 'lng'))) {
+            $distance = $this->carClass::resolveRouteDistanceKm($selectedPickupLocation->toFrontendArray(), $dropoff);
+            if ($distance !== null) {
+                $row->applyTransferContext($selectedPickupLocation, $dropoff, $distance, $transferDate, $transferDatetimeRaw);
+            }
+        }
         $data = [
             'row'          => $row,
             'translation'       => $translation,
@@ -115,6 +212,12 @@ class CarController extends Controller
             'review_list'  => $review_list,
             'seo_meta'  => $row->getSeoMetaWithTranslation(app()->getLocale(),$translation),
             'body_class'=>'is_single',
+            'pickup_location' => $selectedPickupLocation,
+            'dropoff' => $dropoff,
+            'transfer_datetime_value' => $transferDatetimeRaw,
+            'transfer_datetime_display' => $transferDatetimeDisplay,
+            'transfer_distance_km' => $row->transfer_distance_km,
+            'pickup_locations' => $row->pickupLocations,
             'breadcrumbs'       => [
                 [
                     'name'  => __('Car'),

@@ -124,6 +124,110 @@ jQuery(function ($) {
         }
         return html;
     }
+    function parsePickupPayload($option) {
+        var payload = null;
+        var raw = $option.attr('data-payload');
+        if (raw) {
+            try {
+                payload = JSON.parse(raw);
+            } catch (e) {
+                payload = null;
+            }
+        }
+        return payload;
+    }
+
+    function updatePickupSelection($select) {
+        var $form = $select.closest('form');
+        var payload = parsePickupPayload($select.find('option:selected'));
+        if (payload) {
+            $form.find('.js-transfer-pickup-payload').val(JSON.stringify(payload));
+        } else {
+            $form.find('.js-transfer-pickup-payload').val('');
+        }
+        $form.find('.js-transfer-dropoff-address').val('');
+        $form.find('.js-transfer-dropoff-name').val('');
+        $form.find('.js-transfer-dropoff-lat').val('');
+        $form.find('.js-transfer-dropoff-lng').val('');
+        $form.find('.js-transfer-dropoff-display').val('').trigger('input');
+    }
+
+    function initPickupSelectors() {
+        $('.js-transfer-pickup').each(function () {
+            updatePickupSelection($(this));
+        });
+        $(document).on('change', '.js-transfer-pickup', function () {
+            updatePickupSelection($(this));
+        });
+    }
+
+    function attachDropoffAutocomplete($input) {
+        var $form = $input.closest('form');
+        if (typeof bookingCore === 'undefined' || bookingCore.map_provider !== 'gmap' || typeof google === 'undefined' || !google.maps || !google.maps.places) {
+            $input.on('change', function () {
+                var value = $(this).val();
+                $form.find('.js-transfer-dropoff-address').val(value);
+                $form.find('.js-transfer-dropoff-name').val(value);
+                if (!value) {
+                    $form.find('.js-transfer-dropoff-lat').val('');
+                    $form.find('.js-transfer-dropoff-lng').val('');
+                }
+            });
+            return;
+        }
+
+        var autocomplete = new google.maps.places.Autocomplete($input.get(0), {
+            fields: ['formatted_address', 'geometry', 'name']
+        });
+        autocomplete.addListener('place_changed', function () {
+            var place = autocomplete.getPlace();
+            var address = place.formatted_address || $input.val();
+            var name = place.name || address;
+            $form.find('.js-transfer-dropoff-address').val(address);
+            $form.find('.js-transfer-dropoff-name').val(name);
+            if (place.geometry && place.geometry.location) {
+                $form.find('.js-transfer-dropoff-lat').val(place.geometry.location.lat());
+                $form.find('.js-transfer-dropoff-lng').val(place.geometry.location.lng());
+            } else {
+                $form.find('.js-transfer-dropoff-lat').val('');
+                $form.find('.js-transfer-dropoff-lng').val('');
+            }
+        });
+    }
+
+    function initDropoffInputs() {
+        $('.js-transfer-dropoff-display').each(function () {
+            var $input = $(this);
+            attachDropoffAutocomplete($input);
+        });
+        $(document).on('input', '.js-transfer-dropoff-display', function () {
+            var $form = $(this).closest('form');
+            var value = $(this).val();
+            if (!value) {
+                $form.find('.js-transfer-dropoff-address').val('');
+                $form.find('.js-transfer-dropoff-name').val('');
+                $form.find('.js-transfer-dropoff-lat').val('');
+                $form.find('.js-transfer-dropoff-lng').val('');
+            }
+        });
+    }
+
+    initPickupSelectors();
+    initDropoffInputs();
+    $('.bravo_form_search').on('submit', function () {
+        var $form = $(this);
+        var $datetime = $form.find('.js-transfer-datetime');
+        if (!$datetime.length) {
+            return;
+        }
+        var date = $form.find('.js-transfer-date').val();
+        var time = $form.find('.js-transfer-time').val();
+        if (date && time) {
+            $datetime.val(date + 'T' + time + ':00+04:00');
+        } else {
+            $datetime.val('');
+        }
+    });
     $(".g-map-place").each(function () {
         var map = $(this).find('.map').attr('id');
         var searchInput =  $(this).find('input[name=map_place]');

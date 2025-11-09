@@ -88,11 +88,13 @@
     <script>
         var bravo_booking_data = {!! json_encode($booking_data) !!}
         var bravo_booking_i18n = {
-			no_date_select:'{{__('Please select Start and End date')}}',
+                        no_date_select:'{{__('Please select Start and End date')}}',
             no_guest_select:'{{__('Please select at least one number')}}',
             load_dates_url:'{{route('car.vendor.availability.loadDates')}}',
             name_required:'{{ __("Name is Required") }}',
             email_required:'{{ __("Email is Required") }}',
+            pickup_required:'{{ __('transfers.booking.pickup_required') }}',
+            dropoff_required:'{{ __('transfers.booking.dropoff_required') }}',
         };
     </script>
     <script type="text/javascript" src="{{ asset("libs/ion_rangeslider/js/ion.rangeSlider.min.js") }}"></script>

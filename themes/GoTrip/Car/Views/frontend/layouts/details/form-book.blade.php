@@ -1,4 +1,25 @@
-@php $review_score = $row->review_data @endphp
+@php
+    $review_score = $row->review_data;
+    $pickupLocations = $pickup_locations ?? collect();
+    $selectedPickup = $pickup_location ?? null;
+    $selectedPickupId = $selectedPickup->id ?? ($booking_data['pickup_location_id'] ?? '');
+    $dropoffData = $dropoff ?? ($booking_data['dropoff'] ?? []);
+    $transferDatetimeValue = $transfer_datetime_value ?? ($booking_data['transfer_datetime'] ?? '');
+    $transferDateValue = '';
+    $transferTimeValue = '';
+    if (!empty($transfer_datetime_display)) {
+        $transferDateValue = $transfer_datetime_display->toDateString();
+        $transferTimeValue = $transfer_datetime_display->format('H:i');
+    } elseif (!empty($transferDatetimeValue)) {
+        try {
+            $transferDateValue = \Carbon\Carbon::parse($transferDatetimeValue, 'Asia/Tbilisi')->setTimezone('Asia/Tbilisi')->toDateString();
+            $transferTimeValue = \Carbon\Carbon::parse($transferDatetimeValue, 'Asia/Tbilisi')->setTimezone('Asia/Tbilisi')->format('H:i');
+        } catch (\Exception $exception) {
+            $transferDateValue = '';
+            $transferTimeValue = '';
+        }
+    }
+@endphp
 <div class="bravo_single_book_wrap d-flex justify-end">
     <div class="bravo_single_book">
         @include('Layout::common.detail.vendor')
@@ -43,6 +64,50 @@
             <div class="form-book" :class="{'d-none':enquiry_type!='book'}">
                 <div class="form-content">
                     <div class="row y-gap-20 pt-20">
+                        <div class="col-12">
+                            <div class="form-group px-20 py-10 border-light rounded-4">
+                                <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('transfers.form.from_label') }}</h4>
+                                <select class="form-control js-transfer-pickup" name="pickup_location_id">
+                                    <option value="">{{ __('transfers.form.select_pickup_option') }}</option>
+                                    @foreach($pickupLocations as $location)
+                                        @php
+                                            $payload = $location->toFrontendArray();
+                                            $label = $location->name;
+                                            if (!empty($location->car?->title)) {
+                                                $label .= ' — ' . $location->car->title;
+                                            }
+                                        @endphp
+                                        <option value="{{ $location->id }}" data-payload='@json($payload)' @if($location->id == $selectedPickupId) selected @endif>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                                @if($pickupLocations->isEmpty())
+                                    <small class="text-danger d-block mt-2">{{ __('transfers.form.no_pickups_available') }}</small>
+                                @endif
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-group px-20 py-10 border-light rounded-4">
+                                <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('transfers.form.to_label') }}</h4>
+                                <input type="text" class="form-control js-transfer-dropoff-display" value="{{ $dropoffData['address'] ?? $dropoffData['name'] ?? '' }}" placeholder="{{ __('transfers.form.to_placeholder') }}">
+                                <input type="hidden" class="js-transfer-dropoff-address" value="{{ $dropoffData['address'] ?? $dropoffData['name'] ?? '' }}">
+                                <input type="hidden" class="js-transfer-dropoff-name" value="{{ $dropoffData['name'] ?? $dropoffData['address'] ?? '' }}">
+                                <input type="hidden" class="js-transfer-dropoff-lat" value="{{ $dropoffData['lat'] ?? '' }}">
+                                <input type="hidden" class="js-transfer-dropoff-lng" value="{{ $dropoffData['lng'] ?? '' }}">
+                                <input type="hidden" class="js-transfer-pickup-payload" value='@json($selectedPickup ? $selectedPickup->toFrontendArray() : null)'>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group px-20 py-10 border-light rounded-4">
+                                <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('Date') }}</h4>
+                                <input type="date" class="form-control js-transfer-date" value="{{ $transferDateValue }}">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group px-20 py-10 border-light rounded-4">
+                                <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('Time') }}</h4>
+                                <input type="time" class="form-control js-transfer-time" value="{{ $transferTimeValue }}">
+                            </div>
+                        </div>
                         <div class="col-12">
                             <div class="form-group form-date-field form-date-search clearfix px-20 py-10 border-light rounded-4 -right position-relative" data-format="{{get_moment_date_format()}}">
                                 <div class="date-wrapper clearfix" @click="openStartDate">
