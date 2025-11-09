@@ -28,10 +28,13 @@
 @endphp
 
 @php
-    $transferRoutes = collect($transfer_routes ?? $transferRoutes ?? []);
-    $selectedRouteId = $selected_transfer_route_id ?? ($selected_transfer_route->id ?? request()->input('transfer_route_id'));
-    $pickupData = request()->input('pickup', []);
-    $dropoffData = request()->input('dropoff', []);
+    $pickupLocations = collect($pickup_locations ?? $pickupLocations ?? []);
+    $selectedPickupLocation = $selected_pickup_location ?? null;
+    $selectedPickupLocationId = $selected_pickup_location_id ?? ($selectedPickupLocation->id ?? request()->input('pickup_location_id'));
+    if (!$selectedPickupLocation && $selectedPickupLocationId) {
+        $selectedPickupLocation = $pickupLocations->firstWhere('id', (int) $selectedPickupLocationId);
+    }
+    $dropoffData = $selected_dropoff ?? request()->input('dropoff', []);
     $transferDatetime = request()->input('transfer_datetime');
     $transferDate = '';
     $transferTime = '';
@@ -67,15 +70,21 @@
                     <div>
                         <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('transfers.form.from_label') }}</h4>
                         <div class="text-15 text-light-1 ls-2 lh-16">
-                            <select name="transfer_route_id" class="form-control js-transfer-route" @if($transferRoutes->isEmpty()) disabled @endif>
-                                <option value="">{{ __('transfers.form.select_route_option') }}</option>
-                                @foreach($transferRoutes as $route)
-                                    @php $routeData = $route->toFrontendArray(); @endphp
-                                    <option value="{{ $route->id }}" data-route='@json($routeData)' @if($route->id == $selectedRouteId) selected @endif>{{ $route->pickup_name }}</option>
+                            <select name="pickup_location_id" class="form-control js-transfer-pickup" @if($pickupLocations->isEmpty()) disabled @endif>
+                                <option value="">{{ __('transfers.form.select_pickup_option') }}</option>
+                                @foreach($pickupLocations as $location)
+                                    @php
+                                        $payload = $location->toFrontendArray();
+                                        $label = $location->name;
+                                        if (!empty($location->car?->title)) {
+                                            $label .= ' — ' . $location->car->title;
+                                        }
+                                    @endphp
+                                    <option value="{{ $location->id }}" data-payload='@json($payload)' @if($location->id == $selectedPickupLocationId) selected @endif>{{ $label }}</option>
                                 @endforeach
                             </select>
-                            @if($transferRoutes->isEmpty())
-                                <small class="text-danger d-block mt-2">{{ __('transfers.form.no_routes_available') }}</small>
+                            @if($pickupLocations->isEmpty())
+                                <small class="text-danger d-block mt-2">{{ __('transfers.form.no_pickups_available') }}</small>
                             @endif
                         </div>
                     </div>
@@ -86,15 +95,11 @@
                     <div>
                         <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('transfers.form.to_label') }}</h4>
                         <div class="text-15 text-light-1 ls-2 lh-16">
-                            <input type="text" class="form-control js-transfer-dropoff-display" value="{{ $dropoffData['address'] ?? $dropoffData['name'] ?? '' }}" placeholder="{{ __('transfers.form.to_placeholder') }}" readonly>
+                            <input type="text" class="form-control js-transfer-dropoff-display" value="{{ $dropoffData['address'] ?? $dropoffData['name'] ?? '' }}" placeholder="{{ __('transfers.form.to_placeholder') }}">
                         </div>
                     </div>
                 </div>
             </div>
-            <input type="hidden" name="pickup[address]" class="js-transfer-pickup-address" value="{{ $pickupData['address'] ?? $pickupData['name'] ?? '' }}">
-            <input type="hidden" name="pickup[name]" class="js-transfer-pickup-name" value="{{ $pickupData['name'] ?? $pickupData['address'] ?? '' }}">
-            <input type="hidden" name="pickup[lat]" class="js-transfer-pickup-lat" value="{{ $pickupData['lat'] ?? '' }}">
-            <input type="hidden" name="pickup[lng]" class="js-transfer-pickup-lng" value="{{ $pickupData['lng'] ?? '' }}">
             <input type="hidden" name="dropoff[address]" class="js-transfer-dropoff-address" value="{{ $dropoffData['address'] ?? $dropoffData['name'] ?? '' }}">
             <input type="hidden" name="dropoff[name]" class="js-transfer-dropoff-name" value="{{ $dropoffData['name'] ?? $dropoffData['address'] ?? '' }}">
             <input type="hidden" name="dropoff[lat]" class="js-transfer-dropoff-lat" value="{{ $dropoffData['lat'] ?? '' }}">
@@ -117,6 +122,7 @@
                 </div>
             </div>
             <input type="hidden" name="transfer_datetime" class="js-transfer-datetime" value="{{ $transferDatetime }}">
+            <input type="hidden" class="js-transfer-pickup-payload" value='@json($selectedPickupLocation ? $selectedPickupLocation->toFrontendArray() : null)'>
             @if(!empty($car_search_fields))
                 @foreach($car_search_fields as $field)
                     <div class="col-lg-{{ $field['size'] ?? "6" }} align-self-center px-30 lg:py-20 lg:px-0">

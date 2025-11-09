@@ -252,6 +252,7 @@ class CarController extends AdminController
         $res = $row->saveOriginOrTranslation($request->input('lang'), true);
         if ($res) {
             if (!$request->input('lang') or is_default_lang($request->input('lang'))) {
+                $row->syncPickupLocationsFromArray($request->input('pickup_locations', []));
                 $this->saveTerms($row, $request);
             }
             do_action(Hook::AFTER_SAVING,$row,$request);

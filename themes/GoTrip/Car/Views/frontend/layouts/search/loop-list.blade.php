@@ -151,8 +151,8 @@
                 @if($row->transfer_pickup_name && $row->transfer_dropoff_name)
                     <div class="text-13 text-light-1 mt-10">{{ __('transfers.search.route_summary', ['from' => $row->transfer_pickup_name, 'to' => $row->transfer_dropoff_name]) }}</div>
                 @endif
-                @if(!empty($row->transfer_route_distance_km))
-                    <div class="text-13 text-light-1 mt-5">{{ __('transfers.search.estimated_distance', ['km' => number_format($row->transfer_route_distance_km, 1)]) }}</div>
+                @if(!empty($row->transfer_distance_km))
+                    <div class="text-13 text-light-1 mt-5">{{ __('transfers.search.estimated_distance', ['km' => number_format($row->transfer_distance_km, 1)]) }}</div>
                 @endif
                 <a href="{{ $row->getDetailUrl() }}" class="button h-50 px-24 bg-dark-1 -yellow-1 text-white mt-24">
                     {{ __('View Detail') }} <div class="icon-arrow-top-right ml-15"></div>

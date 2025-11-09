@@ -36,18 +36,17 @@
         <div class="review-section">
             <ul class="review-list">
                 @php
-                    $transferRouteMeta = $booking->getJsonMeta('transfer_route');
-                    $transferPickupMeta = $booking->getJsonMeta('transfer_pickup');
+                    $transferPickupMeta = $booking->getJsonMeta('transfer_pickup_location');
                     $transferDropoffMeta = $booking->getJsonMeta('transfer_dropoff');
-                    $transferRouteName = $transferRouteMeta['name'] ?? '';
                     $transferPickupName = $transferPickupMeta['name'] ?? ($transferPickupMeta['address'] ?? '');
                     $transferPickupAddress = $transferPickupMeta['address'] ?? '';
                     $transferDropoffName = $transferDropoffMeta['name'] ?? ($transferDropoffMeta['address'] ?? '');
                     $transferDropoffAddress = $transferDropoffMeta['address'] ?? '';
-                    if (!$transferRouteName && $transferPickupName && $transferDropoffName) {
+                    $transferRouteName = '';
+                    if ($transferPickupName && $transferDropoffName) {
                         $transferRouteName = $transferPickupName . ' → ' . $transferDropoffName;
                     }
-                    $transferDistance = $booking->getMeta('transfer_route_distance_km');
+                    $transferDistance = $booking->getMeta('transfer_distance_km');
                     $transferDatetimeRaw = $booking->getMeta('transfer_datetime');
                     $transferDatetimeDisplay = null;
                     $transferDatetimeFormatted = null;

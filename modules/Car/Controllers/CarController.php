@@ -3,7 +3,7 @@ namespace Modules\Car\Controllers;
 
 use App\Http\Controllers\Controller;
 use Modules\Car\Models\Car;
-use Modules\Car\Models\TransferRoute;
+use Modules\Car\Models\CarPickupLocation;
 use Illuminate\Http\Request;
 use Modules\Location\Models\Location;
 use Modules\Review\Models\Review;
@@ -48,21 +48,12 @@ class CarController extends Controller
 
         }
         $input = $request->input();
-        $transferRouteId = $request->input('transfer_route_id');
-        $selectedRoute = null;
-        if ($transferRouteId) {
-            $selectedRoute = TransferRoute::published()->find($transferRouteId);
-            if ($selectedRoute) {
-                $pickupPayload = $selectedRoute->pickupPayload();
-                $dropoffPayload = $selectedRoute->dropoffPayload();
-                $pickupPayload['address'] = $pickupPayload['address'] ?: $pickupPayload['name'];
-                $dropoffPayload['address'] = $dropoffPayload['address'] ?: $dropoffPayload['name'];
-                $input['pickup'] = $pickupPayload;
-                $input['dropoff'] = $dropoffPayload;
-                $request->merge([
-                    'pickup' => $pickupPayload,
-                    'dropoff' => $dropoffPayload,
-                ]);
+        $pickupLocationId = $request->input('pickup_location_id');
+        $selectedPickupLocation = null;
+        if ($pickupLocationId) {
+            $selectedPickupLocation = CarPickupLocation::with('car')->find($pickupLocationId);
+            if ($selectedPickupLocation) {
+                $input['pickup_location_id'] = $pickupLocationId;
             }
         }
         $transferDatetime = Arr::get($input, 'transfer_datetime');
@@ -84,8 +75,7 @@ class CarController extends Controller
 
         $query = $this->carClass->search($input);
 
-        $pickup = $selectedRoute ? $selectedRoute->pickupPayload() : Arr::get($input, 'pickup', []);
-        $dropoff = $selectedRoute ? $selectedRoute->dropoffPayload() : Arr::get($input, 'dropoff', []);
+        $dropoff = Arr::get($input, 'dropoff', []);
         $transferDate = null;
         if ($transferDatetime) {
             try {
@@ -94,23 +84,20 @@ class CarController extends Controller
                 $transferDate = null;
             }
         }
-        $pickupLat = Arr::get($pickup, 'lat');
-        $pickupLng = Arr::get($pickup, 'lng');
         $dropoffLat = Arr::get($dropoff, 'lat');
         $dropoffLng = Arr::get($dropoff, 'lng');
-        $requiresTransfer = is_numeric($pickupLat) && is_numeric($pickupLng) && is_numeric($dropoffLat) && is_numeric($dropoffLng);
-        $transferRouteDistanceKm = null;
+        $requiresTransfer = $selectedPickupLocation && is_numeric($dropoffLat) && is_numeric($dropoffLng);
+        $transferDistanceKm = null;
         if ($requiresTransfer) {
-            $query->whereNotNull('service_center_lat')->whereNotNull('service_center_lng');
-            $transferRouteDistanceKm = $this->carClass::resolveRouteDistanceKm($pickup, $dropoff);
+            $pickupPayload = $selectedPickupLocation->toFrontendArray();
+            $transferDistanceKm = $this->carClass::resolveRouteDistanceKm($pickupPayload, $dropoff);
             $rows = $query->get();
-            $filtered = $rows->filter(function ($car) use ($pickup, $dropoff, $transferRouteDistanceKm, $transferDate, $selectedRoute, $transferDatetime) {
+            $filtered = $rows->filter(function ($car) use ($selectedPickupLocation, $dropoff, $transferDistanceKm, $transferDate, $transferDatetime) {
                 return $car->applyTransferContext(
-                    $pickup,
+                    $selectedPickupLocation,
                     $dropoff,
-                    $transferRouteDistanceKm,
+                    $transferDistanceKm,
                     $transferDate,
-                    $selectedRoute?->id,
                     $transferDatetime
                 );
             })->values();
@@ -162,10 +149,11 @@ class CarController extends Controller
             'markers'            => $markers,
             "blank" => setting_item('search_open_tab') == "current_tab" ? 0 : 1 ,
             "seo_meta"           => $this->carClass::getSeoMetaForPageList(),
-            'transfer_route_distance_km' => $transferRouteDistanceKm,
-            'transfer_routes' => $transferRoutes,
-            'selected_transfer_route' => $selectedRoute,
-            'selected_transfer_route_id' => $selectedRoute?->id ?? ($transferRouteId ?: null),
+            'transfer_distance_km' => $transferDistanceKm,
+            'pickup_locations' => $this->carClass::getAvailablePickupLocations(),
+            'selected_pickup_location' => $selectedPickupLocation,
+            'selected_pickup_location_id' => $selectedPickupLocation?->id ?? ($pickupLocationId ?: null),
+            'selected_dropoff' => $dropoff,
         ];
         $data['layout'] = $layout;
         $data['attributes'] = Attributes::where('service', 'car')->orderBy("position","desc")->with(['terms'=>function($query){
@@ -182,7 +170,7 @@ class CarController extends Controller
 
     public function detail(Request $request, $slug)
     {
-        $row = $this->carClass::where('slug', $slug)->with(['location','translation','hasWishList'])->first();;
+        $row = $this->carClass::where('slug', $slug)->with(['location','translation','hasWishList','pickupLocations.car'])->first();;
         if ( empty($row) or !$row->hasPermissionDetailView()) {
             return redirect('/');
         }
@@ -193,18 +181,28 @@ class CarController extends Controller
             $car_related = $this->carClass::where('location_id', $location_id)->where("status", "publish")->take($this->limitRelated ?? 4)->whereNotIn('id', [$row->id])->with(['location','translation','hasWishList'])->get();
         }
         $review_list = $row->getReviewList();
-        $selectedRoute = null;
-        $transferRouteId = $request->input('transfer_route_id');
-        if ($transferRouteId) {
-            $selectedRoute = TransferRoute::published()->find($transferRouteId);
+        $selectedPickupLocation = null;
+        $pickupLocationId = $request->input('pickup_location_id');
+        if ($pickupLocationId) {
+            $selectedPickupLocation = $row->pickupLocations()->where('id', $pickupLocationId)->first();
         }
         $transferDatetimeRaw = $request->input('transfer_datetime');
         $transferDatetimeDisplay = null;
+        $transferDate = null;
         if ($transferDatetimeRaw) {
             try {
                 $transferDatetimeDisplay = Carbon::parse($transferDatetimeRaw, 'Asia/Tbilisi')->setTimezone('Asia/Tbilisi');
+                $transferDate = $transferDatetimeDisplay->toDateString();
             } catch (\Exception $exception) {
                 $transferDatetimeDisplay = null;
+                $transferDate = null;
+            }
+        }
+        $dropoff = $request->input('dropoff', []);
+        if ($selectedPickupLocation && is_numeric(Arr::get($dropoff, 'lat')) && is_numeric(Arr::get($dropoff, 'lng'))) {
+            $distance = $this->carClass::resolveRouteDistanceKm($selectedPickupLocation->toFrontendArray(), $dropoff);
+            if ($distance !== null) {
+                $row->applyTransferContext($selectedPickupLocation, $dropoff, $distance, $transferDate, $transferDatetimeRaw);
             }
         }
         $data = [
@@ -215,9 +213,12 @@ class CarController extends Controller
             'review_list'  => $review_list,
             'seo_meta'  => $row->getSeoMetaWithTranslation(app()->getLocale(),$translation),
             'body_class'=>'is_single',
-            'transfer_route' => $selectedRoute,
+            'pickup_location' => $selectedPickupLocation,
+            'dropoff' => $dropoff,
             'transfer_datetime_value' => $transferDatetimeRaw,
             'transfer_datetime_display' => $transferDatetimeDisplay,
+            'transfer_distance_km' => $row->transfer_distance_km,
+            'pickup_locations' => $row->pickupLocations,
             'breadcrumbs'       => [
                 [
                     'name'  => __('Car'),

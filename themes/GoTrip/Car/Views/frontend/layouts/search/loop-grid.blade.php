@@ -100,9 +100,9 @@
                     {{ __('transfers.search.route_summary', ['from' => $row->transfer_pickup_name, 'to' => $row->transfer_dropoff_name]) }}
                 </div>
             @endif
-            @if(!empty($row->transfer_route_distance_km))
+            @if(!empty($row->transfer_distance_km))
                 <div class="text-13 text-light-1 mt-5 has-skeleton">
-                    {{ __('transfers.search.estimated_distance', ['km' => number_format($row->transfer_route_distance_km, 1)]) }}
+                    {{ __('transfers.search.estimated_distance', ['km' => number_format($row->transfer_distance_km, 1)]) }}
                 </div>
             @endif
         </div>

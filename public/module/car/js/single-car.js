@@ -5,8 +5,9 @@
             id:'',
             extra_price:[],
             buyer_fees:[],
-            transfer_route_id:'',
-            transfer_route:null,
+            pickup_location_id:'',
+            pickup_location:null,
+            dropoff:{},
             transfer_datetime:'',
             message:{
                 content:'',
@@ -301,14 +302,26 @@
             validate(){
                 if(!this.start_date || !this.end_date)
                 {
-					this.message.status = false;
+                                        this.message.status = false;
                     this.message.content = bravo_booking_i18n.no_date_select;
                     return false;
                 }
                 if(!this.number )
                 {
-					this.message.status = false;
+                                        this.message.status = false;
                     this.message.content = bravo_booking_i18n.no_guest_select;
+                    return false;
+                }
+                if(!this.pickup_location_id){
+                    this.message.status = false;
+                    this.message.content = bravo_booking_i18n.pickup_required || 'Please choose a pickup location.';
+                    return false;
+                }
+                var dropLat = parseFloat(this.dropoff && this.dropoff.lat);
+                var dropLng = parseFloat(this.dropoff && this.dropoff.lng);
+                if(!this.dropoff || isNaN(dropLat) || isNaN(dropLng)){
+                    this.message.status = false;
+                    this.message.content = bravo_booking_i18n.dropoff_required || 'Please choose a drop-off location.';
                     return false;
                 }
 
@@ -325,6 +338,31 @@
             doSubmit:function (e) {
                 e.preventDefault();
                 if(this.onSubmit) return false;
+
+                var $root = $(this.$el);
+                this.pickup_location_id = $root.find('.js-transfer-pickup').val();
+                var pickupPayload = $root.find('.js-transfer-pickup-payload').val();
+                if (pickupPayload) {
+                    try {
+                        this.pickup_location = JSON.parse(pickupPayload);
+                    } catch (err) {
+                        this.pickup_location = null;
+                    }
+                } else {
+                    this.pickup_location = null;
+                }
+                this.dropoff = {
+                    address: $root.find('.js-transfer-dropoff-address').val(),
+                    name: $root.find('.js-transfer-dropoff-name').val(),
+                    lat: $root.find('.js-transfer-dropoff-lat').val(),
+                    lng: $root.find('.js-transfer-dropoff-lng').val(),
+                };
+                var transferDate = $root.find('.js-transfer-date').val();
+                var transferTime = $root.find('.js-transfer-time').val();
+                this.transfer_datetime = '';
+                if (transferDate && transferTime) {
+                    this.transfer_datetime = transferDate + 'T' + transferTime + ':00+04:00';
+                }
 
                 if(!this.validate()) return false;
 
@@ -346,7 +384,8 @@
                         end_date:this.end_date,
                         extra_price:this.extra_price,
                         number:this.number,
-                        transfer_route_id:this.transfer_route_id,
+                        pickup_location_id:this.pickup_location_id,
+                        dropoff:this.dropoff,
                         transfer_datetime:this.transfer_datetime,
                     },
                     dataType:'json',

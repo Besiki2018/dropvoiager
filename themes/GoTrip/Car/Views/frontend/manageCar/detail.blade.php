@@ -40,6 +40,7 @@
                     </div>
                     <div class="tab-pane fade" id="nav-tour-location">
                         @include('Car::admin/car/location',["is_smart_search"=>"1"])
+                        @include('Car::admin.car.pickup-locations')
                     </div>
                     <div class="tab-pane fade" id="nav-tour-pricing">
                         <div class="panel">
