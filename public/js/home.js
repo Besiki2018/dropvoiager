@@ -124,6 +124,57 @@ jQuery(function ($) {
         }
         return html;
     }
+    function updateTransferRouteFields($select){
+        var route = null;
+        var selected = $select.find('option:selected').attr('data-route');
+        if (selected) {
+            try {
+                route = JSON.parse(selected);
+            } catch (e) {
+                route = null;
+            }
+        }
+        var $form = $select.closest('form');
+        var pickup = route && route.pickup ? route.pickup : {};
+        var dropoff = route && route.dropoff ? route.dropoff : {};
+        var pickupAddress = pickup.address || pickup.name || '';
+        var pickupName = pickup.name || pickup.address || '';
+        var dropoffAddress = dropoff.address || dropoff.name || '';
+        var dropoffName = dropoff.name || dropoff.address || '';
+        $form.find('.js-transfer-pickup-address').val(pickupAddress);
+        $form.find('.js-transfer-pickup-name').val(pickupName);
+        $form.find('.js-transfer-pickup-lat').val(pickup.lat || '');
+        $form.find('.js-transfer-pickup-lng').val(pickup.lng || '');
+        $form.find('.js-transfer-dropoff-address').val(dropoffAddress);
+        $form.find('.js-transfer-dropoff-name').val(dropoffName);
+        $form.find('.js-transfer-dropoff-lat').val(dropoff.lat || '');
+        $form.find('.js-transfer-dropoff-lng').val(dropoff.lng || '');
+        $form.find('.js-transfer-dropoff-display').val(dropoffAddress);
+    }
+
+    function initTransferRouteSelectors(){
+        $('.js-transfer-route').each(function(){
+            updateTransferRouteFields($(this));
+        });
+        $(document).on('change', '.js-transfer-route', function(){
+            updateTransferRouteFields($(this));
+        });
+    }
+    initTransferRouteSelectors();
+    $('.bravo_form_search').on('submit', function () {
+        var $form = $(this);
+        var $datetime = $form.find('.js-transfer-datetime');
+        if (!$datetime.length) {
+            return;
+        }
+        var date = $form.find('.js-transfer-date').val();
+        var time = $form.find('.js-transfer-time').val();
+        if (date && time) {
+            $datetime.val(date + 'T' + time + ':00+04:00');
+        } else {
+            $datetime.val('');
+        }
+    });
     $(".g-map-place").each(function () {
         var map = $(this).find('.map').attr('id');
         var searchInput =  $(this).find('input[name=map_place]');

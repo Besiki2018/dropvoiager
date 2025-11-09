@@ -26,6 +26,32 @@
                 </div>
 
             </div>
+            <div class="row">
+                <div class="col-lg-6">
+                    <div class="form-group">
+                        <label class="control-label">{{ __("Maximum service radius (km)") }}</label>
+                        <input type="number" step="0.1" min="0" name="service_radius_km" class="form-control" value="{{ old('service_radius_km', $row->service_radius_km) }}" placeholder="{{ __('e.g. 50') }}">
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="form-group">
+                        <label class="control-label">{{ __("Base price radius (km)") }}</label>
+                        <input type="number" step="0.1" min="0" name="base_radius_km" class="form-control" value="{{ old('base_radius_km', $row->base_radius_km) }}" placeholder="{{ __('e.g. 20') }}">
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="form-group">
+                        <label class="control-label">{{ __("Base price (within radius)") }}</label>
+                        <input type="number" step="0.01" min="0" name="base_price" class="form-control" value="{{ old('base_price', $row->base_price) }}" placeholder="{{ __('e.g. 120.00') }}">
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="form-group">
+                        <label class="control-label">{{ __("Price per kilometer (outside radius)") }}</label>
+                        <input type="number" step="0.01" min="0" name="price_per_km_outside" class="form-control" value="{{ old('price_per_km_outside', $row->price_per_km_outside) }}" placeholder="{{ __('e.g. 2.50') }}">
+                    </div>
+                </div>
+            </div>
         @endif
         @if(is_default_lang())
             <div class="row">

@@ -27,3 +27,11 @@ Route::group(['prefix'=>'availability'],function(){
     Route::get('/loadDates','AvailabilityController@loadDates')->name('car.admin.availability.loadDates');
     Route::post('/store','AvailabilityController@store')->name('car.admin.availability.store');
 });
+
+Route::group(['prefix' => 'transfer-routes'], function () {
+    Route::get('/', 'TransferRouteController@index')->name('car.admin.transfer-routes.index');
+    Route::get('/create', 'TransferRouteController@create')->name('car.admin.transfer-routes.create');
+    Route::get('/edit/{id}', 'TransferRouteController@edit')->name('car.admin.transfer-routes.edit');
+    Route::post('/store/{id}', 'TransferRouteController@store')->name('car.admin.transfer-routes.store');
+    Route::post('/bulkEdit', 'TransferRouteController@bulkEdit')->name('car.admin.transfer-routes.bulkEdit');
+});

@@ -35,6 +35,72 @@
         </div>
         <div class="review-section">
             <ul class="review-list">
+                @php
+                    $transferRouteMeta = $booking->getJsonMeta('transfer_route');
+                    $transferPickupMeta = $booking->getJsonMeta('transfer_pickup');
+                    $transferDropoffMeta = $booking->getJsonMeta('transfer_dropoff');
+                    $transferRouteName = $transferRouteMeta['name'] ?? '';
+                    $transferPickupName = $transferPickupMeta['name'] ?? ($transferPickupMeta['address'] ?? '');
+                    $transferPickupAddress = $transferPickupMeta['address'] ?? '';
+                    $transferDropoffName = $transferDropoffMeta['name'] ?? ($transferDropoffMeta['address'] ?? '');
+                    $transferDropoffAddress = $transferDropoffMeta['address'] ?? '';
+                    if (!$transferRouteName && $transferPickupName && $transferDropoffName) {
+                        $transferRouteName = $transferPickupName . ' → ' . $transferDropoffName;
+                    }
+                    $transferDistance = $booking->getMeta('transfer_route_distance_km');
+                    $transferDatetimeRaw = $booking->getMeta('transfer_datetime');
+                    $transferDatetimeDisplay = null;
+                    $transferDatetimeFormatted = null;
+                    if ($transferDatetimeRaw) {
+                        try {
+                            $transferDatetimeDisplay = \Carbon\Carbon::parse($transferDatetimeRaw, 'Asia/Tbilisi')->setTimezone('Asia/Tbilisi');
+                            $transferDatetimeFormatted = $transferDatetimeDisplay->format('Y-m-d H:i');
+                        } catch (\Exception $exception) {
+                            $transferDatetimeDisplay = null;
+                            $transferDatetimeFormatted = null;
+                        }
+                    }
+                @endphp
+                @if($transferRouteName)
+                    <li>
+                        <div class="label">{{ __('transfers.booking.route_label') }}</div>
+                        <div class="val">{{ $transferRouteName }}</div>
+                    </li>
+                @endif
+                @if($transferPickupName)
+                    <li>
+                        <div class="label">{{ __('transfers.booking.pickup_label') }}</div>
+                        <div class="val">
+                            {{ $transferPickupName }}
+                            @if($transferPickupAddress && $transferPickupAddress !== $transferPickupName)
+                                <div class="mt-1 text-13 text-muted">{{ __('transfers.booking.address_label') }} {{ $transferPickupAddress }}</div>
+                            @endif
+                        </div>
+                    </li>
+                @endif
+                @if($transferDropoffName)
+                    <li>
+                        <div class="label">{{ __('transfers.booking.dropoff_label') }}</div>
+                        <div class="val">
+                            {{ $transferDropoffName }}
+                            @if($transferDropoffAddress && $transferDropoffAddress !== $transferDropoffName)
+                                <div class="mt-1 text-13 text-muted">{{ __('transfers.booking.address_label') }} {{ $transferDropoffAddress }}</div>
+                            @endif
+                        </div>
+                    </li>
+                @endif
+                @if($transferDatetimeFormatted)
+                    <li>
+                        <div class="label">{{ __('transfers.booking.datetime_label') }}</div>
+                        <div class="val">{{ $transferDatetimeFormatted }}{{ __('transfers.booking.timezone_suffix') }}</div>
+                    </li>
+                @endif
+                @if($transferDistance !== null && $transferDistance !== '')
+                    <li>
+                        <div class="label">{{ __('transfers.booking.distance_label') }}</div>
+                        <div class="val">{{ number_format((float)$transferDistance, 1) }} km</div>
+                    </li>
+                @endif
                 @if($booking->start_date)
                     <li>
                         <div class="label">{{__('Start date:')}}</div>
