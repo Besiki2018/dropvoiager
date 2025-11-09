@@ -27,82 +27,18 @@
     }
 @endphp
 
-@php
-    $pickupData = request()->input('pickup', []);
-    $dropoffData = request()->input('dropoff', []);
-    $transferDatetime = request()->input('transfer_datetime');
-    $transferDate = '';
-    $transferTime = '';
-    if($transferDatetime){
-        try {
-            $transferCarbon = \Carbon\Carbon::parse($transferDatetime, 'Asia/Tbilisi')->setTimezone('Asia/Tbilisi');
-            $transferDate = $transferCarbon->toDateString();
-            $transferTime = $transferCarbon->format('H:i');
-        } catch (Exception $exception) {
-            $transferDate = '';
-            $transferTime = '';
-        }
-    }
-@endphp
-
-<form action="{{ route("car.search") }}" class="gotrip_form_search bravo_form_search bravo_form form-search-all-service form {{$classes }}" method="get">
+<form action="{{ route("car.search") }}" class="gotrip_form_search bravo_form_search bravo_form form-search-all-service form {{ $classes }}" method="get">
     @if( !empty(Request::query('_layout')) )
         <input type="hidden" name="_layout" value="{{Request::query('_layout')}}">
     @endif
     @php $search_style = setting_item('car_location_search_style','normal');
          $car_search_fields = setting_item_array('car_search_fields');
-         $car_search_fields = array_values(array_filter($car_search_fields, function ($field) {
-             return ($field['field'] ?? '') !== 'location' && ($field['field'] ?? '') !== 'date';
-         }));
             $space_search_fields = array_values(\Illuminate\Support\Arr::sort($car_search_fields, function ($value) {
                 return $value['position'] ?? 0;
             }));
     @endphp
     <div class="field-items">
         <div class="row w-100 m-0">
-            <div class="col-lg-3 align-self-center px-30 lg:py-20 lg:px-0">
-                <div class="searchMenu-loc item js-transfer-autocomplete" data-target="pickup">
-                    <span class="clear-loc absolute bottom-0 text-12 js-transfer-clear"><i class="icon-close"></i></span>
-                    <div>
-                        <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('From') }}</h4>
-                        <div class="text-15 text-light-1 ls-2 lh-16">
-                            <input type="text" name="pickup[address]" class="form-control js-transfer-address" placeholder="{{ __("Pickup location") }}" value="{{ $pickupData['address'] ?? '' }}" autocomplete="off">
-                            <input type="hidden" name="pickup[lat]" value="{{ $pickupData['lat'] ?? '' }}">
-                            <input type="hidden" name="pickup[lng]" value="{{ $pickupData['lng'] ?? '' }}">
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-3 align-self-center px-30 lg:py-20 lg:px-0">
-                <div class="searchMenu-loc item js-transfer-autocomplete" data-target="dropoff">
-                    <span class="clear-loc absolute bottom-0 text-12 js-transfer-clear"><i class="icon-close"></i></span>
-                    <div>
-                        <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('To') }}</h4>
-                        <div class="text-15 text-light-1 ls-2 lh-16">
-                            <input type="text" name="dropoff[address]" class="form-control js-transfer-address" placeholder="{{ __("Destination location") }}" value="{{ $dropoffData['address'] ?? '' }}" autocomplete="off">
-                            <input type="hidden" name="dropoff[lat]" value="{{ $dropoffData['lat'] ?? '' }}">
-                            <input type="hidden" name="dropoff[lng]" value="{{ $dropoffData['lng'] ?? '' }}">
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-3 align-self-center px-30 lg:py-20 lg:px-0">
-                <div class="searchMenu-date item">
-                    <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('Date') }}</h4>
-                    <div class="text-15 text-light-1 ls-2 lh-16">
-                        <input type="date" name="transfer_date" class="form-control js-transfer-date" value="{{ $transferDate }}">
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-3 align-self-center px-30 lg:py-20 lg:px-0">
-                <div class="searchMenu-date item">
-                    <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('Time') }}</h4>
-                    <div class="text-15 text-light-1 ls-2 lh-16">
-                        <input type="time" name="transfer_time" class="form-control js-transfer-time" value="{{ $transferTime }}">
-                    </div>
-                </div>
-            </div>
-            <input type="hidden" name="transfer_datetime" class="js-transfer-datetime" value="{{ $transferDatetime }}">
             @if(!empty($car_search_fields))
                 @foreach($car_search_fields as $field)
                     <div class="col-lg-{{ $field['size'] ?? "6" }} align-self-center px-30 lg:py-20 lg:px-0">

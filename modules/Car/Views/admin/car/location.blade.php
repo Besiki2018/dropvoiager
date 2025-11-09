@@ -79,29 +79,6 @@
                     </div>
                 </div>
             </div>
-            <hr>
-            <h4 class="mb-3">{{ __('Service center location') }}</h4>
-            <div class="form-group">
-                <label class="control-label">{{ __("Service center address") }}</label>
-                <input type="text" name="service_center_address" class="form-control" placeholder="{{__("Service center address")}}" value="{{ old('service_center_address', $row->service_center_address) }}">
-            </div>
-            <div class="form-group">
-                <label class="control-label">{{ __("Service center coordinates") }}</label>
-                <div class="control-map-group">
-                    <div id="service_center_map"></div>
-                    <input type="text" placeholder="{{__("Search by name...")}}" class="form-control service-center-search" autocomplete="off" onkeydown="return event.key !== 'Enter';">
-                    <div class="g-control">
-                        <div class="form-group">
-                            <label>{{__("Latitude")}}:</label>
-                            <input type="text" name="service_center_lat" class="form-control" value="{{ old('service_center_lat', $row->service_center_lat) }}" onkeydown="return event.key !== 'Enter';">
-                        </div>
-                        <div class="form-group">
-                            <label>{{__("Longitude")}}:</label>
-                            <input type="text" name="service_center_lng" class="form-control" value="{{ old('service_center_lng', $row->service_center_lng) }}" onkeydown="return event.key !== 'Enter';">
-                        </div>
-                    </div>
-                </div>
-            </div>
         @endif
     </div>
 </div>

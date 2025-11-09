@@ -148,9 +148,6 @@
                     <div class="text-16 text-red-1 line-through mr-5">{{ $row->display_sale_price }}</div>
                     <div class="text-22 lh-12 fw-600">{{ $row->display_price }}</div>
                 </div>
-                @if(!empty($row->transfer_route_distance_km))
-                    <div class="text-13 text-light-1 mt-10">{{ __('Estimated route: :km km', ['km' => number_format($row->transfer_route_distance_km, 1)]) }}</div>
-                @endif
                 <a href="{{ $row->getDetailUrl() }}" class="button h-50 px-24 bg-dark-1 -yellow-1 text-white mt-24">
                     {{ __('View Detail') }} <div class="icon-arrow-top-right ml-15"></div>
                 </a>
