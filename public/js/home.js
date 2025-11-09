@@ -124,6 +124,66 @@ jQuery(function ($) {
         }
         return html;
     }
+    function initTransferAutocompletes(){
+        if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
+            return;
+        }
+        $('.js-transfer-autocomplete').each(function () {
+            var $container = $(this);
+            if ($container.data('transfer-autocomplete-initialized')) {
+                return;
+            }
+            $container.data('transfer-autocomplete-initialized', true);
+            var $input = $container.find('.js-transfer-address');
+            var $lat = $container.find('input[name$="[lat]"]');
+            var $lng = $container.find('input[name$="[lng]"]');
+            var $clear = $container.find('.js-transfer-clear');
+            if(!$input.length){
+                return;
+            }
+            var autocomplete = new google.maps.places.Autocomplete($input[0], {
+                fields: ['formatted_address', 'geometry', 'name']
+            });
+            autocomplete.addListener('place_changed', function () {
+                var place = autocomplete.getPlace();
+                if (!place || !place.geometry || !place.geometry.location) {
+                    return;
+                }
+                var formatted = place.formatted_address || place.name || $input.val();
+                $input.val(formatted);
+                $lat.val(place.geometry.location.lat());
+                $lng.val(place.geometry.location.lng());
+            });
+            $input.on('input', function () {
+                if (!$(this).val()) {
+                    $lat.val('');
+                    $lng.val('');
+                }
+            });
+            $clear.on('click', function (event) {
+                event.preventDefault();
+                $input.val('');
+                $lat.val('');
+                $lng.val('');
+            });
+        });
+    }
+    initTransferAutocompletes();
+    setTimeout(initTransferAutocompletes, 1000);
+    $('.bravo_form_search').on('submit', function () {
+        var $form = $(this);
+        var $datetime = $form.find('.js-transfer-datetime');
+        if (!$datetime.length) {
+            return;
+        }
+        var date = $form.find('.js-transfer-date').val();
+        var time = $form.find('.js-transfer-time').val();
+        if (date && time) {
+            $datetime.val(date + 'T' + time + ':00+04:00');
+        } else {
+            $datetime.val('');
+        }
+    });
     $(".g-map-place").each(function () {
         var map = $(this).find('.map').attr('id');
         var searchInput =  $(this).find('input[name=map_place]');
