@@ -7,9 +7,6 @@ use Illuminate\Http\Request;
 use Modules\Location\Models\Location;
 use Modules\Review\Models\Review;
 use Modules\Core\Models\Attributes;
-use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Arr;
-use Carbon\Carbon;
 use DB;
 
 class CarController extends Controller
@@ -46,61 +43,8 @@ class CarController extends Controller
             $limit = !empty(setting_item("car_page_limit_item"))? setting_item("car_page_limit_item") : 9;
 
         }
-        $input = $request->input();
-        $transferDatetime = Arr::get($input, 'transfer_datetime');
-        if (!$transferDatetime) {
-            $fallbackDate = Arr::get($input, 'transfer_date');
-            $fallbackTime = Arr::get($input, 'transfer_time');
-            if ($fallbackDate && $fallbackTime) {
-                try {
-                    $transferDatetime = Carbon::parse($fallbackDate . ' ' . $fallbackTime, 'Asia/Tbilisi')
-                        ->setTimezone('Asia/Tbilisi')
-                        ->toIso8601String();
-                    $input['transfer_datetime'] = $transferDatetime;
-                    $request->merge(['transfer_datetime' => $transferDatetime]);
-                } catch (\Exception $exception) {
-                    $transferDatetime = null;
-                }
-            }
-        }
-
-        $query = $this->carClass->search($input);
-
-        $pickup = Arr::get($input, 'pickup', []);
-        $dropoff = Arr::get($input, 'dropoff', []);
-        $transferDate = null;
-        if ($transferDatetime) {
-            try {
-                $transferDate = Carbon::parse($transferDatetime, 'Asia/Tbilisi')->setTimezone('Asia/Tbilisi')->toDateString();
-            } catch (\Exception $exception) {
-                $transferDate = null;
-            }
-        }
-        $pickupLat = Arr::get($pickup, 'lat');
-        $pickupLng = Arr::get($pickup, 'lng');
-        $dropoffLat = Arr::get($dropoff, 'lat');
-        $dropoffLng = Arr::get($dropoff, 'lng');
-        $requiresTransfer = is_numeric($pickupLat) && is_numeric($pickupLng) && is_numeric($dropoffLat) && is_numeric($dropoffLng);
-        $transferRouteDistanceKm = null;
-        if ($requiresTransfer) {
-            $query->whereNotNull('service_center_lat')->whereNotNull('service_center_lng');
-            $transferRouteDistanceKm = $this->carClass::resolveRouteDistanceKm($pickup, $dropoff);
-            $rows = $query->get();
-            $filtered = $rows->filter(function ($car) use ($pickup, $dropoff, $transferRouteDistanceKm, $transferDate) {
-                return $car->applyTransferContext($pickup, $dropoff, $transferRouteDistanceKm, $transferDate);
-            })->values();
-            $currentPage = LengthAwarePaginator::resolveCurrentPage();
-            $list = new LengthAwarePaginator(
-                $filtered->forPage($currentPage, $limit)->values(),
-                $filtered->count(),
-                $limit,
-                $currentPage,
-                ['path' => $request->url(), 'query' => $request->query()]
-            );
-        } else {
-            $list = $query->paginate($limit);
-        }
-        $list->appends($request->query());
+        $query = $this->carClass->search($request->input());
+        $list = $query->paginate($limit);
         $markers = [];
         if (!empty($list) and $for_map) {
             foreach ($list as $row) {
@@ -135,8 +79,7 @@ class CarController extends Controller
             'car_min_max_price' => $this->carClass::getMinMaxPrice(),
             'markers'            => $markers,
             "blank" => setting_item('search_open_tab') == "current_tab" ? 0 : 1 ,
-            "seo_meta"           => $this->carClass::getSeoMetaForPageList(),
-            'transfer_route_distance_km' => $transferRouteDistanceKm,
+            "seo_meta"           => $this->carClass::getSeoMetaForPageList()
         ];
         $data['layout'] = $layout;
         $data['attributes'] = Attributes::where('service', 'car')->orderBy("position","desc")->with(['terms'=>function($query){
