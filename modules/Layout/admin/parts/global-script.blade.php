@@ -1,9 +1,12 @@
+@php
+    $mapKey = config('services.google_maps.key') ?: setting_item('map_gmap_key');
+@endphp
 <script>
     var bookingCore = {
         url: '{{url('/')}}',
         admin_url: '{{route('admin.index')}}',
         map_provider: '{{setting_item('map_provider')}}',
-        map_gmap_key: '{{setting_item('map_gmap_key')}}',
+        map_gmap_key: '{{$mapKey}}',
         csrf: '{{csrf_token()}}',
         date_format: '{{get_moment_date_format()}}',
         markAsRead: '{{route('core.admin.notification.markAsRead')}}',

@@ -167,6 +167,50 @@
                     });
                 }
             });
+
+            if (document.getElementById('transfer_service_map')) {
+                new BravoMapEngine('transfer_service_map', {
+                    disableScripts: true,
+                    fitBounds: false,
+                    center: [{{$row->transfer_service_lat ?? setting_item('map_lat_default',51.505 ) }}, {{$row->transfer_service_lng ?? setting_item('map_lng_default',-0.09 ) }}],
+                    zoom:{{ $row->transfer_service_lat && $row->transfer_service_lng ? '12' : '8' }},
+                    ready: function (serviceMap) {
+                        @if($row->transfer_service_lat && $row->transfer_service_lng)
+                        serviceMap.addMarker([{{$row->transfer_service_lat}}, {{$row->transfer_service_lng}}], {
+                            icon_options: {}
+                        });
+                        @endif
+
+                        serviceMap.on('click', function (dataLatLng) {
+                            serviceMap.clearMarkers();
+                            serviceMap.addMarker(dataLatLng, {
+                                icon_options: {}
+                            });
+                            $("input[name=transfer_service_lat]").attr("value", dataLatLng[0]);
+                            $("input[name=transfer_service_lng]").attr("value", dataLatLng[1]);
+                        });
+
+                        if (typeof serviceMap.searchBox === 'function') {
+                            serviceMap.searchBox($('#transferServiceAddress'), function (dataLatLng) {
+                                serviceMap.clearMarkers();
+                                serviceMap.addMarker(dataLatLng, {
+                                    icon_options: {}
+                                });
+                                $("input[name=transfer_service_lat]").attr("value", dataLatLng[0]);
+                                $("input[name=transfer_service_lng]").attr("value", dataLatLng[1]);
+                            });
+                            serviceMap.searchBox($('.bravo_searchbox_transfer'), function (dataLatLng) {
+                                serviceMap.clearMarkers();
+                                serviceMap.addMarker(dataLatLng, {
+                                    icon_options: {}
+                                });
+                                $("input[name=transfer_service_lat]").attr("value", dataLatLng[0]);
+                                $("input[name=transfer_service_lng]").attr("value", dataLatLng[1]);
+                            });
+                        }
+                    }
+                });
+            }
         })
     </script>
 @endpush

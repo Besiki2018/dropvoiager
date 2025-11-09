@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Modules\Location\Models\Location;
 use Modules\Review\Models\Review;
 use Modules\Core\Models\Attributes;
+use Modules\Car\Services\GoogleDirectionsService;
 use DB;
 
 class CarController extends Controller
@@ -43,8 +44,42 @@ class CarController extends Controller
             $limit = !empty(setting_item("car_page_limit_item"))? setting_item("car_page_limit_item") : 9;
 
         }
-        $query = $this->carClass->search($request->input());
+        $pickupPoint = $this->extractPoint($request->input('pickup', []));
+        $dropoffPoint = $this->extractPoint($request->input('dropoff', []));
+        $searchPayload = $request->input();
+        if ($pickupPoint) {
+            $searchPayload['pickup_lat'] = $pickupPoint['lat'];
+            $searchPayload['pickup_lng'] = $pickupPoint['lng'];
+        }
+
+        $routeDistanceKm = null;
+        if ($pickupPoint && $dropoffPoint) {
+            $directionsService = app(GoogleDirectionsService::class);
+            $routeDistanceKm = $directionsService->distanceInKm($pickupPoint, $dropoffPoint);
+        }
+
+        $transferDate = $request->input('transfer_date');
+        $transferTime = $request->input('transfer_time');
+        $datetimeIso = $request->input('datetime');
+        if (!$datetimeIso && $transferDate) {
+            $timeComponent = $transferTime ?: '00:00';
+            if (strlen($timeComponent) !== 5) {
+                $timeComponent = substr($timeComponent, 0, 5);
+            }
+            $datetimeIso = sprintf('%sT%s:00+04:00', $transferDate, $timeComponent);
+        }
+        if ($datetimeIso) {
+            $searchPayload['datetime'] = $datetimeIso;
+        }
+
+        $query = $this->carClass->search($searchPayload);
         $list = $query->paginate($limit);
+        if ($pickupPoint) {
+            $list->getCollection()->transform(function ($car) use ($pickupPoint, $dropoffPoint, $routeDistanceKm) {
+                $car->setTransferQuote($car->calculateTransferQuote($pickupPoint, $dropoffPoint, $routeDistanceKm));
+                return $car;
+            });
+        }
         $markers = [];
         if (!empty($list) and $for_map) {
             foreach ($list as $row) {
@@ -70,7 +105,8 @@ class CarController extends Controller
                     '.ajax-search-result'=>view('Car::frontend.ajax.search-result'.($for_map ? '-map' : ''), $data)->render(),
                     '.result-count'=>$list->total() ? ($list->total() > 1 ? __(":count cars found",['count'=>$list->total()]) : __(":count car found",['count'=>$list->total()])) : '',
                     '.count-string'=> $list->total() ? __("Showing :from - :to of :total Cars",["from"=>$list->firstItem(),"to"=>$list->lastItem(),"total"=>$list->total()]) : ''
-                ]
+                ],
+                'transfer_route_distance' => $routeDistanceKm,
             ]);
         }
         $data = [
@@ -79,7 +115,13 @@ class CarController extends Controller
             'car_min_max_price' => $this->carClass::getMinMaxPrice(),
             'markers'            => $markers,
             "blank" => setting_item('search_open_tab') == "current_tab" ? 0 : 1 ,
-            "seo_meta"           => $this->carClass::getSeoMetaForPageList()
+            "seo_meta"           => $this->carClass::getSeoMetaForPageList(),
+            'transfer_search' => [
+                'pickup' => $request->input('pickup', []),
+                'dropoff' => $request->input('dropoff', []),
+                'datetime' => $datetimeIso,
+                'route_distance_km' => $routeDistanceKm,
+            ],
         ];
         $data['layout'] = $layout;
         $data['attributes'] = Attributes::where('service', 'car')->orderBy("position","desc")->with(['terms'=>function($query){
@@ -129,5 +171,24 @@ class CarController extends Controller
         ];
         $this->setActiveMenu($row);
         return view('Car::frontend.detail', $data);
+    }
+
+    protected function extractPoint($point): ?array
+    {
+        if (!is_array($point)) {
+            return null;
+        }
+
+        $lat = isset($point['lat']) && is_numeric($point['lat']) ? (float)$point['lat'] : null;
+        $lng = isset($point['lng']) && is_numeric($point['lng']) ? (float)$point['lng'] : null;
+
+        if ($lat === null || $lng === null) {
+            return null;
+        }
+
+        return [
+            'lat' => $lat,
+            'lng' => $lng,
+        ];
     }
 }

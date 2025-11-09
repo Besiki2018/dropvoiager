@@ -1,4 +1,4 @@
-<form action="{{url( app_get_locale(false,false,'/').config('car.car_route_prefix') )}}" class="form bravo_form d-flex justify-content-start" method="get" onsubmit="return false;">
+<form action="{{url( app_get_locale(false,false,'/').config('car.car_route_prefix') )}}" class="form bravo_form bravo_form_search d-flex justify-content-start" method="get" onsubmit="return false;">
     @php $car_map_search_fields = setting_item_array('car_map_search_fields');
 
     $car_map_search_fields = array_values(\Illuminate\Support\Arr::sort($car_map_search_fields, function ($value) {

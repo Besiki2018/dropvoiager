@@ -1,6 +1,7 @@
 @php
     $translation = $row->translate();
     $layout_style = $layout_style ?? '';
+    $quote = $row->transfer_quote ?? null;
 @endphp
 <div class="border-top-light pt-30 loop-list-car {{$wrap_class ?? ''}}">
     <div class="row x-gap-20 y-gap-20">
@@ -143,11 +144,21 @@
                         </div>
                     </div>
                 @endif
-                <div class="text-14 text-light-1 mt-10">{{ __("from") }}</div>
-                <div class="d-flex justify-content-md-end align-baseline mt-5">
-                    <div class="text-16 text-red-1 line-through mr-5">{{ $row->display_sale_price }}</div>
-                    <div class="text-22 lh-12 fw-600">{{ $row->display_price }}</div>
-                </div>
+                @if($quote)
+                    <div class="text-14 text-light-1 mt-10">{{ __('Estimated price') }}</div>
+                    <div class="d-flex justify-content-md-end align-baseline mt-5">
+                        <div class="text-22 lh-12 fw-600">{{ $quote['formatted_price'] ?? format_money($quote['price']) }}</div>
+                    </div>
+                    @if(!empty($quote['route_distance_km']))
+                        <div class="text-13 text-light-1 mt-5">{{ __('Route distance: :km km', ['km' => number_format($quote['route_distance_km'], 1)]) }}</div>
+                    @endif
+                @else
+                    <div class="text-14 text-light-1 mt-10">{{ __('from') }}</div>
+                    <div class="d-flex justify-content-md-end align-baseline mt-5">
+                        <div class="text-16 text-red-1 line-through mr-5">{{ $row->display_sale_price }}</div>
+                        <div class="text-22 lh-12 fw-600">{{ $row->display_price }}</div>
+                    </div>
+                @endif
                 <a href="{{ $row->getDetailUrl() }}" class="button h-50 px-24 bg-dark-1 -yellow-1 text-white mt-24">
                     {{ __('View Detail') }} <div class="icon-arrow-top-right ml-15"></div>
                 </a>

@@ -80,5 +80,29 @@
                 </div>
             </div>
         @endif
+        @if(is_default_lang())
+            <hr>
+            <div class="form-group">
+                <label class="control-label">{{ __('Service center address') }}</label>
+                <input type="text" name="transfer_service_address" id="transferServiceAddress" class="form-control" placeholder="{{ __('Service center address') }}" value="{{$row->transfer_service_address}}">
+            </div>
+            <div class="form-group">
+                <label class="control-label">{{ __('Service center coordinates') }}</label>
+                <div class="control-map-group">
+                    <div id="transfer_service_map"></div>
+                    <input type="text" placeholder="{{ __('Search by name...') }}" class="bravo_searchbox_transfer form-control" autocomplete="off" onkeydown="return event.key !== 'Enter';">
+                    <div class="g-control">
+                        <div class="form-group">
+                            <label>{{ __('Latitude') }}:</label>
+                            <input type="text" name="transfer_service_lat" class="form-control" value="{{$row->transfer_service_lat}}" onkeydown="return event.key !== 'Enter';">
+                        </div>
+                        <div class="form-group">
+                            <label>{{ __('Longitude') }}:</label>
+                            <input type="text" name="transfer_service_lng" class="form-control" value="{{$row->transfer_service_lng}}" onkeydown="return event.key !== 'Enter';">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
     </div>
 </div>

@@ -25,6 +25,31 @@
                     </div>
                 </div>
 
+                <div class="col-lg-6">
+                    <div class="form-group">
+                        <label class="control-label">{{ __('Service radius (km)') }}</label>
+                        <input type="number" step="0.1" min="0" name="transfer_service_radius_km" class="form-control" value="{{$row->transfer_service_radius_km}}" placeholder="{{ __('Maximum distance from service center') }}">
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="form-group">
+                        <label class="control-label">{{ __('Base price radius (km)') }}</label>
+                        <input type="number" step="0.1" min="0" name="transfer_base_radius_km" class="form-control" value="{{$row->transfer_base_radius_km}}" placeholder="{{ __('Distance covered by base price') }}">
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="form-group">
+                        <label class="control-label">{{ __('Base price (within radius)') }}</label>
+                        <input type="number" step="0.01" min="0" name="transfer_base_price" class="form-control" value="{{$row->transfer_base_price}}" placeholder="{{ __('Flat price inside base radius') }}">
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="form-group">
+                        <label class="control-label">{{ __('Price per kilometer (outside radius)') }}</label>
+                        <input type="number" step="0.01" min="0" name="transfer_price_per_km" class="form-control" value="{{$row->transfer_price_per_km}}" placeholder="{{ __('Rate for each km beyond base radius') }}">
+                    </div>
+                </div>
+
             </div>
         @endif
         @if(is_default_lang())

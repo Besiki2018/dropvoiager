@@ -10,7 +10,8 @@ class MapEngine
         $html = '';
         switch (setting_item('map_provider')) {
             case "gmap":
-                $html .= sprintf("<script src='https://maps.googleapis.com/maps/api/js?key=%s&libraries=places'></script>", setting_item('map_gmap_key'));
+                $apiKey = config('services.google_maps.key') ?: setting_item('map_gmap_key');
+                $html .= sprintf("<script src='https://maps.googleapis.com/maps/api/js?key=%s&libraries=places'></script>", $apiKey);
                 $html .= sprintf("<script src='https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js'></script>");
                 $html .= sprintf("<script src='%s'></script>", url('libs/infobox.js'));
                 break;

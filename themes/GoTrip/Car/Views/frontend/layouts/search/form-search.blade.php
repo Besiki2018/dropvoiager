@@ -48,10 +48,10 @@
                                 @include('Layout::common.search.fields.service_name')
                                 @break
                             @case ('location')
-                                @include('Layout::common.search.fields.location')
+                                @include('Car::frontend.layouts.search.fields.transfer-location',['field'=>$field])
                                 @break
                             @case ('date')
-                                @include('Layout::common.search.fields.date')
+                                @include('Car::frontend.layouts.search.fields.transfer-datetime',['field'=>$field])
                                 @break
                             @case ('attr')
                                 @include('Layout::common.search.fields.attr')

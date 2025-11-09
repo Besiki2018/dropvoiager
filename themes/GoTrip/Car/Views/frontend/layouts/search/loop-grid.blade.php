@@ -1,5 +1,6 @@
 @php
     $translation = $row->translate();
+    $quote = $row->transfer_quote ?? null;
 @endphp
 <div class="carCard -type-1 d-block rounded-4 item-loop-gird-2 {{$wrap_class ?? ''}}">
     <div class="carCard__image">
@@ -90,11 +91,23 @@
             </div>
         @endif
         <div class="mt-5">
-            <div class="text-light-1 has-skeleton">
-                {{ __('from') }}
-                <span class="text-14  text-red-1 line-through d-inline-flex">{{ $row->display_sale_price }}</span>
-                <span class="fw-500 text-dark-1 d-inline-flex">{{ $row->display_price }}</span>
-            </div>
+            @if($quote)
+                <div class="text-light-1 has-skeleton">
+                    {{ __('Estimated price') }}
+                    <span class="fw-500 text-dark-1 d-inline-flex">{{ $quote['formatted_price'] ?? format_money($quote['price']) }}</span>
+                </div>
+                @if(!empty($quote['route_distance_km']))
+                    <div class="text-13 text-light-1 mt-5 has-skeleton">
+                        {{ __('Route distance: :km km', ['km' => number_format($quote['route_distance_km'], 1)]) }}
+                    </div>
+                @endif
+            @else
+                <div class="text-light-1 has-skeleton">
+                    {{ __('from') }}
+                    <span class="text-14  text-red-1 line-through d-inline-flex">{{ $row->display_sale_price }}</span>
+                    <span class="fw-500 text-dark-1 d-inline-flex">{{ $row->display_price }}</span>
+                </div>
+            @endif
         </div>
     </div>
 </div>

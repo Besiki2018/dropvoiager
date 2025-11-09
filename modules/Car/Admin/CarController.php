@@ -202,6 +202,17 @@ class CarController extends AdminController
             $row = new $this->car();
             $row->status = "publish";
         }
+        if (!$request->input('lang') || is_default_lang($request->input('lang'))) {
+            $request->validate([
+                'transfer_service_lat' => 'nullable|numeric',
+                'transfer_service_lng' => 'nullable|numeric',
+                'transfer_service_radius_km' => 'nullable|numeric|min:0',
+                'transfer_base_radius_km' => 'nullable|numeric|min:0',
+                'transfer_base_price' => 'nullable|numeric|min:0',
+                'transfer_price_per_km' => 'nullable|numeric|min:0',
+            ]);
+        }
+
         $dataKeys = [
             'title',
             'content',
@@ -218,6 +229,13 @@ class CarController extends AdminController
             'map_lat',
             'map_lng',
             'map_zoom',
+            'transfer_service_address',
+            'transfer_service_lat',
+            'transfer_service_lng',
+            'transfer_service_radius_km',
+            'transfer_base_radius_km',
+            'transfer_base_price',
+            'transfer_price_per_km',
             'number',
             'price',
             'sale_price',
