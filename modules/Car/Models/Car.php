@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 use Modules\Booking\Models\Bookable;
 use Modules\Booking\Models\Booking;
 use Modules\Booking\Traits\CapturesService;
@@ -92,6 +93,10 @@ class Car extends Bookable
         'route_distance' => null,
         'pickup_distance' => null,
         'dropoff_distance' => null,
+        'pickup' => null,
+        'dropoff' => null,
+        'route_id' => null,
+        'transfer_datetime' => null,
     ];
 
     public function __construct(array $attributes = [])
@@ -321,7 +326,19 @@ class Car extends Bookable
                     'fomular'=>$this->getDepositFomular(),
                 ]);
             }
+            if ($transferRoute = $request->attributes->get('transfer_route')) {
+                $booking->addMeta('transfer_route_id', $transferRoute->id);
+                $booking->addMeta('transfer_route', $transferRoute->toFrontendArray());
+                $booking->addMeta('transfer_pickup', $request->attributes->get('transfer_pickup'));
+                $booking->addMeta('transfer_dropoff', $request->attributes->get('transfer_dropoff'));
+                $booking->addMeta('transfer_route_distance_km', $request->attributes->get('transfer_route_distance_km'));
+                $booking->addMeta('transfer_pickup_distance_km', $this->transferContext['pickup_distance']);
+                $booking->addMeta('transfer_dropoff_distance_km', $this->transferContext['dropoff_distance']);
+                $booking->addMeta('transfer_datetime', $request->input('transfer_datetime'));
+                $booking->addMeta('transfer_price', $this->transferContext['price']);
+            }
 
+            $this->clearTransferContext();
             return $this->sendSuccess([
                 'url' => $booking->getCheckoutUrl(),
                 'booking_code' => $booking->code,
@@ -372,6 +389,35 @@ class Car extends Bookable
             if(  strtotime($start_date) < $minday_before){
                 return $this->sendError(__("You must book the service for :number days in advance",["number"=>$this->min_day_before_booking]));
             }
+        }
+
+        $this->clearTransferContext();
+        $transferRouteId = $request->input('transfer_route_id');
+        if ($transferRouteId) {
+            $route = TransferRoute::published()->find($transferRouteId);
+            if (!$route) {
+                return $this->sendError(__('transfers.booking.invalid_route'));
+            }
+            $pickup = $route->pickupPayload();
+            $dropoff = $route->dropoffPayload();
+            $transferDatetime = $request->input('transfer_datetime');
+            $transferDate = null;
+            if ($transferDatetime) {
+                try {
+                    $transferDate = Carbon::parse($transferDatetime, 'Asia/Tbilisi')->toDateString();
+                } catch (\Exception $exception) {
+                    $transferDate = null;
+                }
+            }
+            $routeDistance = static::resolveRouteDistanceKm($pickup, $dropoff);
+            if (!$this->applyTransferContext($pickup, $dropoff, $routeDistance, $transferDate, $route->id, $transferDatetime)) {
+                return $this->sendError(__('transfers.booking.unavailable_route'));
+            }
+            $this->tmp_price = $this->transferContext['price'];
+            $request->attributes->set('transfer_route', $route);
+            $request->attributes->set('transfer_pickup', $pickup);
+            $request->attributes->set('transfer_dropoff', $dropoff);
+            $request->attributes->set('transfer_route_distance_km', $this->transferContext['route_distance']);
         }
 
         return true;
@@ -475,6 +521,17 @@ class Car extends Bookable
             'is_form_enquiry_and_book'=> $this->isFormEnquiryAndBook(),
             'enquiry_type'=> $this->getBookingEnquiryType(),
         ];
+        $transferRouteId = request()->input('transfer_route_id');
+        if ($transferRouteId) {
+            $route = TransferRoute::published()->find($transferRouteId);
+            if ($route) {
+                $booking_data['transfer_route_id'] = $route->id;
+                $booking_data['transfer_route'] = $route->toFrontendArray();
+            }
+        }
+        if ($transferDatetime = request()->input('transfer_datetime')) {
+            $booking_data['transfer_datetime'] = $transferDatetime;
+        }
         $lang = app()->getLocale();
         if ($this->enable_extra_price) {
             $booking_data['extra_price'] = $this->extra_price;
@@ -1036,7 +1093,7 @@ class Car extends Bookable
         return $search_fields;
     }
 
-    public function applyTransferContext(array $pickup, array $dropoff, ?float $routeDistanceKm = null, ?string $transferDate = null): bool
+    public function applyTransferContext(array $pickup, array $dropoff, ?float $routeDistanceKm = null, ?string $transferDate = null, ?int $routeId = null, ?string $transferDatetime = null): bool
     {
         $pickupLat = static::toFloat(Arr::get($pickup, 'lat'));
         $pickupLng = static::toFloat(Arr::get($pickup, 'lng'));
@@ -1087,6 +1144,10 @@ class Car extends Bookable
             'route_distance' => $routeDistance,
             'pickup_distance' => $pickupDistance,
             'dropoff_distance' => $dropoffDistance,
+            'pickup' => $pickup,
+            'dropoff' => $dropoff,
+            'route_id' => $routeId,
+            'transfer_datetime' => $transferDatetime,
         ]);
 
         if ($transferDate) {
@@ -1149,12 +1210,46 @@ class Car extends Bookable
             'route_distance' => null,
             'pickup_distance' => null,
             'dropoff_distance' => null,
+            'pickup' => null,
+            'dropoff' => null,
+            'route_id' => null,
+            'transfer_datetime' => null,
         ];
     }
 
     protected function setTransferContext(array $context): void
     {
         $this->transferContext = array_merge($this->transferContext, $context);
+    }
+
+    public function getTransferPickupAttribute(): ?array
+    {
+        return $this->transferContext['pickup'];
+    }
+
+    public function getTransferDropoffAttribute(): ?array
+    {
+        return $this->transferContext['dropoff'];
+    }
+
+    public function getTransferPickupNameAttribute(): ?string
+    {
+        return Arr::get($this->transferContext['pickup'], 'name') ?: Arr::get($this->transferContext['pickup'], 'address');
+    }
+
+    public function getTransferDropoffNameAttribute(): ?string
+    {
+        return Arr::get($this->transferContext['dropoff'], 'name') ?: Arr::get($this->transferContext['dropoff'], 'address');
+    }
+
+    public function getTransferRouteIdAttribute(): ?int
+    {
+        return $this->transferContext['route_id'];
+    }
+
+    public function getTransferDatetimeAttribute(): ?string
+    {
+        return $this->transferContext['transfer_datetime'];
     }
 
     public static function resolveRouteDistanceKm(array $pickup, array $dropoff): ?float

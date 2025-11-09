@@ -28,6 +28,8 @@
 @endphp
 
 @php
+    $transferRoutes = collect($transfer_routes ?? $transferRoutes ?? []);
+    $selectedRouteId = $selected_transfer_route_id ?? ($selected_transfer_route->id ?? request()->input('transfer_route_id'));
     $pickupData = request()->input('pickup', []);
     $dropoffData = request()->input('dropoff', []);
     $transferDatetime = request()->input('transfer_datetime');
@@ -38,7 +40,7 @@
             $transferCarbon = \Carbon\Carbon::parse($transferDatetime, 'Asia/Tbilisi')->setTimezone('Asia/Tbilisi');
             $transferDate = $transferCarbon->toDateString();
             $transferTime = $transferCarbon->format('H:i');
-        } catch (Exception $exception) {
+        } catch (\Exception $exception) {
             $transferDate = '';
             $transferTime = '';
         }
@@ -61,31 +63,43 @@
     <div class="field-items">
         <div class="row w-100 m-0">
             <div class="col-lg-3 align-self-center px-30 lg:py-20 lg:px-0">
-                <div class="searchMenu-loc item js-transfer-autocomplete" data-target="pickup">
-                    <span class="clear-loc absolute bottom-0 text-12 js-transfer-clear"><i class="icon-close"></i></span>
+                <div class="searchMenu-loc item">
                     <div>
-                        <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('From') }}</h4>
+                        <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('transfers.form.from_label') }}</h4>
                         <div class="text-15 text-light-1 ls-2 lh-16">
-                            <input type="text" name="pickup[address]" class="form-control js-transfer-address" placeholder="{{ __("Pickup location") }}" value="{{ $pickupData['address'] ?? '' }}" autocomplete="off">
-                            <input type="hidden" name="pickup[lat]" value="{{ $pickupData['lat'] ?? '' }}">
-                            <input type="hidden" name="pickup[lng]" value="{{ $pickupData['lng'] ?? '' }}">
+                            <select name="transfer_route_id" class="form-control js-transfer-route" @if($transferRoutes->isEmpty()) disabled @endif>
+                                <option value="">{{ __('transfers.form.select_route_option') }}</option>
+                                @foreach($transferRoutes as $route)
+                                    @php $routeData = $route->toFrontendArray(); @endphp
+                                    <option value="{{ $route->id }}" data-route='@json($routeData)' @if($route->id == $selectedRouteId) selected @endif>{{ $route->pickup_name }}</option>
+                                @endforeach
+                            </select>
+                            @if($transferRoutes->isEmpty())
+                                <small class="text-danger d-block mt-2">{{ __('transfers.form.no_routes_available') }}</small>
+                            @endif
                         </div>
                     </div>
                 </div>
             </div>
             <div class="col-lg-3 align-self-center px-30 lg:py-20 lg:px-0">
-                <div class="searchMenu-loc item js-transfer-autocomplete" data-target="dropoff">
-                    <span class="clear-loc absolute bottom-0 text-12 js-transfer-clear"><i class="icon-close"></i></span>
+                <div class="searchMenu-loc item">
                     <div>
-                        <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('To') }}</h4>
+                        <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('transfers.form.to_label') }}</h4>
                         <div class="text-15 text-light-1 ls-2 lh-16">
-                            <input type="text" name="dropoff[address]" class="form-control js-transfer-address" placeholder="{{ __("Destination location") }}" value="{{ $dropoffData['address'] ?? '' }}" autocomplete="off">
-                            <input type="hidden" name="dropoff[lat]" value="{{ $dropoffData['lat'] ?? '' }}">
-                            <input type="hidden" name="dropoff[lng]" value="{{ $dropoffData['lng'] ?? '' }}">
+                            <input type="text" class="form-control js-transfer-dropoff-display" value="{{ $dropoffData['address'] ?? $dropoffData['name'] ?? '' }}" placeholder="{{ __('transfers.form.to_placeholder') }}" readonly>
                         </div>
                     </div>
                 </div>
             </div>
+            <input type="hidden" name="pickup[address]" class="js-transfer-pickup-address" value="{{ $pickupData['address'] ?? $pickupData['name'] ?? '' }}">
+            <input type="hidden" name="pickup[name]" class="js-transfer-pickup-name" value="{{ $pickupData['name'] ?? $pickupData['address'] ?? '' }}">
+            <input type="hidden" name="pickup[lat]" class="js-transfer-pickup-lat" value="{{ $pickupData['lat'] ?? '' }}">
+            <input type="hidden" name="pickup[lng]" class="js-transfer-pickup-lng" value="{{ $pickupData['lng'] ?? '' }}">
+            <input type="hidden" name="dropoff[address]" class="js-transfer-dropoff-address" value="{{ $dropoffData['address'] ?? $dropoffData['name'] ?? '' }}">
+            <input type="hidden" name="dropoff[name]" class="js-transfer-dropoff-name" value="{{ $dropoffData['name'] ?? $dropoffData['address'] ?? '' }}">
+            <input type="hidden" name="dropoff[lat]" class="js-transfer-dropoff-lat" value="{{ $dropoffData['lat'] ?? '' }}">
+            <input type="hidden" name="dropoff[lng]" class="js-transfer-dropoff-lng" value="{{ $dropoffData['lng'] ?? '' }}">
+
             <div class="col-lg-3 align-self-center px-30 lg:py-20 lg:px-0">
                 <div class="searchMenu-date item">
                     <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('Date') }}</h4>

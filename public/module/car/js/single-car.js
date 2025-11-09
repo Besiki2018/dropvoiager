@@ -5,6 +5,9 @@
             id:'',
             extra_price:[],
             buyer_fees:[],
+            transfer_route_id:'',
+            transfer_route:null,
+            transfer_datetime:'',
             message:{
                 content:'',
                 type:false
@@ -343,6 +346,8 @@
                         end_date:this.end_date,
                         extra_price:this.extra_price,
                         number:this.number,
+                        transfer_route_id:this.transfer_route_id,
+                        transfer_datetime:this.transfer_datetime,
                     },
                     dataType:'json',
                     type:'post',

@@ -124,52 +124,43 @@ jQuery(function ($) {
         }
         return html;
     }
-    function initTransferAutocompletes(){
-        if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
-            return;
+    function updateTransferRouteFields($select){
+        var route = null;
+        var selected = $select.find('option:selected').attr('data-route');
+        if (selected) {
+            try {
+                route = JSON.parse(selected);
+            } catch (e) {
+                route = null;
+            }
         }
-        $('.js-transfer-autocomplete').each(function () {
-            var $container = $(this);
-            if ($container.data('transfer-autocomplete-initialized')) {
-                return;
-            }
-            $container.data('transfer-autocomplete-initialized', true);
-            var $input = $container.find('.js-transfer-address');
-            var $lat = $container.find('input[name$="[lat]"]');
-            var $lng = $container.find('input[name$="[lng]"]');
-            var $clear = $container.find('.js-transfer-clear');
-            if(!$input.length){
-                return;
-            }
-            var autocomplete = new google.maps.places.Autocomplete($input[0], {
-                fields: ['formatted_address', 'geometry', 'name']
-            });
-            autocomplete.addListener('place_changed', function () {
-                var place = autocomplete.getPlace();
-                if (!place || !place.geometry || !place.geometry.location) {
-                    return;
-                }
-                var formatted = place.formatted_address || place.name || $input.val();
-                $input.val(formatted);
-                $lat.val(place.geometry.location.lat());
-                $lng.val(place.geometry.location.lng());
-            });
-            $input.on('input', function () {
-                if (!$(this).val()) {
-                    $lat.val('');
-                    $lng.val('');
-                }
-            });
-            $clear.on('click', function (event) {
-                event.preventDefault();
-                $input.val('');
-                $lat.val('');
-                $lng.val('');
-            });
+        var $form = $select.closest('form');
+        var pickup = route && route.pickup ? route.pickup : {};
+        var dropoff = route && route.dropoff ? route.dropoff : {};
+        var pickupAddress = pickup.address || pickup.name || '';
+        var pickupName = pickup.name || pickup.address || '';
+        var dropoffAddress = dropoff.address || dropoff.name || '';
+        var dropoffName = dropoff.name || dropoff.address || '';
+        $form.find('.js-transfer-pickup-address').val(pickupAddress);
+        $form.find('.js-transfer-pickup-name').val(pickupName);
+        $form.find('.js-transfer-pickup-lat').val(pickup.lat || '');
+        $form.find('.js-transfer-pickup-lng').val(pickup.lng || '');
+        $form.find('.js-transfer-dropoff-address').val(dropoffAddress);
+        $form.find('.js-transfer-dropoff-name').val(dropoffName);
+        $form.find('.js-transfer-dropoff-lat').val(dropoff.lat || '');
+        $form.find('.js-transfer-dropoff-lng').val(dropoff.lng || '');
+        $form.find('.js-transfer-dropoff-display').val(dropoffAddress);
+    }
+
+    function initTransferRouteSelectors(){
+        $('.js-transfer-route').each(function(){
+            updateTransferRouteFields($(this));
+        });
+        $(document).on('change', '.js-transfer-route', function(){
+            updateTransferRouteFields($(this));
         });
     }
-    initTransferAutocompletes();
-    setTimeout(initTransferAutocompletes, 1000);
+    initTransferRouteSelectors();
     $('.bravo_form_search').on('submit', function () {
         var $form = $(this);
         var $datetime = $form.find('.js-transfer-datetime');
