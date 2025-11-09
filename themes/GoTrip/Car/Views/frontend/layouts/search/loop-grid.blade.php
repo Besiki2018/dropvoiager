@@ -95,6 +95,11 @@
                 <span class="text-14  text-red-1 line-through d-inline-flex">{{ $row->display_sale_price }}</span>
                 <span class="fw-500 text-dark-1 d-inline-flex">{{ $row->display_price }}</span>
             </div>
+            @if(!empty($row->transfer_route_distance_km))
+                <div class="text-13 text-light-1 mt-5 has-skeleton">
+                    {{ __('Estimated route: :km km', ['km' => number_format($row->transfer_route_distance_km, 1)]) }}
+                </div>
+            @endif
         </div>
     </div>
 </div>
