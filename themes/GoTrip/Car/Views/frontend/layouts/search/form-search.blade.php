@@ -35,6 +35,7 @@
         $selectedPickupLocation = $pickupLocations->firstWhere('id', (int) $selectedPickupLocationId);
     }
     $dropoffData = $selected_dropoff ?? request()->input('dropoff', []);
+    $selectedPickupPayload = $selected_pickup_payload ?? ($selectedPickupLocation ? $selectedPickupLocation->toFrontendArray() : null);
     $transferDatetime = request()->input('transfer_datetime');
     $transferDate = '';
     $transferTime = '';
@@ -50,7 +51,7 @@
     }
 @endphp
 
-<form action="{{ route("car.search") }}" class="gotrip_form_search bravo_form_search bravo_form form-search-all-service form {{$classes }}" method="get">
+<form action="{{ route("car.search") }}" class="gotrip_form_search bravo_form_search bravo_form form-search-all-service form js-transfer-form {{$classes }}" method="get">
     @if( !empty(Request::query('_layout')) )
         <input type="hidden" name="_layout" value="{{Request::query('_layout')}}">
     @endif
@@ -72,6 +73,7 @@
                         <div class="text-15 text-light-1 ls-2 lh-16">
                             <select name="pickup_location_id" class="form-control js-transfer-pickup" @if($pickupLocations->isEmpty()) disabled @endif>
                                 <option value="">{{ __('transfers.form.select_pickup_option') }}</option>
+                                <option value="__mylocation__" data-source="mylocation">{{ __('transfers.form.use_my_location') }}</option>
                                 @foreach($pickupLocations as $location)
                                     @php
                                         $payload = $location->toFrontendArray();
@@ -80,7 +82,7 @@
                                             $label .= ' — ' . $location->car->title;
                                         }
                                     @endphp
-                                    <option value="{{ $location->id }}" data-payload='@json($payload)' @if($location->id == $selectedPickupLocationId) selected @endif>{{ $label }}</option>
+                                    <option value="{{ $location->id }}" data-source="backend" data-payload='@json($payload)' @if($location->id == $selectedPickupLocationId) selected @endif>{{ $label }}</option>
                                 @endforeach
                             </select>
                             @if($pickupLocations->isEmpty())
@@ -104,6 +106,9 @@
             <input type="hidden" name="dropoff[name]" class="js-transfer-dropoff-name" value="{{ $dropoffData['name'] ?? $dropoffData['address'] ?? '' }}">
             <input type="hidden" name="dropoff[lat]" class="js-transfer-dropoff-lat" value="{{ $dropoffData['lat'] ?? '' }}">
             <input type="hidden" name="dropoff[lng]" class="js-transfer-dropoff-lng" value="{{ $dropoffData['lng'] ?? '' }}">
+            <input type="hidden" class="js-transfer-pickup-payload" value='@json($selectedPickupPayload)'>
+            <input type="hidden" name="pickup" class="js-transfer-pickup-json" value='@json($selectedPickupPayload)'>
+            <input type="hidden" name="dropoff" class="js-transfer-dropoff-json" value='@json($dropoffData)'>
 
             <div class="col-lg-3 align-self-center px-30 lg:py-20 lg:px-0">
                 <div class="searchMenu-date item">
@@ -122,7 +127,7 @@
                 </div>
             </div>
             <input type="hidden" name="transfer_datetime" class="js-transfer-datetime" value="{{ $transferDatetime }}">
-            <input type="hidden" class="js-transfer-pickup-payload" value='@json($selectedPickupLocation ? $selectedPickupLocation->toFrontendArray() : null)'>
+            <input type="hidden" class="js-transfer-pickup-payload" value='@json($selectedPickupPayload)'>
             @if(!empty($car_search_fields))
                 @foreach($car_search_fields as $field)
                     <div class="col-lg-{{ $field['size'] ?? "6" }} align-self-center px-30 lg:py-20 lg:px-0">
@@ -153,3 +158,242 @@
         </button>
     </div>
 </form>
+@push('js')
+    @once('transfer-form-script')
+        <script>
+            jQuery(function ($) {
+                var timezoneOffset = '{{ \Carbon\Carbon::now('Asia/Tbilisi')->format('P') }}';
+                var myLocationLabel = '{{ __('transfers.form.my_location_label') }}';
+                var locationErrorMessage = '{{ __('transfers.form.location_error') }}';
+                var geolocationUnsupported = '{{ __('transfers.form.location_unsupported') }}';
+                var dropoffRequiredMessage = '{{ __('transfers.form.dropoff_coordinates_required') }}';
+
+                function parseJsonValue(value) {
+                    if (!value) {
+                        return null;
+                    }
+                    try {
+                        return JSON.parse(value);
+                    } catch (e) {
+                        return null;
+                    }
+                }
+
+                function serialisePayload(payload) {
+                    return payload ? JSON.stringify(payload) : '';
+                }
+
+                function initTransferForm($form) {
+                    var pickupSelect = $form.find('.js-transfer-pickup');
+                    var pickupJsonInput = $form.find('.js-transfer-pickup-json');
+                    var pickupPayloadHolder = $form.find('.js-transfer-pickup-payload');
+                    var dropoffJsonInput = $form.find('.js-transfer-dropoff-json');
+                    var dropoffDisplay = $form.find('.js-transfer-dropoff-display');
+                    var dropoffAddress = $form.find('.js-transfer-dropoff-address');
+                    var dropoffName = $form.find('.js-transfer-dropoff-name');
+                    var dropoffLat = $form.find('.js-transfer-dropoff-lat');
+                    var dropoffLng = $form.find('.js-transfer-dropoff-lng');
+                    var dateInput = $form.find('.js-transfer-date');
+                    var timeInput = $form.find('.js-transfer-time');
+                    var datetimeInput = $form.find('.js-transfer-datetime');
+                    var geocodeInProgress = false;
+
+                    function emitTransferUpdate() {
+                        var context = {
+                            pickup: parseJsonValue(pickupJsonInput.val()),
+                            dropoff: parseJsonValue(dropoffJsonInput.val())
+                        };
+                        $form.trigger('transfer:context-changed', context);
+                    }
+
+                    function setPickupPayload(payload, options) {
+                        options = options || {};
+                        pickupJsonInput.val(serialisePayload(payload));
+                        pickupPayloadHolder.val(serialisePayload(payload));
+                        if (!options.silent) {
+                            if (payload && payload.source === 'mylocation') {
+                                pickupSelect.val('__mylocation__');
+                            } else if (payload && payload.id) {
+                                pickupSelect.val(payload.id);
+                            } else {
+                                pickupSelect.val('');
+                            }
+                        }
+                        emitTransferUpdate();
+                    }
+
+                    function setDropoffPayload(payload) {
+                        dropoffJsonInput.val(serialisePayload(payload));
+                        dropoffAddress.val(payload && (payload.address || payload.name) ? (payload.address || payload.name) : '');
+                        dropoffName.val(payload && payload.name ? payload.name : '');
+                        dropoffLat.val(payload && payload.lat ? payload.lat : '');
+                        dropoffLng.val(payload && payload.lng ? payload.lng : '');
+                        if (payload && (payload.address || payload.name)) {
+                            dropoffDisplay.val(payload.address || payload.name);
+                        }
+                        emitTransferUpdate();
+                    }
+
+                    function updateDatetimeValue() {
+                        if (!datetimeInput.length) {
+                            return;
+                        }
+                        var date = dateInput.val();
+                        var time = timeInput.val();
+                        if (date && time) {
+                            datetimeInput.val(date + 'T' + time + ':00' + timezoneOffset);
+                        } else {
+                            datetimeInput.val('');
+                        }
+                    }
+
+                    dateInput.on('change', updateDatetimeValue);
+                    timeInput.on('change', updateDatetimeValue);
+                    updateDatetimeValue();
+
+                    function requestGeolocation() {
+                        if (!navigator.geolocation) {
+                            alert(geolocationUnsupported);
+                            setPickupPayload(null);
+                            pickupSelect.val('');
+                            return;
+                        }
+                        navigator.geolocation.getCurrentPosition(function (position) {
+                            setPickupPayload({
+                                id: null,
+                                name: myLocationLabel,
+                                lat: position.coords.latitude,
+                                lng: position.coords.longitude,
+                                source: 'mylocation'
+                            }, {silent: true});
+                        }, function () {
+                            alert(locationErrorMessage);
+                            pickupSelect.val('');
+                            setPickupPayload(null, {silent: true});
+                        }, {
+                            enableHighAccuracy: true,
+                            maximumAge: 60000,
+                        });
+                    }
+
+                    pickupSelect.on('change', function () {
+                        var selected = $(this).find('option:selected');
+                        var value = $(this).val();
+                        if (!value) {
+                            setPickupPayload(null, {silent: true});
+                            return;
+                        }
+                        if (value === '__mylocation__') {
+                            requestGeolocation();
+                            return;
+                        }
+                        var payload = selected.data('payload') || null;
+                        if (payload) {
+                            payload.source = 'backend';
+                            setPickupPayload(payload, {silent: true});
+                        }
+                    });
+
+                    function ensurePickupSelection() {
+                        var payload = parseJsonValue(pickupJsonInput.val());
+                        if (payload) {
+                            if (payload.source === 'mylocation') {
+                                pickupSelect.val('__mylocation__');
+                            } else if (payload.id) {
+                                pickupSelect.val(payload.id);
+                            }
+                        }
+                    }
+
+                    ensurePickupSelection();
+                    emitTransferUpdate();
+
+                    if (typeof google !== 'undefined' && google.maps && google.maps.places) {
+                        var autocomplete = new google.maps.places.Autocomplete(dropoffDisplay[0], {
+                            fields: ['formatted_address', 'geometry', 'name']
+                        });
+                        autocomplete.addListener('place_changed', function () {
+                            var place = autocomplete.getPlace();
+                            if (!place || !place.geometry || !place.geometry.location) {
+                                return;
+                            }
+                            setDropoffPayload({
+                                address: place.formatted_address || place.name || '',
+                                name: place.name || place.formatted_address || '',
+                                lat: place.geometry.location.lat(),
+                                lng: place.geometry.location.lng()
+                            });
+                        });
+                    }
+
+                    if ($form.is('form')) {
+                        $form.on('submit', function (event) {
+                            if (geocodeInProgress) {
+                                event.preventDefault();
+                                return false;
+                            }
+
+                            updateDatetimeValue();
+
+                            var dropoffPayload = parseJsonValue(dropoffJsonInput.val());
+                            if (!dropoffPayload || !dropoffPayload.lat || !dropoffPayload.lng) {
+                                if (typeof google !== 'undefined' && google.maps && google.maps.Geocoder) {
+                                    event.preventDefault();
+                                    geocodeInProgress = true;
+                                    var geocoder = new google.maps.Geocoder();
+                                    geocoder.geocode({address: dropoffDisplay.val()}, function (results, status) {
+                                        geocodeInProgress = false;
+                                        if (status === 'OK' && results[0] && results[0].geometry && results[0].geometry.location) {
+                                            var result = results[0];
+                                            setDropoffPayload({
+                                                address: result.formatted_address || dropoffDisplay.val(),
+                                                name: result.address_components && result.address_components[0] ? result.address_components[0].short_name : dropoffDisplay.val(),
+                                                lat: result.geometry.location.lat(),
+                                                lng: result.geometry.location.lng()
+                                            });
+                                            updateDatetimeValue();
+                                            $form.trigger('submit');
+                                        } else {
+                                            alert(dropoffRequiredMessage);
+                                        }
+                                    });
+                                    return false;
+                                }
+                                alert(dropoffRequiredMessage);
+                                event.preventDefault();
+                                return false;
+                            }
+
+                            var pickupPayload = parseJsonValue(pickupJsonInput.val());
+                            if (!pickupPayload) {
+                                var selectedOption = pickupSelect.find('option:selected');
+                                var selectedValue = pickupSelect.val();
+                                if (selectedValue === '__mylocation__') {
+                                    alert(locationErrorMessage);
+                                    event.preventDefault();
+                                    return false;
+                                }
+                                if (selectedOption.length && selectedOption.data('payload')) {
+                                    var payload = selectedOption.data('payload');
+                                    payload.source = 'backend';
+                                    setPickupPayload(payload, {silent: true});
+                                }
+                            }
+
+                            return true;
+                        });
+                    }
+
+                    var initialDropoff = parseJsonValue(dropoffJsonInput.val());
+                    if (initialDropoff) {
+                        setDropoffPayload(initialDropoff);
+                    }
+                }
+
+                $('.js-transfer-form').each(function () {
+                    initTransferForm($(this));
+                });
+            });
+        </script>
+    @endonce
+@endpush
