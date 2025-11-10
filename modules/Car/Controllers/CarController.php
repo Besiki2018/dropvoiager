@@ -209,6 +209,34 @@ class CarController extends Controller
         return view('Car::frontend.search', $data);
     }
 
+    public function pickupLocations(Request $request)
+    {
+        $query = CarPickupLocation::query()
+            ->with(['car:id,title,status'])
+            ->whereHas('car', function ($builder) {
+                $builder->where('status', 'publish');
+            })
+            ->active();
+
+        if ($request->filled('car_id')) {
+            $carIds = Arr::wrap($request->input('car_id'));
+            $query->whereIn('car_id', array_filter($carIds));
+        }
+
+        $locations = $query
+            ->orderBy('name')
+            ->get()
+            ->map(function (CarPickupLocation $location) {
+                $payload = $location->toFrontendArray();
+                $payload['car_title'] = $location->car?->title;
+                $payload['label'] = $payload['name'] . (!empty($payload['car_title']) ? ' — ' . $payload['car_title'] : '');
+                return $payload;
+            })
+            ->values();
+
+        return $this->sendSuccess(['data' => $locations]);
+    }
+
     public function detail(Request $request, $slug)
     {
         $row = $this->carClass::where('slug', $slug)->with(['location','translation','hasWishList','pickupLocations.car'])->first();

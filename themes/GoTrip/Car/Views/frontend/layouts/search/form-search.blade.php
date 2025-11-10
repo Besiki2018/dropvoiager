@@ -71,7 +71,12 @@
                     <div>
                         <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('transfers.form.from_label') }}</h4>
                         <div class="text-15 text-light-1 ls-2 lh-16">
-                            <select name="pickup_location_id" class="form-control js-transfer-pickup" @if($pickupLocations->isEmpty()) disabled @endif>
+                            <select name="pickup_location_id"
+                                    class="form-control js-transfer-pickup"
+                                    data-fetch-url="{{ route('car.pickup_locations') }}"
+                                    data-default-label="{{ __('transfers.form.select_pickup_option') }}"
+                                    data-my-location-label="{{ __('transfers.form.use_my_location') }}"
+                                    @if($pickupLocations->isEmpty()) disabled @endif>
                                 <option value="">{{ __('transfers.form.select_pickup_option') }}</option>
                                 <option value="__mylocation__" data-source="mylocation">{{ __('transfers.form.use_my_location') }}</option>
                                 @foreach($pickupLocations as $location)
@@ -85,9 +90,7 @@
                                     <option value="{{ $location->id }}" data-source="backend" data-payload='@json($payload)' @if($location->id == $selectedPickupLocationId) selected @endif>{{ $label }}</option>
                                 @endforeach
                             </select>
-                            @if($pickupLocations->isEmpty())
-                                <small class="text-danger d-block mt-2">{{ __('transfers.form.no_pickups_available') }}</small>
-                            @endif
+                            <small class="text-danger d-block mt-2 js-pickup-empty-message" @if(!$pickupLocations->isEmpty()) style="display:none;" @endif>{{ __('transfers.form.no_pickups_available') }}</small>
                         </div>
                     </div>
                 </div>
@@ -167,7 +170,7 @@
 @push('js')
     @once('transfer-form-script')
         <script>
-            jQuery(function ($) {
+            (function (window, $) {
                 var timezoneOffset = '{{ \Carbon\Carbon::now('Asia/Tbilisi')->format('P') }}';
                 var myLocationLabel = '{{ __('transfers.form.my_location_label') }}';
                 var locationErrorMessage = '{{ __('transfers.form.location_error') }}';
@@ -191,50 +194,90 @@
                     return payload ? JSON.stringify(payload) : '';
                 }
 
+                function schedule(fn, delay) {
+                    return window.setTimeout(fn, delay || 0);
+                }
+
                 function initTransferForm($form) {
+                    if (!$form.length || $form.data('transfer-init')) {
+                        return;
+                    }
+                    $form.data('transfer-init', true);
+
                     var pickupSelect = $form.find('.js-transfer-pickup');
-                    var pickupJsonInput = $form.find('.js-transfer-pickup-json');
-                    var pickupPayloadHolder = $form.find('.js-transfer-pickup-payload');
-                    var dropoffJsonInput = $form.find('.js-transfer-dropoff-json');
-                    var dropoffDisplay = $form.find('.js-transfer-dropoff-display');
-                    var dropoffAddress = $form.find('.js-transfer-dropoff-address');
-                    var dropoffName = $form.find('.js-transfer-dropoff-name');
-                    var dropoffLat = $form.find('.js-transfer-dropoff-lat');
-                    var dropoffLng = $form.find('.js-transfer-dropoff-lng');
-                    var dateInput = $form.find('.js-transfer-date');
-                    var timeInput = $form.find('.js-transfer-time');
-                    var datetimeInput = $form.find('.js-transfer-datetime');
+                    if (!pickupSelect.length) {
+                        return;
+                    }
+
+                    var pickupJsonInput = $form.find('.js-transfer-pickup-json').first();
+                    var pickupPayloadHolder = $form.find('.js-transfer-pickup-payload').first();
+                    var dropoffJsonInput = $form.find('.js-transfer-dropoff-json').first();
+                    var dropoffDisplay = $form.find('.js-transfer-dropoff-display').first();
+                    var dropoffAddress = $form.find('.js-transfer-dropoff-address').first();
+                    var dropoffName = $form.find('.js-transfer-dropoff-name').first();
+                    var dropoffLat = $form.find('.js-transfer-dropoff-lat').first();
+                    var dropoffLng = $form.find('.js-transfer-dropoff-lng').first();
+                    var dateInput = $form.find('.js-transfer-date').first();
+                    var timeInput = $form.find('.js-transfer-time').first();
+                    var datetimeInput = $form.find('.js-transfer-datetime').first();
+                    var mapWrapper = $form.find('.js-transfer-map-wrapper').first();
+                    var mapCanvas = mapWrapper.find('.js-transfer-map').first();
+                    var emptyMessage = $form.find('.js-pickup-empty-message').first();
+
                     var geocodeInProgress = false;
-                    var mapWrapper = $form.find('.js-transfer-map-wrapper');
-                    var mapCanvas = mapWrapper.find('.js-transfer-map');
-                    var mapInstance = null;
-                    var pickupMarker = null;
-                    var dropoffMarker = null;
+                    var mapState = {
+                        map: null,
+                        pickupMarker: null,
+                        dropoffMarker: null,
+                        retryTimer: null
+                    };
+
+                    var fetchUrl = pickupSelect.data('fetch-url');
+                    var defaultOptionLabel = pickupSelect.data('default-label') || pickupSelect.find('option').first().text() || '';
+                    var myLocationOptionLabel = pickupSelect.data('my-location-label') || pickupSelect.find('option[value="__mylocation__"]').text() || myLocationLabel;
+                    var pickupFetchLoaded = false;
 
                     if (mapWrapper.length) {
                         mapWrapper.hide();
                     }
 
+                    function setPickupEmptyState(isEmpty) {
+                        if (!emptyMessage.length) {
+                            return;
+                        }
+                        if (isEmpty) {
+                            emptyMessage.show();
+                        } else {
+                            emptyMessage.hide();
+                        }
+                    }
+
                     function ensureMapInstance() {
-                        if (!mapCanvas.length) {
+                        if (!mapWrapper.length || !mapCanvas.length) {
                             return null;
+                        }
+                        if (mapState.map) {
+                            return mapState.map;
                         }
                         if (typeof google === 'undefined' || !google.maps) {
+                            if (!mapState.retryTimer) {
+                                mapState.retryTimer = schedule(function () {
+                                    mapState.retryTimer = null;
+                                    updateMapMarkers();
+                                }, 400);
+                            }
                             return null;
                         }
-                        if (!mapInstance) {
-                            mapInstance = new google.maps.Map(mapCanvas[0], {
-                                zoom: 12,
-                                center: {
-                                    lat: defaultMapLat || 0,
-                                    lng: defaultMapLng || 0
-                                },
-                                streetViewControl: false,
-                                mapTypeControl: false,
-                            });
-                        }
-
-                        return mapInstance;
+                        mapState.map = new google.maps.Map(mapCanvas[0], {
+                            zoom: 12,
+                            center: {
+                                lat: defaultMapLat || 0,
+                                lng: defaultMapLng || 0
+                            },
+                            streetViewControl: false,
+                            mapTypeControl: false,
+                        });
+                        return mapState.map;
                     }
 
                     function updateMapMarkers() {
@@ -249,18 +292,19 @@
 
                         if (!hasPickup && !hasDropoff) {
                             mapWrapper.hide();
-                            if (pickupMarker) {
-                                pickupMarker.setMap(null);
-                                pickupMarker = null;
+                            if (mapState.pickupMarker) {
+                                mapState.pickupMarker.setMap(null);
+                                mapState.pickupMarker = null;
                             }
-                            if (dropoffMarker) {
-                                dropoffMarker.setMap(null);
-                                dropoffMarker = null;
+                            if (mapState.dropoffMarker) {
+                                mapState.dropoffMarker.setMap(null);
+                                mapState.dropoffMarker = null;
                             }
                             return;
                         }
 
                         if (typeof google === 'undefined' || !google.maps) {
+                            updateMapMarkersLater();
                             return;
                         }
 
@@ -271,54 +315,63 @@
                         }
 
                         google.maps.event.trigger(map, 'resize');
-
                         var bounds = new google.maps.LatLngBounds();
 
                         if (hasPickup) {
                             var pickupLatLng = new google.maps.LatLng(parseFloat(pickupPayload.lat), parseFloat(pickupPayload.lng));
-                            if (!pickupMarker) {
-                                pickupMarker = new google.maps.Marker({
+                            if (!mapState.pickupMarker) {
+                                mapState.pickupMarker = new google.maps.Marker({
                                     map: map,
                                     position: pickupLatLng,
                                     label: {text: 'A', fontWeight: 'bold'},
                                 });
                             } else {
-                                pickupMarker.setPosition(pickupLatLng);
-                                pickupMarker.setMap(map);
+                                mapState.pickupMarker.setMap(map);
+                                mapState.pickupMarker.setPosition(pickupLatLng);
                             }
                             bounds.extend(pickupLatLng);
-                        } else if (pickupMarker) {
-                            pickupMarker.setMap(null);
-                            pickupMarker = null;
+                        } else if (mapState.pickupMarker) {
+                            mapState.pickupMarker.setMap(null);
+                            mapState.pickupMarker = null;
                         }
 
                         if (hasDropoff) {
                             var dropoffLatLng = new google.maps.LatLng(parseFloat(dropoffPayload.lat), parseFloat(dropoffPayload.lng));
-                            if (!dropoffMarker) {
-                                dropoffMarker = new google.maps.Marker({
+                            if (!mapState.dropoffMarker) {
+                                mapState.dropoffMarker = new google.maps.Marker({
                                     map: map,
                                     position: dropoffLatLng,
                                     label: {text: 'B', fontWeight: 'bold'},
                                 });
                             } else {
-                                dropoffMarker.setPosition(dropoffLatLng);
-                                dropoffMarker.setMap(map);
+                                mapState.dropoffMarker.setMap(map);
+                                mapState.dropoffMarker.setPosition(dropoffLatLng);
                             }
                             bounds.extend(dropoffLatLng);
-                        } else if (dropoffMarker) {
-                            dropoffMarker.setMap(null);
-                            dropoffMarker = null;
+                        } else if (mapState.dropoffMarker) {
+                            mapState.dropoffMarker.setMap(null);
+                            mapState.dropoffMarker = null;
                         }
 
                         if (hasPickup && hasDropoff) {
                             map.fitBounds(bounds);
-                        } else if (hasPickup && pickupMarker) {
-                            map.setCenter(pickupMarker.getPosition());
+                        } else if (hasPickup && mapState.pickupMarker) {
+                            map.setCenter(mapState.pickupMarker.getPosition());
                             map.setZoom(13);
-                        } else if (hasDropoff && dropoffMarker) {
-                            map.setCenter(dropoffMarker.getPosition());
+                        } else if (hasDropoff && mapState.dropoffMarker) {
+                            map.setCenter(mapState.dropoffMarker.getPosition());
                             map.setZoom(13);
                         }
+                    }
+
+                    function updateMapMarkersLater() {
+                        if (mapState.retryTimer) {
+                            return;
+                        }
+                        mapState.retryTimer = schedule(function () {
+                            mapState.retryTimer = null;
+                            updateMapMarkers();
+                        }, 400);
                     }
 
                     function emitTransferUpdate() {
@@ -331,13 +384,18 @@
 
                     function setPickupPayload(payload, options) {
                         options = options || {};
-                        pickupJsonInput.val(serialisePayload(payload));
-                        pickupPayloadHolder.val(serialisePayload(payload));
+                        var serialised = serialisePayload(payload);
+                        if (pickupJsonInput.length) {
+                            pickupJsonInput.val(serialised);
+                        }
+                        if (pickupPayloadHolder.length) {
+                            pickupPayloadHolder.val(serialised);
+                        }
                         if (!options.silent) {
                             if (payload && payload.source === 'mylocation') {
                                 pickupSelect.val('__mylocation__');
                             } else if (payload && payload.id) {
-                                pickupSelect.val(payload.id);
+                                pickupSelect.val(String(payload.id));
                             } else {
                                 pickupSelect.val('');
                             }
@@ -347,12 +405,23 @@
                     }
 
                     function setDropoffPayload(payload) {
-                        dropoffJsonInput.val(serialisePayload(payload));
-                        dropoffAddress.val(payload && (payload.address || payload.name) ? (payload.address || payload.name) : '');
-                        dropoffName.val(payload && payload.name ? payload.name : '');
-                        dropoffLat.val(payload && payload.lat ? payload.lat : '');
-                        dropoffLng.val(payload && payload.lng ? payload.lng : '');
-                        if (payload && (payload.address || payload.name)) {
+                        var serialised = serialisePayload(payload);
+                        if (dropoffJsonInput.length) {
+                            dropoffJsonInput.val(serialised);
+                        }
+                        if (dropoffAddress.length) {
+                            dropoffAddress.val(payload && (payload.address || payload.name) ? (payload.address || payload.name) : '');
+                        }
+                        if (dropoffName.length) {
+                            dropoffName.val(payload && payload.name ? payload.name : '');
+                        }
+                        if (dropoffLat.length) {
+                            dropoffLat.val(payload && payload.lat ? payload.lat : '');
+                        }
+                        if (dropoffLng.length) {
+                            dropoffLng.val(payload && payload.lng ? payload.lng : '');
+                        }
+                        if (dropoffDisplay.length && payload && (payload.address || payload.name)) {
                             dropoffDisplay.val(payload.address || payload.name);
                         }
                         updateMapMarkers();
@@ -372,8 +441,12 @@
                         }
                     }
 
-                    dateInput.on('change', updateDatetimeValue);
-                    timeInput.on('change', updateDatetimeValue);
+                    if (dateInput.length) {
+                        dateInput.on('change', updateDatetimeValue);
+                    }
+                    if (timeInput.length) {
+                        timeInput.on('change', updateDatetimeValue);
+                    }
                     updateDatetimeValue();
 
                     function requestGeolocation() {
@@ -401,18 +474,35 @@
                         });
                     }
 
+                    function getOptionPayload($option) {
+                        if (!$option || !$option.length) {
+                            return null;
+                        }
+                        var payload = $option.data('payload');
+                        if (payload) {
+                            return payload;
+                        }
+                        var attrPayload = $option.attr('data-payload');
+                        if (attrPayload) {
+                            try {
+                                return JSON.parse(attrPayload);
+                            } catch (e) {}
+                        }
+                        return null;
+                    }
+
                     pickupSelect.on('change', function () {
-                        var selected = $(this).find('option:selected');
-                        var value = $(this).val();
-                        if (!value) {
+                        var selectedValue = $(this).val();
+                        if (!selectedValue) {
                             setPickupPayload(null, {silent: true});
                             return;
                         }
-                        if (value === '__mylocation__') {
+                        if (selectedValue === '__mylocation__') {
                             requestGeolocation();
                             return;
                         }
-                        var payload = selected.data('payload') || null;
+                        var selectedOption = $(this).find('option:selected');
+                        var payload = getOptionPayload(selectedOption);
                         if (payload) {
                             payload.source = 'backend';
                             setPickupPayload(payload, {silent: true});
@@ -425,16 +515,98 @@
                             if (payload.source === 'mylocation') {
                                 pickupSelect.val('__mylocation__');
                             } else if (payload.id) {
-                                pickupSelect.val(payload.id);
+                                pickupSelect.val(String(payload.id));
+                            }
+                            setPickupPayload(payload, {silent: true});
+                            return;
+                        }
+
+                        var selectedOption = pickupSelect.find('option:selected');
+                        if (selectedOption.length) {
+                            var optionPayload = getOptionPayload(selectedOption);
+                            if (optionPayload) {
+                                optionPayload.source = optionPayload.source || selectedOption.data('source') || 'backend';
+                                setPickupPayload(optionPayload, {silent: true});
                             }
                         }
                     }
 
-                    ensurePickupSelection();
-                    emitTransferUpdate();
-                    updateMapMarkers();
+                    function buildOption(text, value, attributes, payload) {
+                        var option = document.createElement('option');
+                        option.value = value;
+                        option.textContent = text;
+                        if (attributes) {
+                            Object.keys(attributes).forEach(function (key) {
+                                option.setAttribute(key, attributes[key]);
+                            });
+                        }
+                        if (payload) {
+                            option.setAttribute('data-payload', JSON.stringify(payload));
+                            $(option).data('payload', payload);
+                        }
+                        return option;
+                    }
 
-                    if (typeof google !== 'undefined' && google.maps && google.maps.places) {
+                    function renderPickupOptions(locations) {
+                        var fragment = document.createDocumentFragment();
+                        fragment.appendChild(buildOption(defaultOptionLabel, '', null));
+                        fragment.appendChild(buildOption(myLocationOptionLabel, '__mylocation__', {'data-source': 'mylocation'}));
+
+                        var hasLocations = Array.isArray(locations) && locations.length;
+                        if (hasLocations) {
+                            locations.forEach(function (location) {
+                                if (!location) {
+                                    return;
+                                }
+                                var label = location.label || location.name || '';
+                                if (!location.label && location.car_title) {
+                                    label = location.name + ' — ' + location.car_title;
+                                }
+                                fragment.appendChild(buildOption(label, String(location.id), {'data-source': 'backend'}, location));
+                            });
+                        }
+
+                        var previousValue = pickupSelect.val();
+                        pickupSelect.empty().append(fragment);
+
+                        if (previousValue && pickupSelect.find('option[value="' + previousValue + '"]').length) {
+                            pickupSelect.val(previousValue);
+                        }
+
+                        setPickupEmptyState(!hasLocations);
+                        pickupSelect.prop('disabled', !hasLocations && !pickupSelect.find('option[value]').length);
+                        ensurePickupSelection();
+                    }
+
+                    function fetchPickupLocations() {
+                        if (!fetchUrl || pickupFetchLoaded) {
+                            return;
+                        }
+                        pickupFetchLoaded = true;
+                        pickupSelect.prop('disabled', true);
+                        $.ajax({
+                            url: fetchUrl,
+                            method: 'GET',
+                            dataType: 'json'
+                        }).done(function (response) {
+                            var data = response && response.data ? response.data : [];
+                            renderPickupOptions(data);
+                            pickupSelect.prop('disabled', false);
+                        }).fail(function () {
+                            setPickupEmptyState(true);
+                            pickupSelect.prop('disabled', false);
+                        });
+                    }
+
+                    function setupDropoffAutocomplete() {
+                        if (!dropoffDisplay.length || dropoffDisplay.data('autocomplete-bound')) {
+                            return;
+                        }
+                        if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
+                            schedule(setupDropoffAutocomplete, 400);
+                            return;
+                        }
+                        dropoffDisplay.data('autocomplete-bound', true);
                         var autocomplete = new google.maps.places.Autocomplete(dropoffDisplay[0], {
                             fields: ['formatted_address', 'geometry', 'name']
                         });
@@ -492,17 +664,19 @@
 
                             var pickupPayload = parseJsonValue(pickupJsonInput.val());
                             if (!pickupPayload) {
-                                var selectedOption = pickupSelect.find('option:selected');
                                 var selectedValue = pickupSelect.val();
                                 if (selectedValue === '__mylocation__') {
                                     alert(locationErrorMessage);
                                     event.preventDefault();
                                     return false;
                                 }
-                                if (selectedOption.length && selectedOption.data('payload')) {
-                                    var payload = selectedOption.data('payload');
-                                    payload.source = 'backend';
-                                    setPickupPayload(payload, {silent: true});
+                                var selectedOption = pickupSelect.find('option:selected');
+                                if (selectedOption.length) {
+                                    var payload = getOptionPayload(selectedOption);
+                                    if (payload) {
+                                        payload.source = 'backend';
+                                        setPickupPayload(payload, {silent: true});
+                                    }
                                 }
                             }
 
@@ -510,16 +684,33 @@
                         });
                     }
 
+                    setupDropoffAutocomplete();
+                    fetchPickupLocations();
+                    ensurePickupSelection();
+                    emitTransferUpdate();
+                    updateMapMarkers();
+
                     var initialDropoff = parseJsonValue(dropoffJsonInput.val());
                     if (initialDropoff) {
                         setDropoffPayload(initialDropoff);
                     }
                 }
 
-                $('.js-transfer-form').each(function () {
-                    initTransferForm($(this));
+                function initAll(context) {
+                    var $context = context ? $(context) : $(document);
+                    $context.find('.js-transfer-form').each(function () {
+                        initTransferForm($(this));
+                    });
+                }
+
+                window.BravoTransferForm = window.BravoTransferForm || {};
+                window.BravoTransferForm.initForm = initTransferForm;
+                window.BravoTransferForm.initAll = initAll;
+
+                $(function () {
+                    initAll(document);
                 });
-            });
+            })(window, jQuery);
         </script>
     @endonce
 @endpush

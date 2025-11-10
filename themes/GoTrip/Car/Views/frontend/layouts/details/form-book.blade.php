@@ -68,7 +68,10 @@
                         <div class="col-12">
                             <div class="form-group px-20 py-10 border-light rounded-4">
                                 <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('transfers.form.from_label') }}</h4>
-                                <select class="form-control js-transfer-pickup" name="pickup_location_id">
+                                <select class="form-control js-transfer-pickup"
+                                        name="pickup_location_id"
+                                        data-default-label="{{ __('transfers.form.select_pickup_option') }}"
+                                        data-my-location-label="{{ __('transfers.form.use_my_location') }}">
                                     <option value="">{{ __('transfers.form.select_pickup_option') }}</option>
                                     <option value="__mylocation__" data-source="mylocation">{{ __('transfers.form.use_my_location') }}</option>
                                     @foreach($pickupLocations as $location)
@@ -82,9 +85,7 @@
                                         <option value="{{ $location->id }}" data-source="backend" data-payload='@json($payload)' @if($location->id == $selectedPickupId) selected @endif>{{ $label }}</option>
                                     @endforeach
                                 </select>
-                                @if($pickupLocations->isEmpty())
-                                    <small class="text-danger d-block mt-2">{{ __('transfers.form.no_pickups_available') }}</small>
-                                @endif
+                                <small class="text-danger d-block mt-2 js-pickup-empty-message" @if(!$pickupLocations->isEmpty()) style="display:none;" @endif>{{ __('transfers.form.no_pickups_available') }}</small>
                             </div>
                         </div>
                         <div class="col-12">

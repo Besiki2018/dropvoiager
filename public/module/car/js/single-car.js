@@ -196,6 +196,9 @@
         mounted(){
             var me = this;
             var $root = $(this.$el);
+            if (window.BravoTransferForm && typeof window.BravoTransferForm.initAll === 'function') {
+                window.BravoTransferForm.initAll($root);
+            }
             $root.on('transfer:context-changed', function (event, context) {
                 context = context || {};
                 if (context.pickup) {
