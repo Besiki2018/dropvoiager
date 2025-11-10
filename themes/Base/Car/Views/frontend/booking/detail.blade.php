@@ -36,17 +36,21 @@
         <div class="review-section">
             <ul class="review-list">
                 @php
-                    $transferPickupMeta = $booking->getJsonMeta('transfer_pickup_location');
-                    $transferDropoffMeta = $booking->getJsonMeta('transfer_dropoff');
-                    $transferPickupName = $transferPickupMeta['name'] ?? ($transferPickupMeta['address'] ?? '');
+                    $transferPickupMeta = $booking->getJsonMeta('transfer_pickup_location') ?? [];
+                    $transferDropoffMeta = $booking->getJsonMeta('transfer_dropoff') ?? [];
+                    $transferPickupName = $booking->pickup_name ?: ($transferPickupMeta['name'] ?? ($transferPickupMeta['address'] ?? ''));
                     $transferPickupAddress = $transferPickupMeta['address'] ?? '';
-                    $transferDropoffName = $transferDropoffMeta['name'] ?? ($transferDropoffMeta['address'] ?? '');
-                    $transferDropoffAddress = $transferDropoffMeta['address'] ?? '';
+                    $transferDropoffAddress = $booking->dropoff_address ?: ($transferDropoffMeta['address'] ?? '');
+                    $transferDropoffName = $transferDropoffMeta['name'] ?? ($transferDropoffAddress ?: '');
                     $transferRouteName = '';
                     if ($transferPickupName && $transferDropoffName) {
                         $transferRouteName = $transferPickupName . ' → ' . $transferDropoffName;
                     }
-                    $transferDistance = $booking->getMeta('transfer_distance_km');
+                    $transferDistance = $booking->distance_km ?? $booking->getMeta('transfer_distance_km');
+                    $transferDuration = $booking->duration_min ?? $booking->getMeta('transfer_duration_min');
+                    $transferPricingMode = $booking->pricing_mode ?? $booking->getMeta('transfer_pricing_mode');
+                    $transferUnitPrice = $booking->unit_price ?? $booking->getMeta('transfer_unit_price');
+                    $transferTotalPrice = $booking->total_price ?? $booking->getMeta('transfer_price');
                     $transferDatetimeRaw = $booking->getMeta('transfer_datetime');
                     $transferDatetimeDisplay = null;
                     $transferDatetimeFormatted = null;
@@ -98,6 +102,32 @@
                     <li>
                         <div class="label">{{ __('transfers.booking.distance_label') }}</div>
                         <div class="val">{{ number_format((float)$transferDistance, 1) }} km</div>
+                    </li>
+                @endif
+                @if($transferDuration !== null && $transferDuration !== '')
+                    <li>
+                        <div class="label">{{ __('transfers.booking.duration_label') }}</div>
+                        <div class="val">{{ number_format((float)$transferDuration, 0) }} min</div>
+                    </li>
+                @endif
+                @if($transferPricingMode)
+                    <li>
+                        <div class="label">{{ __('transfers.booking.pricing_mode_label') }}</div>
+                        <div class="val">{{ __('transfers.booking.pricing_mode_' . $transferPricingMode) }}</div>
+                    </li>
+                @endif
+                @if($transferUnitPrice !== null && $transferUnitPrice !== '')
+                    <li>
+                        <div class="label">{{ __('transfers.booking.unit_price_label') }}</div>
+                        <div class="val">
+                            {{ format_money($transferUnitPrice) }}@if($transferPricingMode === 'per_km')<span class="text-12 text-muted">/km</span>@endif
+                        </div>
+                    </li>
+                @endif
+                @if($transferTotalPrice !== null && $transferTotalPrice !== '')
+                    <li>
+                        <div class="label">{{ __('transfers.booking.total_price_label') }}</div>
+                        <div class="val">{{ format_money($transferTotalPrice) }}</div>
                     </li>
                 @endif
                 @if($booking->start_date)

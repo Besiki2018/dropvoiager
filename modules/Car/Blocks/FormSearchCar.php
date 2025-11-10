@@ -4,6 +4,7 @@ namespace Modules\Car\Blocks;
 use Modules\Template\Blocks\BaseBlock;
 use Modules\Location\Models\Location;
 use Modules\Media\Helpers\FileHelper;
+use Modules\Car\Models\Car;
 
 class FormSearchCar extends BaseBlock
 {
@@ -70,6 +71,7 @@ class FormSearchCar extends BaseBlock
         $data = [
             'list_location' => Location::where("status","publish")->limit(1000)->with(['translation'])->get()->toTree(),
             'bg_image_url'  => '',
+            'pickup_locations' => Car::getAvailablePickupLocations(),
         ];
         $data = array_merge($model, $data);
         if (!empty($model['bg_image'])) {

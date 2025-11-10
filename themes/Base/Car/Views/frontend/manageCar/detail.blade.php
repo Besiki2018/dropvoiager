@@ -32,6 +32,7 @@
                     </div>
                     <div class="tab-pane fade" id="nav-tour-location">
                         @include('Car::admin/car/location',["is_smart_search"=>"1"])
+                        @include('Car::admin.car.pickup-locations')
                     </div>
                     <div class="tab-pane fade" id="nav-tour-pricing">
                         <div class="panel">
@@ -116,6 +117,46 @@
                     });
                 }
             });
+
+            var serviceMapEl = $('#service_center_map');
+            if (serviceMapEl.length) {
+                var serviceLat = {{ json_encode($row->service_center_lat) }};
+                var serviceLng = {{ json_encode($row->service_center_lng) }};
+                var defaultLat = {{ $row->map_lat ?? setting_item('map_lat_default',51.505 ) }};
+                var defaultLng = {{ $row->map_lng ?? setting_item('map_lng_default',-0.09 ) }};
+                var serviceCenter = [serviceLat !== null ? serviceLat : defaultLat, serviceLng !== null ? serviceLng : defaultLng];
+
+                new BravoMapEngine('service_center_map', {
+                    fitBounds: true,
+                    center: serviceCenter,
+                    zoom: serviceLat !== null && serviceLng !== null ? {{ $row->map_zoom ?? 8 }} : 8,
+                    ready: function (engineMap) {
+                        if (serviceLat !== null && serviceLng !== null) {
+                            engineMap.addMarker([serviceLat, serviceLng], {
+                                icon_options: {}
+                            });
+                        }
+                        engineMap.on('click', function (dataLatLng) {
+                            engineMap.clearMarkers();
+                            engineMap.addMarker(dataLatLng, {
+                                icon_options: {}
+                            });
+                            $("input[name=service_center_lat]").attr("value", dataLatLng[0]);
+                            $("input[name=service_center_lng]").attr("value", dataLatLng[1]);
+                        });
+                        if (bookingCore.map_provider === "gmap") {
+                            engineMap.searchBox($('.service-center-search'), function (dataLatLng) {
+                                engineMap.clearMarkers();
+                                engineMap.addMarker(dataLatLng, {
+                                    icon_options: {}
+                                });
+                                $("input[name=service_center_lat]").attr("value", dataLatLng[0]);
+                                $("input[name=service_center_lng]").attr("value", dataLatLng[1]);
+                            });
+                        }
+                    }
+                });
+            }
         })
     </script>
 @endpush
