@@ -27,28 +27,31 @@
 
             </div>
             <div class="row">
-                <div class="col-lg-6">
+                <div class="col-lg-4">
                     <div class="form-group">
-                        <label class="control-label">{{ __("Maximum service radius (km)") }}</label>
-                        <input type="number" step="0.1" min="0" name="service_radius_km" class="form-control" value="{{ old('service_radius_km', $row->service_radius_km) }}" placeholder="{{ __('e.g. 50') }}">
+                        <label class="control-label">{{ __('transfers.admin.pricing.service_radius') }}</label>
+                        <input type="number" step="0.1" min="0" name="service_radius_km" class="form-control" value="{{ old('service_radius_km', $row->service_radius_km) }}" placeholder="{{ __('e.g. 5') }}">
                     </div>
                 </div>
-                <div class="col-lg-6">
+                <div class="col-lg-4">
                     <div class="form-group">
-                        <label class="control-label">{{ __("Base price radius (km)") }}</label>
-                        <input type="number" step="0.1" min="0" name="base_radius_km" class="form-control" value="{{ old('base_radius_km', $row->base_radius_km) }}" placeholder="{{ __('e.g. 20') }}">
+                        <label class="control-label">{{ __('transfers.admin.pricing.mode_label') }}</label>
+                        <select name="pricing_mode" class="form-control">
+                            <option value="per_km" @selected(old('pricing_mode', $row->pricing_mode ?? 'per_km') === 'per_km')>{{ __('transfers.admin.pricing.mode_per_km') }}</option>
+                            <option value="fixed" @selected(old('pricing_mode', $row->pricing_mode ?? 'per_km') === 'fixed')>{{ __('transfers.admin.pricing.mode_fixed') }}</option>
+                        </select>
                     </div>
                 </div>
-                <div class="col-lg-6">
+                <div class="col-lg-4" data-condition="pricing_mode:is(fixed)">
                     <div class="form-group">
-                        <label class="control-label">{{ __("Base price (within radius)") }}</label>
-                        <input type="number" step="0.01" min="0" name="base_price" class="form-control" value="{{ old('base_price', $row->base_price) }}" placeholder="{{ __('e.g. 120.00') }}">
+                        <label class="control-label">{{ __('transfers.admin.pricing.fixed_price') }}</label>
+                        <input type="number" step="0.01" min="0" name="fixed_price" class="form-control" value="{{ old('fixed_price', $row->fixed_price) }}" placeholder="{{ __('e.g. 120.00') }}">
                     </div>
                 </div>
-                <div class="col-lg-6">
+                <div class="col-lg-4" data-condition="pricing_mode:is(per_km)">
                     <div class="form-group">
-                        <label class="control-label">{{ __("Price per kilometer (outside radius)") }}</label>
-                        <input type="number" step="0.01" min="0" name="price_per_km_outside" class="form-control" value="{{ old('price_per_km_outside', $row->price_per_km_outside) }}" placeholder="{{ __('e.g. 2.50') }}">
+                        <label class="control-label">{{ __('transfers.admin.pricing.price_per_km') }}</label>
+                        <input type="number" step="0.01" min="0" name="price_per_km" class="form-control" value="{{ old('price_per_km', $row->price_per_km) }}" placeholder="{{ __('e.g. 2.50') }}">
                     </div>
                 </div>
             </div>

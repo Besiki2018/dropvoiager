@@ -154,6 +154,17 @@
                 @if(!empty($row->transfer_distance_km))
                     <div class="text-13 text-light-1 mt-5">{{ __('transfers.search.estimated_distance', ['km' => number_format($row->transfer_distance_km, 1)]) }}</div>
                 @endif
+                @if(!empty($row->transfer_duration_min))
+                    <div class="text-13 text-light-1 mt-5">{{ __('transfers.search.estimated_duration', ['minutes' => number_format($row->transfer_duration_min, 0)]) }}</div>
+                @endif
+                @if($row->transfer_pricing_mode)
+                    <div class="text-13 text-light-1 mt-5">
+                        {{ __('transfers.search.pricing_mode_' . $row->transfer_pricing_mode) }}
+                        @if($row->transfer_unit_price)
+                            — {{ __('transfers.search.unit_price', ['price' => format_money($row->transfer_unit_price) . ($row->transfer_pricing_mode === 'per_km' ? '/km' : '')]) }}
+                        @endif
+                    </div>
+                @endif
                 <a href="{{ $row->getDetailUrl() }}" class="button h-50 px-24 bg-dark-1 -yellow-1 text-white mt-24">
                     {{ __('View Detail') }} <div class="icon-arrow-top-right ml-15"></div>
                 </a>

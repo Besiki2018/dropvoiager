@@ -36,17 +36,21 @@
         <div class="review-section">
             <ul class="review-list">
                 @php
-                    $transferPickupMeta = $booking->getJsonMeta('transfer_pickup_location');
-                    $transferDropoffMeta = $booking->getJsonMeta('transfer_dropoff');
-                    $transferPickupName = $transferPickupMeta['name'] ?? ($transferPickupMeta['address'] ?? '');
+                    $transferPickupMeta = $booking->getJsonMeta('transfer_pickup_location') ?? [];
+                    $transferDropoffMeta = $booking->getJsonMeta('transfer_dropoff') ?? [];
+                    $transferPickupName = $booking->pickup_name ?: ($transferPickupMeta['name'] ?? ($transferPickupMeta['address'] ?? ''));
                     $transferPickupAddress = $transferPickupMeta['address'] ?? '';
-                    $transferDropoffName = $transferDropoffMeta['name'] ?? ($transferDropoffMeta['address'] ?? '');
-                    $transferDropoffAddress = $transferDropoffMeta['address'] ?? '';
+                    $transferDropoffAddress = $booking->dropoff_address ?: ($transferDropoffMeta['address'] ?? '');
+                    $transferDropoffName = $transferDropoffMeta['name'] ?? ($transferDropoffAddress ?: '');
                     $transferRouteName = '';
                     if ($transferPickupName && $transferDropoffName) {
                         $transferRouteName = $transferPickupName . ' → ' . $transferDropoffName;
                     }
-                    $transferDistance = $booking->getMeta('transfer_distance_km');
+                    $transferDistance = $booking->distance_km ?? $booking->getMeta('transfer_distance_km');
+                    $transferDuration = $booking->duration_min ?? $booking->getMeta('transfer_duration_min');
+                    $transferPricingMode = $booking->pricing_mode ?? $booking->getMeta('transfer_pricing_mode');
+                    $transferUnitPrice = $booking->unit_price ?? $booking->getMeta('transfer_unit_price');
+                    $transferTotalPrice = $booking->total_price ?? $booking->getMeta('transfer_price');
                     $transferDatetimeRaw = $booking->getMeta('transfer_datetime');
                     $transferDatetimeDisplay = null;
                     $transferDatetimeFormatted = null;
@@ -98,6 +102,64 @@
                     <li>
                         <div class="label">{{ __('transfers.booking.distance_label') }}</div>
                         <div class="val">{{ number_format((float)$transferDistance, 1) }} km</div>
+                    </li>
+                @endif
+                @if($transferDuration !== null && $transferDuration !== '')
+                    <li>
+                        <div class="label">{{ __('transfers.booking.duration_label') }}</div>
+                        <div class="val">{{ number_format((float)$transferDuration, 0) }} min</div>
+                    </li>
+                @endif
+                @if($transferPricingMode)
+                    <li>
+                        <div class="label">{{ __('transfers.booking.pricing_mode_label') }}</div>
+                        <div class="val">{{ __('transfers.booking.pricing_mode_' . $transferPricingMode) }}</div>
+                    </li>
+                @endif
+                @php
+                    $transferBaseFee = $booking->getMeta('transfer_base_fee');
+                    if ($transferBaseFee === null && $transferPricingMode === 'fixed') {
+                        $transferBaseFee = $transferUnitPrice ?? $transferTotalPrice;
+                    }
+                    $pricePerKmDisplay = $transferPricingMode === 'per_km' && $transferUnitPrice !== null;
+                @endphp
+                @if($transferTotalPrice !== null && $transferTotalPrice !== '')
+                    <li class="no-flex">
+                        <div class="label d-block mb-2">{{ __('transfers.booking.price_details_title') }}</div>
+                        <div class="border rounded-4 p-3 bg-light">
+                            <dl class="row mb-0 text-13">
+                                <dt class="col-6 text-muted mb-2">{{ __('transfers.booking.price_details_from') }}</dt>
+                                <dd class="col-6 mb-2 text-right">{{ $transferPickupAddress ?: ($transferPickupName ?: '—') }}</dd>
+                                <dt class="col-6 text-muted mb-2">{{ __('transfers.booking.price_details_to') }}</dt>
+                                <dd class="col-6 mb-2 text-right">{{ $transferDropoffAddress ?: ($transferDropoffName ?: '—') }}</dd>
+                                <dt class="col-6 text-muted mb-2">{{ __('transfers.booking.price_details_distance') }}</dt>
+                                <dd class="col-6 mb-2 text-right">
+                                    @if($transferDistance !== null && $transferDistance !== '')
+                                        {{ number_format((float)$transferDistance, 2) }} km
+                                    @else
+                                        {{ __('transfers.booking.price_details_not_applicable') }}
+                                    @endif
+                                </dd>
+                                <dt class="col-6 text-muted mb-2">{{ __('transfers.booking.price_details_price_per_km') }}</dt>
+                                <dd class="col-6 mb-2 text-right">
+                                    @if($pricePerKmDisplay)
+                                        {{ format_money($transferUnitPrice) }}<span class="text-11 text-muted">/km</span>
+                                    @else
+                                        {{ __('transfers.booking.price_details_not_applicable') }}
+                                    @endif
+                                </dd>
+                                <dt class="col-6 text-muted mb-2">{{ __('transfers.booking.price_details_base_fee') }}</dt>
+                                <dd class="col-6 mb-2 text-right">
+                                    @if($transferBaseFee !== null && $transferBaseFee !== '')
+                                        {{ format_money($transferBaseFee) }}
+                                    @else
+                                        {{ __('transfers.booking.price_details_not_applicable') }}
+                                    @endif
+                                </dd>
+                                <dt class="col-6 text-muted">{{ __('transfers.booking.price_details_total') }}</dt>
+                                <dd class="col-6 text-right"><strong>{{ format_money($transferTotalPrice) }}</strong></dd>
+                            </dl>
+                        </div>
                     </li>
                 @endif
                 @if($booking->start_date)

@@ -95,6 +95,8 @@
             email_required:'{{ __("Email is Required") }}',
             pickup_required:'{{ __('transfers.booking.pickup_required') }}',
             dropoff_required:'{{ __('transfers.booking.dropoff_required') }}',
+            passengers_invalid:'{{ __('transfers.booking.passengers_invalid') }}',
+            quote_required:'{{ __('transfers.booking.quote_required') }}',
         };
     </script>
     <script type="text/javascript" src="{{ asset("libs/ion_rangeslider/js/ion.rangeSlider.min.js") }}"></script>
