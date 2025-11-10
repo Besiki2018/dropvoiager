@@ -4,6 +4,7 @@
     $selectedPickup = $pickup_location ?? null;
     $selectedPickupId = $selectedPickup->id ?? ($booking_data['pickup_location_id'] ?? '');
     $dropoffData = $dropoff ?? ($booking_data['dropoff'] ?? []);
+    $selectedPickupPayload = $pickup_payload ?? ($selectedPickup ? $selectedPickup->toFrontendArray() : null);
     $transferDatetimeValue = $transfer_datetime_value ?? ($booking_data['transfer_datetime'] ?? '');
     $transferDateValue = '';
     $transferTimeValue = '';
@@ -62,13 +63,14 @@
                 </div>
             </div>
             <div class="form-book" :class="{'d-none':enquiry_type!='book'}">
-                <div class="form-content">
+                <div class="form-content js-transfer-form">
                     <div class="row y-gap-20 pt-20">
                         <div class="col-12">
                             <div class="form-group px-20 py-10 border-light rounded-4">
                                 <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('transfers.form.from_label') }}</h4>
                                 <select class="form-control js-transfer-pickup" name="pickup_location_id">
                                     <option value="">{{ __('transfers.form.select_pickup_option') }}</option>
+                                    <option value="__mylocation__" data-source="mylocation">{{ __('transfers.form.use_my_location') }}</option>
                                     @foreach($pickupLocations as $location)
                                         @php
                                             $payload = $location->toFrontendArray();
@@ -77,7 +79,7 @@
                                                 $label .= ' — ' . $location->car->title;
                                             }
                                         @endphp
-                                        <option value="{{ $location->id }}" data-payload='@json($payload)' @if($location->id == $selectedPickupId) selected @endif>{{ $label }}</option>
+                                        <option value="{{ $location->id }}" data-source="backend" data-payload='@json($payload)' @if($location->id == $selectedPickupId) selected @endif>{{ $label }}</option>
                                     @endforeach
                                 </select>
                                 @if($pickupLocations->isEmpty())
@@ -93,7 +95,9 @@
                                 <input type="hidden" class="js-transfer-dropoff-name" value="{{ $dropoffData['name'] ?? $dropoffData['address'] ?? '' }}">
                                 <input type="hidden" class="js-transfer-dropoff-lat" value="{{ $dropoffData['lat'] ?? '' }}">
                                 <input type="hidden" class="js-transfer-dropoff-lng" value="{{ $dropoffData['lng'] ?? '' }}">
-                                <input type="hidden" class="js-transfer-pickup-payload" value='@json($selectedPickup ? $selectedPickup->toFrontendArray() : null)'>
+                                <input type="hidden" class="js-transfer-pickup-payload" value='@json($selectedPickupPayload)'>
+                                <input type="hidden" class="js-transfer-pickup-json" value='@json($selectedPickupPayload)'>
+                                <input type="hidden" class="js-transfer-dropoff-json" value='@json($dropoffData)'>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -108,6 +112,7 @@
                                 <input type="time" class="form-control js-transfer-time" value="{{ $transferTimeValue }}">
                             </div>
                         </div>
+                        <input type="hidden" class="js-transfer-datetime" value="{{ $transferDatetimeValue }}">
                         <div class="col-12">
                             <div class="form-group form-date-field form-date-search clearfix px-20 py-10 border-light rounded-4 -right position-relative" data-format="{{get_moment_date_format()}}">
                                 <div class="date-wrapper clearfix" @click="openStartDate">

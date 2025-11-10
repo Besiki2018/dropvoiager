@@ -61,9 +61,8 @@ class Car extends Bookable
         'service_center_lat' => 'float',
         'service_center_lng' => 'float',
         'service_radius_km' => 'float',
-        'base_radius_km' => 'float',
-        'base_price' => 'float',
-        'price_per_km_outside' => 'float',
+        'fixed_price' => 'float',
+        'price_per_km' => 'float',
     ];
     /**
      * @var Booking
@@ -92,10 +91,13 @@ class Car extends Bookable
     protected array $transferContext = [
         'price' => null,
         'route_distance' => null,
+        'route_duration' => null,
         'pickup_location' => null,
         'dropoff' => null,
         'pickup_location_id' => null,
         'transfer_datetime' => null,
+        'pricing_mode' => null,
+        'unit_price' => null,
     ];
 
     public function __construct(array $attributes = [])
@@ -313,6 +315,27 @@ class Car extends Bookable
             }
         }
 
+        if ($pickupPayload = $request->attributes->get('transfer_pickup_payload')) {
+            $booking->pickup_name = Arr::get($pickupPayload, 'name');
+            $booking->pickup_source = Arr::get($pickupPayload, 'source');
+            $booking->pickup_lat = Arr::get($pickupPayload, 'lat');
+            $booking->pickup_lng = Arr::get($pickupPayload, 'lng');
+        }
+
+        if ($dropoffPayload = $request->attributes->get('transfer_dropoff')) {
+            $booking->dropoff_address = Arr::get($dropoffPayload, 'address') ?: Arr::get($dropoffPayload, 'name');
+            $booking->dropoff_lat = Arr::get($dropoffPayload, 'lat');
+            $booking->dropoff_lng = Arr::get($dropoffPayload, 'lng');
+        }
+
+        if ($this->hasTransferContext()) {
+            $booking->distance_km = $this->transferContext['route_distance'];
+            $booking->duration_min = $this->transferContext['route_duration'];
+            $booking->pricing_mode = $this->transferContext['pricing_mode'];
+            $booking->unit_price = $this->transferContext['unit_price'];
+            $booking->total_price = $this->transferContext['price'];
+        }
+
         $check = $booking->save();
         if ($check) {
 
@@ -333,10 +356,22 @@ class Car extends Bookable
             if ($pickupLocation = $request->attributes->get('transfer_pickup_location')) {
                 /** @var CarPickupLocation $pickupLocation */
                 $booking->addMeta('transfer_pickup_location_id', $pickupLocation->id);
-                $booking->addMeta('transfer_pickup_location', $pickupLocation->toFrontendArray());
-                $booking->addMeta('transfer_dropoff', $request->attributes->get('transfer_dropoff'));
-                $booking->addMeta('transfer_distance_km', $request->attributes->get('transfer_distance_km'));
+            }
+
+            if ($pickupPayload) {
+                $booking->addMeta('transfer_pickup_location', $pickupPayload);
+            }
+
+            if ($dropoffPayload) {
+                $booking->addMeta('transfer_dropoff', $dropoffPayload);
+            }
+
+            if ($this->hasTransferContext()) {
+                $booking->addMeta('transfer_distance_km', $this->transferContext['route_distance']);
+                $booking->addMeta('transfer_duration_min', $this->transferContext['route_duration']);
                 $booking->addMeta('transfer_datetime', $request->input('transfer_datetime'));
+                $booking->addMeta('transfer_pricing_mode', $this->transferContext['pricing_mode']);
+                $booking->addMeta('transfer_unit_price', $this->transferContext['unit_price']);
                 $booking->addMeta('transfer_price', $this->transferContext['price']);
             }
 
@@ -394,45 +429,92 @@ class Car extends Bookable
         }
 
         $this->clearTransferContext();
-        $pickupLocationId = $request->input('pickup_location_id');
+        $pickupPayload = $request->input('pickup');
+        if (is_string($pickupPayload)) {
+            $decoded = json_decode($pickupPayload, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $pickupPayload = $decoded;
+            }
+        }
+        if (!is_array($pickupPayload)) {
+            $pickupPayload = [];
+        }
+
+        $pickupLocationId = $request->input('pickup_location_id') ?? Arr::get($pickupPayload, 'id');
+        if ($pickupLocationId === '__mylocation__') {
+            $pickupLocationId = null;
+        }
+        $pickupLocation = null;
         if ($pickupLocationId) {
             $pickupLocation = $this->pickupLocations()->where('id', $pickupLocationId)->first();
             if (!$pickupLocation) {
                 return $this->sendError(__('transfers.booking.invalid_pickup_location'));
             }
-
-            $dropoff = $request->input('dropoff', []);
-            $dropoffLat = Arr::get($dropoff, 'lat');
-            $dropoffLng = Arr::get($dropoff, 'lng');
-
-            if ($dropoffLat === null || $dropoffLng === null) {
-                return $this->sendError(__('transfers.booking.missing_dropoff'));
-            }
-
-            $transferDatetime = $request->input('transfer_datetime');
-            $transferDate = null;
-            if ($transferDatetime) {
-                try {
-                    $transferDate = Carbon::parse($transferDatetime, 'Asia/Tbilisi')->toDateString();
-                } catch (\Exception $exception) {
-                    $transferDate = null;
-                }
-            }
-
-            $routeDistance = static::resolveRouteDistanceKm($pickupLocation->toFrontendArray(), $dropoff);
-            if ($routeDistance === null) {
-                return $this->sendError(__('transfers.booking.distance_error'));
-            }
-
-            if (!$this->applyTransferContext($pickupLocation, $dropoff, $routeDistance, $transferDate, $transferDatetime)) {
+            if ($pickupLocation->car_id !== $this->id || !$pickupLocation->is_active) {
                 return $this->sendError(__('transfers.booking.unavailable_pickup'));
             }
-
-            $this->tmp_price = $this->transferContext['price'];
-            $request->attributes->set('transfer_pickup_location', $pickupLocation);
-            $request->attributes->set('transfer_dropoff', $dropoff);
-            $request->attributes->set('transfer_distance_km', $this->transferContext['route_distance']);
         }
+
+        if (empty($pickupPayload) && $pickupLocation) {
+            $pickupPayload = $pickupLocation->toFrontendArray();
+        }
+
+        $dropoff = $request->input('dropoff');
+        if (is_string($dropoff)) {
+            $decodedDropoff = json_decode($dropoff, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $dropoff = $decodedDropoff;
+            }
+        }
+        if (!is_array($dropoff)) {
+            $dropoff = [];
+        }
+
+        $pickupLat = static::toFloat(Arr::get($pickupPayload, 'lat', $pickupLocation?->lat));
+        $pickupLng = static::toFloat(Arr::get($pickupPayload, 'lng', $pickupLocation?->lng));
+        if ($pickupLat === null || $pickupLng === null) {
+            return $this->sendError(__('transfers.booking.pickup_required'));
+        }
+
+        $dropoffLat = static::toFloat(Arr::get($dropoff, 'lat'));
+        $dropoffLng = static::toFloat(Arr::get($dropoff, 'lng'));
+        if ($dropoffLat === null || $dropoffLng === null) {
+            return $this->sendError(__('transfers.booking.missing_dropoff'));
+        }
+
+        $transferDatetime = $request->input('transfer_datetime');
+        $transferDate = null;
+        if ($transferDatetime) {
+            try {
+                $transferDate = Carbon::parse($transferDatetime, 'Asia/Tbilisi')->toDateString();
+            } catch (\Exception $exception) {
+                $transferDate = null;
+            }
+        }
+
+        $metrics = static::resolveRouteMetrics(array_merge($pickupPayload, [
+            'lat' => $pickupLat,
+            'lng' => $pickupLng,
+        ]), $dropoff);
+        if ($metrics['distance_km'] === null) {
+            return $this->sendError(__('transfers.booking.distance_error'));
+        }
+
+        if (!$this->applyTransferContext($pickupLocation, array_merge($pickupPayload, [
+            'lat' => $pickupLat,
+            'lng' => $pickupLng,
+        ]), $dropoff, $metrics['distance_km'], $metrics['duration_min'], $transferDate, $transferDatetime)) {
+            return $this->sendError(__('transfers.booking.unavailable_pickup'));
+        }
+
+        $this->tmp_price = $this->transferContext['price'];
+        $request->attributes->set('transfer_pickup_location', $pickupLocation);
+        $request->attributes->set('transfer_pickup_payload', $this->transferContext['pickup_location']);
+        $request->attributes->set('transfer_dropoff', $dropoff);
+        $request->attributes->set('transfer_distance_km', $this->transferContext['route_distance']);
+        $request->attributes->set('transfer_duration_min', $this->transferContext['route_duration']);
+        $request->attributes->set('transfer_pricing_mode', $this->transferContext['pricing_mode']);
+        $request->attributes->set('transfer_unit_price', $this->transferContext['unit_price']);
 
         return true;
     }
@@ -995,8 +1077,30 @@ class Car extends Bookable
 
         if ($pickupLocationId = $request['pickup_location_id'] ?? null) {
             $query->whereHas('pickupLocations', function ($subQuery) use ($pickupLocationId) {
-                $subQuery->where('id', $pickupLocationId);
+                $subQuery->where('id', $pickupLocationId)->where('is_active', true);
             });
+        }
+
+        $pickupFilter = $request['pickup'] ?? null;
+        if (is_string($pickupFilter)) {
+            $decodedPickup = json_decode($pickupFilter, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $pickupFilter = $decodedPickup;
+            }
+        }
+        if (is_array($pickupFilter)) {
+            $pickupLat = isset($pickupFilter['lat']) && is_numeric($pickupFilter['lat']) ? (float) $pickupFilter['lat'] : null;
+            $pickupLng = isset($pickupFilter['lng']) && is_numeric($pickupFilter['lng']) ? (float) $pickupFilter['lng'] : null;
+            if ($pickupLat !== null && $pickupLng !== null) {
+                $latColumn = $query->qualifyColumn('service_center_lat');
+                $lngColumn = $query->qualifyColumn('service_center_lng');
+                $radiusColumn = $query->qualifyColumn('service_radius_km');
+                $haversine = '(6371 * acos(cos(radians(?)) * cos(radians(' . $latColumn . ')) * cos(radians(' . $lngColumn . ') - radians(?)) + sin(radians(?)) * sin(radians(' . $latColumn . '))))';
+                $query->whereNotNull('service_center_lat')
+                    ->whereNotNull('service_center_lng')
+                    ->where($radiusColumn, '>', 0)
+                    ->whereRaw($haversine . ' <= ' . $radiusColumn, [$pickupLat, $pickupLng, $pickupLat]);
+            }
         }
         $orderby = $request['orderby'] ?? "";
         switch ($orderby){
@@ -1029,7 +1133,9 @@ class Car extends Bookable
             $query->where('max_guests','>=',$max_guests);
         }
 
-        return $query->with(['location','hasWishList','translation']);
+        return $query->with(['location','hasWishList','translation','pickupLocations' => function ($query) {
+            $query->active();
+        }]);
     }
 
     public function dataForApi($forSingle = false){
@@ -1123,14 +1229,15 @@ class Car extends Bookable
             ->whereHas('car', function ($query) {
                 $query->where('status', 'publish');
             })
+            ->active()
             ->orderBy('name')
             ->get();
     }
 
-    public function applyTransferContext(CarPickupLocation $pickupLocation, array $dropoff, ?float $routeDistanceKm = null, ?string $transferDate = null, ?string $transferDatetime = null): bool
+    public function applyTransferContext(?CarPickupLocation $pickupLocation, array $pickupPayload, array $dropoff, ?float $routeDistanceKm = null, ?float $routeDurationMin = null, ?string $transferDate = null, ?string $transferDatetime = null): bool
     {
-        $pickupLat = static::toFloat($pickupLocation->lat);
-        $pickupLng = static::toFloat($pickupLocation->lng);
+        $pickupLat = static::toFloat(Arr::get($pickupPayload, 'lat', $pickupLocation?->lat));
+        $pickupLng = static::toFloat(Arr::get($pickupPayload, 'lng', $pickupLocation?->lng));
         $dropoffLat = static::toFloat(Arr::get($dropoff, 'lat'));
         $dropoffLng = static::toFloat(Arr::get($dropoff, 'lng'));
 
@@ -1138,48 +1245,74 @@ class Car extends Bookable
             return false;
         }
 
-        $routeDistance = $routeDistanceKm ?? static::haversineDistance($pickupLat, $pickupLng, $dropoffLat, $dropoffLng);
-        $routeDistance = max(0, $routeDistance);
-
-        $baseRadius = max(0, $this->base_radius_km ?? 0);
-        $pricePerKm = max(0, $this->price_per_km_outside ?? 0);
-
-        $basePrice = $pickupLocation->base_price ?? $this->base_price ?? 0;
-        if ($basePrice <= 0) {
-            $basePrice = $this->sale_price && $this->sale_price > 0 ? $this->sale_price : $this->price;
-        }
-
-        if (!$basePrice && !$pricePerKm) {
+        if (!$this->isWithinServiceRadius($pickupLat, $pickupLng)) {
             return false;
         }
 
-        if ($routeDistance <= $baseRadius) {
-            $calculatedPrice = $basePrice;
+        $distance = $routeDistanceKm;
+        $duration = $routeDurationMin;
+        if ($distance === null || $duration === null) {
+            $resolvedMetrics = static::resolveRouteMetrics(
+                array_merge($pickupLocation?->toFrontendArray() ?? [], $pickupPayload, [
+                    'lat' => $pickupLat,
+                    'lng' => $pickupLng,
+                ]),
+                $dropoff
+            );
+            if ($distance === null) {
+                $distance = $resolvedMetrics['distance_km'];
+            }
+            if ($duration === null) {
+                $duration = $resolvedMetrics['duration_min'];
+            }
+        }
+
+        if ($distance === null) {
+            return false;
+        }
+
+        $pricingMode = $this->pricing_mode ?: 'per_km';
+        $unitPrice = null;
+        $calculatedPrice = null;
+
+        if ($pricingMode === 'fixed') {
+            $unitPrice = $this->fixed_price;
+            if ($unitPrice === null || $unitPrice <= 0) {
+                return false;
+            }
+            $calculatedPrice = round($unitPrice, 2);
         } else {
-            $distanceOutside = max(0, $routeDistance - $baseRadius);
-            $calculatedPrice = $basePrice + ($distanceOutside * $pricePerKm);
+            $pricingMode = 'per_km';
+            $unitPrice = $this->price_per_km;
+            if ($unitPrice === null || $unitPrice <= 0) {
+                return false;
+            }
+            $calculatedPrice = round($distance * $unitPrice, 2);
         }
-
-        $coefficient = $pickupLocation->price_coefficient ?? 1;
-        if ($coefficient <= 0) {
-            $coefficient = 1;
-        }
-
-        $calculatedPrice = round($calculatedPrice * $coefficient, 2);
 
         if ($calculatedPrice <= 0) {
             return false;
         }
 
-        $pickupPayload = $pickupLocation->toFrontendArray();
+        $pickupPayload = array_merge([
+            'id' => $pickupLocation?->id,
+            'name' => Arr::get($pickupPayload, 'name', $pickupLocation?->name),
+            'source' => Arr::get($pickupPayload, 'source', $pickupLocation ? 'backend' : null),
+        ], $pickupPayload, [
+            'lat' => $pickupLat,
+            'lng' => $pickupLng,
+        ]);
 
         $this->setTransferContext([
             'price' => $calculatedPrice,
-            'route_distance' => $routeDistance,
+            'route_distance' => $distance,
+            'route_duration' => $duration,
             'pickup_location' => $pickupPayload,
             'dropoff' => $dropoff,
-            'pickup_location_id' => $pickupLocation->id,
+            'pickup_location_id' => $pickupLocation?->id,
             'transfer_datetime' => $transferDatetime,
+            'pricing_mode' => $pricingMode,
+            'unit_price' => $unitPrice,
         ]);
 
         if ($transferDate) {
@@ -1197,6 +1330,23 @@ class Car extends Bookable
         return $this->transferContext['price'] !== null;
     }
 
+    public function isWithinServiceRadius(?float $lat, ?float $lng): bool
+    {
+        if ($lat === null || $lng === null) {
+            return false;
+        }
+
+        $radius = static::toFloat($this->service_radius_km);
+        $centerLat = static::toFloat($this->service_center_lat);
+        $centerLng = static::toFloat($this->service_center_lng);
+
+        if ($radius === null || $radius <= 0 || $centerLat === null || $centerLng === null) {
+            return true;
+        }
+
+        return static::haversineDistance($centerLat, $centerLng, $lat, $lng) <= $radius;
+    }
+
     public function getCalculatedPriceAttribute(): ?float
     {
         return $this->transferContext['price'];
@@ -1205,6 +1355,21 @@ class Car extends Bookable
     public function getTransferDistanceKmAttribute(): ?float
     {
         return $this->transferContext['route_distance'];
+    }
+
+    public function getTransferDurationMinAttribute(): ?float
+    {
+        return $this->transferContext['route_duration'];
+    }
+
+    public function getTransferPricingModeAttribute(): ?string
+    {
+        return $this->transferContext['pricing_mode'];
+    }
+
+    public function getTransferUnitPriceAttribute(): ?float
+    {
+        return $this->transferContext['unit_price'];
     }
 
     public function getDisplayPriceAttribute()
@@ -1230,10 +1395,13 @@ class Car extends Bookable
         $this->transferContext = [
             'price' => null,
             'route_distance' => null,
+            'route_duration' => null,
             'pickup_location' => null,
             'dropoff' => null,
             'pickup_location_id' => null,
             'transfer_datetime' => null,
+            'pricing_mode' => null,
+            'unit_price' => null,
         ];
     }
 
@@ -1274,14 +1442,25 @@ class Car extends Bookable
 
     public static function resolveRouteDistanceKm(array $pickup, array $dropoff): ?float
     {
+        return static::resolveRouteMetrics($pickup, $dropoff)['distance_km'];
+    }
+
+    public static function resolveRouteMetrics(array $pickup, array $dropoff): array
+    {
         $pickupLat = static::toFloat(Arr::get($pickup, 'lat'));
         $pickupLng = static::toFloat(Arr::get($pickup, 'lng'));
         $dropoffLat = static::toFloat(Arr::get($dropoff, 'lat'));
         $dropoffLng = static::toFloat(Arr::get($dropoff, 'lng'));
 
         if ($pickupLat === null || $pickupLng === null || $dropoffLat === null || $dropoffLng === null) {
-            return null;
+            return [
+                'distance_km' => null,
+                'duration_min' => null,
+            ];
         }
+
+        $distanceKm = null;
+        $durationMin = null;
 
         $apiKey = setting_item('map_gmap_key') ?: config('services.google.maps_api_key');
         if ($apiKey) {
@@ -1295,8 +1474,12 @@ class Car extends Bookable
                 if ($response->successful()) {
                     $data = $response->json();
                     $distance = Arr::get($data, 'routes.0.legs.0.distance.value');
+                    $duration = Arr::get($data, 'routes.0.legs.0.duration.value');
                     if ($distance !== null) {
-                        return max(0, (float)$distance / 1000);
+                        $distanceKm = max(0, (float) $distance / 1000);
+                    }
+                    if ($duration !== null) {
+                        $durationMin = max(0, round(((float) $duration) / 60, 2));
                     }
                     if (Arr::get($data, 'status') !== 'OK') {
                         Log::warning('Google Directions API returned status', ['status' => Arr::get($data, 'status'), 'error_message' => Arr::get($data, 'error_message')]);
@@ -1307,7 +1490,14 @@ class Car extends Bookable
             }
         }
 
-        return static::haversineDistance($pickupLat, $pickupLng, $dropoffLat, $dropoffLng);
+        if ($distanceKm === null) {
+            $distanceKm = static::haversineDistance($pickupLat, $pickupLng, $dropoffLat, $dropoffLng);
+        }
+
+        return [
+            'distance_km' => $distanceKm,
+            'duration_min' => $durationMin,
+        ];
     }
 
     protected static function haversineDistance(float $lat1, float $lng1, float $lat2, float $lng2): float
@@ -1350,11 +1540,9 @@ class Car extends Bookable
 
             $payload = [
                 'name' => $name,
-                'address' => Arr::get($location, 'address'),
                 'lat' => $lat,
                 'lng' => $lng,
-                'base_price' => Arr::get($location, 'base_price') !== null ? (float) Arr::get($location, 'base_price') : null,
-                'price_coefficient' => max(0.01, (float) (Arr::get($location, 'price_coefficient') ?: 1)),
+                'is_active' => Arr::get($location, 'is_active', true) ? true : false,
             ];
 
             $existingId = Arr::get($location, 'id');
