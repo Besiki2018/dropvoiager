@@ -11,6 +11,13 @@
             transfer_datetime:'',
             transfer_date:'',
             transfer_time:'',
+            quote_url:'',
+            pricing_meta:null,
+            transfer_quote:null,
+            transfer_quote_loading:false,
+            transfer_quote_error:'',
+            quote_xhr:null,
+            is_initialising:true,
             datetime_required_message:'',
             message:{
                 content:'',
@@ -55,9 +62,15 @@
                         this.fetchEvents(day, day);
                     }
                 }
+                if (!this.is_initialising) {
+                    this.refreshTransferQuote();
+                }
             },
             transfer_time:function () {
                 this.syncTransferDateState();
+                if (!this.is_initialising) {
+                    this.refreshTransferQuote();
+                }
             },
             number:function () {
                 var me = this;
@@ -67,9 +80,98 @@
                 if(parseInt(me.number) < 1){
                     me.number = 1
                 }
+            },
+            pickup_location:{
+                handler:function () {
+                    if (this.is_initialising) {
+                        return;
+                    }
+                    this.refreshTransferQuote();
+                },
+                deep:true
+            },
+            dropoff:{
+                handler:function () {
+                    if (this.is_initialising) {
+                        return;
+                    }
+                    this.refreshTransferQuote();
+                },
+                deep:true
             }
         },
         computed:{
+            priceDetails:function () {
+                var quote = this.transfer_quote || {};
+                var meta = this.pricing_meta || {};
+                var mode = quote.pricing_mode || meta.mode || null;
+                if (!mode && !meta.price_per_km && !meta.fixed_price) {
+                    return null;
+                }
+
+                mode = mode || 'per_km';
+
+                var fromLabel = quote.pickup_label || '';
+                if (!fromLabel && quote.pickup && (quote.pickup.address || quote.pickup.name)) {
+                    fromLabel = quote.pickup.address || quote.pickup.name;
+                }
+                if (!fromLabel && this.pickup_location && (this.pickup_location.address || this.pickup_location.name)) {
+                    fromLabel = this.pickup_location.address || this.pickup_location.name;
+                }
+
+                var toLabel = quote.dropoff_label || '';
+                if (!toLabel && quote.dropoff && (quote.dropoff.address || quote.dropoff.name)) {
+                    toLabel = quote.dropoff.address || quote.dropoff.name;
+                }
+                if (!toLabel && this.dropoff && (this.dropoff.address || this.dropoff.name)) {
+                    toLabel = this.dropoff.address || this.dropoff.name;
+                }
+
+                var distanceValue = (typeof quote.distance_km === 'number') ? quote.distance_km : null;
+                var priceValue = (typeof quote.price === 'number') ? quote.price : null;
+                var unitPriceValue = (typeof quote.unit_price === 'number') ? quote.unit_price : null;
+                var baseFeeValue = (quote.base_fee !== null && typeof quote.base_fee !== 'undefined') ? quote.base_fee : null;
+                if ((baseFeeValue === null || baseFeeValue === '') && typeof meta.base_fee === 'number') {
+                    baseFeeValue = meta.base_fee;
+                }
+
+                var formattedUnit = null;
+                var formattedBase = null;
+                var formattedTotal = null;
+
+                if (mode === 'fixed') {
+                    if (priceValue === null && typeof meta.fixed_price === 'number') {
+                        priceValue = meta.fixed_price;
+                    }
+                    if (priceValue !== null) {
+                        formattedTotal = this.formatMoney(priceValue);
+                        formattedBase = this.formatMoney(priceValue);
+                    }
+                } else {
+                    if (unitPriceValue === null && typeof meta.price_per_km === 'number') {
+                        unitPriceValue = meta.price_per_km;
+                    }
+                    if (unitPriceValue !== null) {
+                        formattedUnit = this.formatMoney(unitPriceValue) + '/km';
+                    }
+                    if (priceValue !== null) {
+                        formattedTotal = this.formatMoney(priceValue);
+                    }
+                    if (baseFeeValue !== null && baseFeeValue !== '' && !isNaN(parseFloat(baseFeeValue))) {
+                        formattedBase = this.formatMoney(parseFloat(baseFeeValue));
+                    }
+                }
+
+                return {
+                    from: fromLabel,
+                    to: toLabel,
+                    distance: distanceValue !== null ? this.formatDistance(distanceValue) : null,
+                    pricePerKm: formattedUnit,
+                    baseFee: formattedBase,
+                    total: formattedTotal,
+                    pricingMode: mode
+                };
+            },
             total_price:function(){
                 var me = this;
                 if (me.start_date !== "") {
@@ -210,6 +312,18 @@
         mounted(){
             var me = this;
             var $root = $(this.$el);
+            var quoteUrl = $root.data('quoteUrl');
+            if (quoteUrl) {
+                this.quote_url = quoteUrl;
+            }
+            var pricingMeta = $root.data('pricingMeta');
+            if (pricingMeta) {
+                this.pricing_meta = pricingMeta;
+            }
+            var initialQuote = $root.data('initialQuote');
+            if (initialQuote) {
+                this.transfer_quote = initialQuote;
+            }
             if (window.BravoTransferForm && typeof window.BravoTransferForm.initAll === 'function') {
                 window.BravoTransferForm.initAll($root);
             }
@@ -221,6 +335,9 @@
                 }
                 if (context.dropoff) {
                     me.dropoff = context.dropoff;
+                }
+                if (!me.is_initialising) {
+                    me.refreshTransferQuote();
                 }
             });
             var initialPickupPayload = $root.find('.js-transfer-pickup-payload').val();
@@ -255,6 +372,10 @@
                 this.datetime_required_message = datetimeMessage;
             }
             this.syncTransferDateState();
+            this.is_initialising = false;
+            if (!this.transfer_quote && this.dropoff && this.dropoff.place_id) {
+                this.refreshTransferQuote();
+            }
         },
         methods:{
             handleTotalPrice:function() {
@@ -317,6 +438,107 @@
             },
             formatMoney: function (m) {
                 return window.bravo_format_money(m);
+            },
+            formatDistance:function (km) {
+                var value = parseFloat(km);
+                if (isNaN(value)) {
+                    return null;
+                }
+                return value.toFixed(2) + ' km';
+            },
+            refreshTransferQuote:function () {
+                if (!this.quote_url) {
+                    return;
+                }
+                var dropoff = this.dropoff || {};
+                var dropLat = parseFloat(dropoff.lat);
+                var dropLng = parseFloat(dropoff.lng);
+                if (!dropoff.place_id || isNaN(dropLat) || isNaN(dropLng)) {
+                    this.transfer_quote = null;
+                    this.transfer_quote_error = '';
+                    if (this.quote_xhr) {
+                        this.quote_xhr.abort();
+                        this.quote_xhr = null;
+                    }
+                    this.transfer_quote_loading = false;
+                    return;
+                }
+
+                var pickup = this.pickup_location || {};
+                var pickupLat = parseFloat(pickup.lat);
+                var pickupLng = parseFloat(pickup.lng);
+                if (isNaN(pickupLat) || isNaN(pickupLng)) {
+                    this.transfer_quote = null;
+                    this.transfer_quote_error = '';
+                    return;
+                }
+
+                var $root = $(this.$el);
+                var datetimeField = $root.find('.js-transfer-datetime');
+                var transferDatetime = datetimeField.length ? datetimeField.val() : '';
+                if (!transferDatetime && this.transfer_date && this.transfer_time) {
+                    transferDatetime = this.transfer_date + 'T' + this.transfer_time + ':00+04:00';
+                }
+                this.transfer_datetime = transferDatetime;
+
+                var requestData = {
+                    pickup: JSON.stringify(pickup),
+                    dropoff: JSON.stringify({
+                        address: dropoff.address || dropoff.name || '',
+                        name: dropoff.name || dropoff.address || '',
+                        lat: dropLat,
+                        lng: dropLng,
+                        place_id: dropoff.place_id
+                    }),
+                    pickup_location_id: this.pickup_location_id || '',
+                    transfer_datetime: transferDatetime,
+                    transfer_date: this.transfer_date || '',
+                    transfer_time: this.transfer_time || ''
+                };
+
+                this.transfer_quote_loading = true;
+                this.transfer_quote_error = '';
+
+                if (this.quote_xhr) {
+                    this.quote_xhr.abort();
+                    this.quote_xhr = null;
+                }
+
+                var headers = {};
+                var csrf = $('meta[name="csrf-token"]').attr('content');
+                if (csrf) {
+                    headers['X-CSRF-TOKEN'] = csrf;
+                }
+
+                var me = this;
+                this.quote_xhr = $.ajax({
+                    url: this.quote_url,
+                    method: 'POST',
+                    dataType: 'json',
+                    data: requestData,
+                    headers: headers
+                }).done(function (response) {
+                    if (response && response.status && response.data && response.data.quote) {
+                        me.transfer_quote = response.data.quote;
+                        me.transfer_quote_error = '';
+                    } else {
+                        me.transfer_quote = null;
+                        me.transfer_quote_error = response && response.message ? response.message : '';
+                    }
+                }).fail(function (xhr) {
+                    if (xhr && xhr.statusText === 'abort') {
+                        return;
+                    }
+                    me.transfer_quote = null;
+                    if (xhr && xhr.responseJSON && xhr.responseJSON.message) {
+                        me.transfer_quote_error = xhr.responseJSON.message;
+                    } else {
+                        me.transfer_quote_error = '';
+                    }
+                }).always(function () {
+                    me.transfer_quote_loading = false;
+                    me.quote_xhr = null;
+                });
             },
             validate(){
                 this.syncTransferDateState();

@@ -8,6 +8,38 @@
     $transferDatetimeValue = $transfer_datetime_value ?? ($booking_data['transfer_datetime'] ?? '');
     $transferDateValue = '';
     $transferTimeValue = '';
+    $pricingMeta = [
+        'mode' => $row->pricing_mode ?: 'per_km',
+        'price_per_km' => $row->price_per_km,
+        'fixed_price' => $row->fixed_price,
+        'base_fee' => $row->base_fee ?? null,
+    ];
+    $detailPickupLabel = $selectedPickupPayload['name'] ?? ($selectedPickupPayload['address'] ?? '');
+    $detailDropoffLabel = $dropoffData['address'] ?? ($dropoffData['name'] ?? '');
+    $detailDistance = $transfer_distance_km ?? $row->transfer_distance_km;
+    $detailDuration = $row->transfer_duration_min;
+    $detailPricingMode = $row->transfer_pricing_mode;
+    $detailUnitPrice = $row->transfer_unit_price;
+    $detailTotalPrice = $row->calculated_price;
+    $detailBaseFee = $row->transfer_base_fee;
+    if ($detailBaseFee === null && $detailPricingMode === 'fixed') {
+        $detailBaseFee = $detailTotalPrice ?? $detailUnitPrice;
+    }
+    $initialQuote = null;
+    if (!empty($detailPricingMode) && $detailTotalPrice) {
+        $initialQuote = [
+            'price' => $detailTotalPrice,
+            'distance_km' => $detailDistance,
+            'duration_min' => $detailDuration,
+            'pricing_mode' => $detailPricingMode,
+            'unit_price' => $detailUnitPrice,
+            'base_fee' => $detailBaseFee,
+            'pickup' => $selectedPickupPayload,
+            'dropoff' => $dropoffData,
+            'pickup_label' => $detailPickupLabel,
+            'dropoff_label' => $detailDropoffLabel,
+        ];
+    }
     if (!empty($transfer_datetime_display)) {
         $transferDateValue = $transfer_datetime_display->toDateString();
         $transferTimeValue = $transfer_datetime_display->format('H:i');
@@ -27,7 +59,10 @@
         <div id="bravo_car_book_app"
              v-cloak
              class="px-30 py-30 rounded-4 border-light shadow-4 bg-white w-360 lg:w-full"
-             data-datetime-required="{{ __('transfers.form.datetime_required') }}">
+             data-datetime-required="{{ __('transfers.form.datetime_required') }}"
+             data-quote-url="{{ route('car.transfer.quote', $row->id) }}"
+             data-pricing-meta='@json($pricingMeta)'
+             data-initial-quote='@json($initialQuote)'>
             <div class="row y-gap-15 items-center justify-between">
                 <div class="col-auto">
                     <div class="text-14 text-light-1">
@@ -103,67 +138,43 @@
                                 <input type="hidden" class="js-transfer-dropoff-json" value='@json($dropoffData)'>
                             </div>
                         </div>
-                        @php
-                            $detailPickupLabel = $selectedPickupPayload['name'] ?? ($selectedPickupPayload['address'] ?? '');
-                            $detailDropoffLabel = $dropoffData['address'] ?? ($dropoffData['name'] ?? '');
-                            $detailDistance = $transfer_distance_km ?? $row->transfer_distance_km;
-                            $detailPricingMode = $row->transfer_pricing_mode;
-                            $detailUnitPrice = $row->transfer_unit_price;
-                            $detailTotalPrice = $row->calculated_price;
-                            $detailBaseFee = $row->transfer_base_fee;
-                            if ($detailBaseFee === null && $detailPricingMode === 'fixed') {
-                                $detailBaseFee = $detailTotalPrice ?? $detailUnitPrice;
-                            }
-                        @endphp
-                        @if(!empty($detailPricingMode) && $detailTotalPrice)
-                            <div class="col-12">
-                                <div class="px-20 py-15 border-light rounded-4 bg-light">
-                                    <h5 class="text-15 fw-500 mb-15">{{ __('transfers.booking.price_details_title') }}</h5>
-                                    <div class="d-flex justify-between text-13 mb-5">
-                                        <span class="text-muted">{{ __('transfers.booking.price_details_from') }}</span>
-                                        <span class="text-dark-1">{{ $detailPickupLabel ?: '—' }}</span>
-                                    </div>
-                                    <div class="d-flex justify-between text-13 mb-5">
-                                        <span class="text-muted">{{ __('transfers.booking.price_details_to') }}</span>
-                                        <span class="text-dark-1">{{ $detailDropoffLabel ?: '—' }}</span>
-                                    </div>
-                                    <div class="d-flex justify-between text-13 mb-5">
-                                        <span class="text-muted">{{ __('transfers.booking.price_details_distance') }}</span>
-                                        <span class="text-dark-1">
-                                            @if($detailDistance !== null)
-                                                {{ number_format((float)$detailDistance, 2) }} km
-                                            @else
-                                                {{ __('transfers.booking.price_details_not_applicable') }}
-                                            @endif
-                                        </span>
-                                    </div>
-                                    <div class="d-flex justify-between text-13 mb-5">
-                                        <span class="text-muted">{{ __('transfers.booking.price_details_price_per_km') }}</span>
-                                        <span class="text-dark-1">
-                                            @if($detailPricingMode === 'per_km' && $detailUnitPrice)
-                                                {{ format_money($detailUnitPrice) }}<span class="text-11 text-muted">/km</span>
-                                            @else
-                                                {{ __('transfers.booking.price_details_not_applicable') }}
-                                            @endif
-                                        </span>
-                                    </div>
-                                    <div class="d-flex justify-between text-13 mb-5">
-                                        <span class="text-muted">{{ __('transfers.booking.price_details_base_fee') }}</span>
-                                        <span class="text-dark-1">
-                                            @if($detailBaseFee !== null)
-                                                {{ format_money($detailBaseFee) }}
-                                            @else
-                                                {{ __('transfers.booking.price_details_not_applicable') }}
-                                            @endif
-                                        </span>
-                                    </div>
-                                    <div class="d-flex justify-between text-13">
-                                        <span class="text-muted">{{ __('transfers.booking.price_details_total') }}</span>
-                                        <span class="text-dark-1 fw-600">{{ format_money($detailTotalPrice) }}</span>
-                                    </div>
+                        <div class="col-12" v-if="priceDetails">
+                            <div class="px-20 py-15 border-light rounded-4 bg-light">
+                                <h5 class="text-15 fw-500 mb-15">{{ __('transfers.booking.price_details_title') }}</h5>
+                                <div class="d-flex justify-between text-13 mb-5">
+                                    <span class="text-muted">{{ __('transfers.booking.price_details_from') }}</span>
+                                    <span class="text-dark-1">@{{ priceDetails.from || '—' }}</span>
                                 </div>
+                                <div class="d-flex justify-between text-13 mb-5">
+                                    <span class="text-muted">{{ __('transfers.booking.price_details_to') }}</span>
+                                    <span class="text-dark-1">@{{ priceDetails.to || '—' }}</span>
+                                </div>
+                                <div class="d-flex justify-between text-13 mb-5">
+                                    <span class="text-muted">{{ __('transfers.booking.price_details_distance') }}</span>
+                                    <span class="text-dark-1" v-if="priceDetails.distance">@{{ priceDetails.distance }}</span>
+                                    <span class="text-dark-1" v-else>{{ __('transfers.booking.price_details_not_applicable') }}</span>
+                                </div>
+                                <div class="d-flex justify-between text-13 mb-5">
+                                    <span class="text-muted">{{ __('transfers.booking.price_details_price_per_km') }}</span>
+                                    <span class="text-dark-1" v-if="priceDetails.pricePerKm">@{{ priceDetails.pricePerKm }}</span>
+                                    <span class="text-dark-1" v-else>{{ __('transfers.booking.price_details_not_applicable') }}</span>
+                                </div>
+                                <div class="d-flex justify-between text-13 mb-5">
+                                    <span class="text-muted">{{ __('transfers.booking.price_details_base_fee') }}</span>
+                                    <span class="text-dark-1" v-if="priceDetails.baseFee">@{{ priceDetails.baseFee }}</span>
+                                    <span class="text-dark-1" v-else>{{ __('transfers.booking.price_details_not_applicable') }}</span>
+                                </div>
+                                <div class="d-flex justify-between text-13">
+                                    <span class="text-muted">{{ __('transfers.booking.price_details_total') }}</span>
+                                    <span class="text-dark-1 fw-600" v-if="priceDetails.total">@{{ priceDetails.total }}</span>
+                                    <span class="text-dark-1" v-else>{{ __('transfers.booking.price_details_not_applicable') }}</span>
+                                </div>
+                                <div class="text-13 text-muted mt-10" v-if="transfer_quote_loading">{{ __('transfers.booking.price_details_loading') }}</div>
                             </div>
-                        @endif
+                        </div>
+                        <div class="col-12" v-if="transfer_quote_error">
+                            <div class="px-20 py-10 border-light rounded-4 bg-light text-13 text-red-1">@{{ transfer_quote_error }}</div>
+                        </div>
                         <div class="col-md-6">
                             <div class="form-group px-20 py-10 border-light rounded-4">
                                 <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('transfers.form.date_label') }}</h4>
@@ -292,3 +303,8 @@
     </div>
 </div>
 @include("Booking::frontend.global.enquiry-form",['service_type'=>'car'])
+@push('js')
+    @once('transfer-form-script')
+        @include('Car::frontend.layouts.partials.transfer-form-script')
+    @endonce
+@endpush

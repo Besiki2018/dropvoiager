@@ -234,6 +234,124 @@ class CarController extends Controller
         return $this->sendSuccess(['data' => $locations]);
     }
 
+    public function quote(Request $request, Car $car)
+    {
+        if ($car->status !== 'publish') {
+            return $this->sendError(__('transfers.booking.price_details_unavailable'), [], 404);
+        }
+
+        $pickupPayload = $request->input('pickup');
+        if (is_string($pickupPayload)) {
+            $decodedPickup = json_decode($pickupPayload, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $pickupPayload = $decodedPickup;
+            }
+        }
+        if (!is_array($pickupPayload)) {
+            $pickupPayload = [];
+        }
+
+        $pickupLocationId = $request->input('pickup_location_id') ?? Arr::get($pickupPayload, 'id');
+        $pickupLocation = null;
+        if ($pickupLocationId) {
+            $pickupLocation = $car->pickupLocations()
+                ->where('id', $pickupLocationId)
+                ->where('is_active', true)
+                ->first();
+            if ($pickupLocation) {
+                $pickupPayload = array_merge($pickupLocation->toFrontendArray(), $pickupPayload);
+                $pickupPayload['source'] = Arr::get($pickupPayload, 'source', 'backend');
+            }
+        }
+
+        $pickupLat = Arr::get($pickupPayload, 'lat');
+        $pickupLng = Arr::get($pickupPayload, 'lng');
+        if (!is_numeric($pickupLat) || !is_numeric($pickupLng)) {
+            return $this->sendError(__('transfers.form.pickup_coordinates_required'), [], 422);
+        }
+
+        $dropoff = $request->input('dropoff', []);
+        if (is_string($dropoff)) {
+            $decodedDropoff = json_decode($dropoff, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $dropoff = $decodedDropoff;
+            }
+        }
+        if (!is_array($dropoff)) {
+            $dropoff = [];
+        }
+
+        $dropoffLat = Arr::get($dropoff, 'lat');
+        $dropoffLng = Arr::get($dropoff, 'lng');
+        $dropoffPlaceId = Arr::get($dropoff, 'place_id');
+        if (!is_numeric($dropoffLat) || !is_numeric($dropoffLng) || empty($dropoffPlaceId)) {
+            return $this->sendError(__('transfers.form.dropoff_coordinates_required'), [], 422);
+        }
+
+        $transferDatetime = $request->input('transfer_datetime');
+        $transferDate = null;
+        if ($transferDatetime) {
+            try {
+                $transferDate = Carbon::parse($transferDatetime, 'Asia/Tbilisi')->setTimezone('Asia/Tbilisi')->toDateString();
+            } catch (\Exception $exception) {
+                $transferDate = null;
+            }
+        } elseif ($request->filled('transfer_date') && $request->filled('transfer_time')) {
+            try {
+                $transferDatetime = Carbon::parse($request->input('transfer_date') . ' ' . $request->input('transfer_time'), 'Asia/Tbilisi')
+                    ->setTimezone('Asia/Tbilisi')
+                    ->toIso8601String();
+                $transferDate = Carbon::parse($transferDatetime, 'Asia/Tbilisi')->setTimezone('Asia/Tbilisi')->toDateString();
+            } catch (\Exception $exception) {
+                $transferDatetime = null;
+                $transferDate = null;
+            }
+        }
+
+        $car->clearTransferContext();
+
+        $applied = $car->applyTransferContext(
+            $pickupLocation,
+            array_merge($pickupPayload, [
+                'lat' => (float) $pickupLat,
+                'lng' => (float) $pickupLng,
+            ]),
+            array_merge($dropoff, [
+                'lat' => (float) $dropoffLat,
+                'lng' => (float) $dropoffLng,
+            ]),
+            null,
+            null,
+            $transferDate,
+            $transferDatetime
+        );
+
+        if (!$applied) {
+            return $this->sendError(__('transfers.booking.price_details_unavailable'), [], 422);
+        }
+
+        $quote = [
+            'price' => $car->calculated_price,
+            'distance_km' => $car->transfer_distance_km,
+            'duration_min' => $car->transfer_duration_min,
+            'pricing_mode' => $car->transfer_pricing_mode,
+            'unit_price' => $car->transfer_unit_price,
+            'base_fee' => $car->transfer_base_fee,
+            'pickup' => $car->transfer_pickup,
+            'dropoff' => $car->transfer_dropoff,
+            'pickup_label' => $car->transfer_pickup_name,
+            'dropoff_label' => $car->transfer_dropoff_name,
+            'price_formatted' => $car->calculated_price !== null ? format_money($car->calculated_price) : null,
+            'unit_price_formatted' => $car->transfer_unit_price !== null ? format_money($car->transfer_unit_price) : null,
+            'base_fee_formatted' => $car->transfer_base_fee !== null ? format_money($car->transfer_base_fee) : null,
+            'distance_formatted' => $car->transfer_distance_km !== null ? number_format((float) $car->transfer_distance_km, 2) . ' km' : null,
+        ];
+
+        return $this->sendSuccess([
+            'quote' => $quote,
+        ]);
+    }
+
     public function detail(Request $request, $slug)
     {
         $row = $this->carClass::where('slug', $slug)->with(['location','translation','hasWishList','pickupLocations.car'])->first();
