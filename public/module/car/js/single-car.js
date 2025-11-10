@@ -9,6 +9,9 @@
             pickup_location:null,
             dropoff:{},
             transfer_datetime:'',
+            transfer_date:'',
+            transfer_time:'',
+            datetime_required_message:'',
             message:{
                 content:'',
                 type:false
@@ -20,7 +23,6 @@
             start_date_html:'',
 
             step:1,
-            start_date_obj:'',
             allEvents:[],
             number:0,
             max_number:1,
@@ -44,6 +46,18 @@
             },
             start_date(){
                 this.step = 1;
+            },
+            transfer_date:function (value) {
+                this.syncTransferDateState();
+                if (value && typeof moment !== 'undefined') {
+                    var day = moment(value, 'YYYY-MM-DD', true);
+                    if (day.isValid()) {
+                        this.fetchEvents(day, day);
+                    }
+                }
+            },
+            transfer_time:function () {
+                this.syncTransferDateState();
             },
             number:function () {
                 var me = this;
@@ -228,73 +242,32 @@
                     }
                 } catch (err) {}
             }
-            var options = {
-                // singleDatePicker: true,
-                showCalendar: false,
-                sameDate: true,
-                autoApply           : true,
-                disabledPast        : true,
-                dateFormat          : bookingCore.date_format,
-                enableLoading       : true,
-                showEventTooltip    : true,
-                classNotAvailable   : ['disabled', 'off'],
-                disableHightLight: true,
-                minDate:this.minDate,
-                opens: bookingCore.rtl ? 'right':'left',
-                locale:{
-                    direction: bookingCore.rtl ? 'rtl':'ltr',
-                    firstDay:daterangepickerLocale.first_day_of_week
-                },
-                isInvalidDate:function (date) {
-                    for(var k = 0 ; k < me.allEvents.length ; k++){
-                        var item = me.allEvents[k];
-                        if(item.start == date.format('YYYY-MM-DD')){
-                            return item.active ? false : true;
-                        }
-                    }
-                    return false;
-                },
-                addClassCustom:function (date) {
-                    for(var k = 0 ; k < me.allEvents.length ; k++){
-                        var item = me.allEvents[k];
-                        if(item.start == date.format('YYYY-MM-DD') && item.classNames !== undefined){
-                            var class_names = "";
-                            for(var i = 0 ; i < item.classNames.length ; i++){
-                                var classItem = item.classNames[i];
-                                class_names += " "+classItem;
-                            }
-                            return class_names;
-                        }
-                    }
-                    return "";
-                }
-            };
-
-            if (typeof  daterangepickerLocale == 'object') {
-                options.locale = _.merge(daterangepickerLocale,options.locale);
+            var dateField = $root.find('.js-transfer-date');
+            if (dateField.length) {
+                this.transfer_date = dateField.val() || '';
             }
-
-            this.$nextTick(function () {
-
-                $(this.$refs.start_date).daterangepicker(options).on('apply.daterangepicker',
-                    function (ev, picker) {
-                        me.start_date = picker.startDate.format('YYYY-MM-DD');
-                        me.end_date = picker.endDate.format('YYYY-MM-DD');
-                        me.start_date_html = picker.startDate.format(bookingCore.date_format) +' <i class="fa fa-long-arrow-right" style="font-size: inherit"></i> '+ picker.endDate.format(bookingCore.date_format);
-                        for(var k = 0 ; k < me.allEvents.length ; k++){
-                            var item = me.allEvents[k];
-                            if(item.start === picker.endDate.format('YYYY-MM-DD')){
-                                me.max_number =  item.number;
-                            }
-                        }
-                    })
-                    .on('update-calendar',function (e,obj) {
-                        me.fetchEvents(obj.leftCalendar.calendar[0][0], obj.rightCalendar.calendar[5][6])
-                    });
-            })
+            var timeField = $root.find('.js-transfer-time');
+            if (timeField.length) {
+                this.transfer_time = timeField.val() || '';
+            }
+            var datetimeMessage = $root.data('datetimeRequired');
+            if (datetimeMessage) {
+                this.datetime_required_message = datetimeMessage;
+            }
+            this.syncTransferDateState();
         },
         methods:{
             handleTotalPrice:function() {
+            },
+            syncTransferDateState:function () {
+                var date = this.transfer_date || '';
+                this.start_date = date;
+                this.end_date = date;
+                if (date && typeof moment !== 'undefined') {
+                    this.start_date_html = moment(date, 'YYYY-MM-DD').format(bookingCore.date_format);
+                } else {
+                    this.start_date_html = date ? date : '';
+                }
             },
             fetchEvents(start,end){
                 var me = this;
@@ -315,11 +288,24 @@
                     },
                     success:function (json) {
                         me.allEvents = json;
-                        var drp = $(me.$refs.start_date).data('daterangepicker');
-                        drp.allEvents = json;
-                        drp.renderCalendar('left');
-                        if (!drp.singleDatePicker) {
-                            drp.renderCalendar('right');
+                        if (me.transfer_date) {
+                            for (var idx = 0; idx < json.length; idx++) {
+                                var availability = json[idx];
+                                if (availability.start === me.transfer_date && typeof availability.number !== 'undefined') {
+                                    me.max_number = availability.number;
+                                    break;
+                                }
+                            }
+                        }
+                        if (me.$refs && me.$refs.start_date) {
+                            var drp = $(me.$refs.start_date).data('daterangepicker');
+                            if (drp) {
+                                drp.allEvents = json;
+                                drp.renderCalendar('left');
+                                if (!drp.singleDatePicker) {
+                                    drp.renderCalendar('right');
+                                }
+                            }
                         }
                         $('.daterangepicker').removeClass("loading");
                     },
@@ -333,15 +319,16 @@
                 return window.bravo_format_money(m);
             },
             validate(){
-                if(!this.start_date || !this.end_date)
+                this.syncTransferDateState();
+                if(!this.transfer_date || !this.transfer_time)
                 {
-                                        this.message.status = false;
-                    this.message.content = bravo_booking_i18n.no_date_select;
+                    this.message.status = false;
+                    this.message.content = this.datetime_required_message || bravo_booking_i18n.no_date_select;
                     return false;
                 }
                 if(!this.number )
                 {
-                                        this.message.status = false;
+                    this.message.status = false;
                     this.message.content = bravo_booking_i18n.no_guest_select;
                     return false;
                 }
@@ -548,9 +535,6 @@
                 }
                 return true;
             },
-            openStartDate(){
-                $(this.$refs.start_date).trigger('click');
-            }
         }
 
     });

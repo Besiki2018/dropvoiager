@@ -12,6 +12,10 @@ return [
         'to_label' => 'Drop-off location',
         'to_placeholder' => 'Enter a drop-off address',
         'dropoff_coordinates_required' => 'Please enter a valid drop-off address.',
+        'date_label' => 'Travel date',
+        'time_label' => 'Travel time',
+        'search_button' => 'Search',
+        'datetime_required' => 'Please choose a transfer date and time.',
     ],
     'search' => [
         'route_summary' => 'Route: :from → :to',

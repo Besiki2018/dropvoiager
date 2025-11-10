@@ -113,15 +113,9 @@
             <input type="hidden" name="pickup" class="js-transfer-pickup-json" value='@json($selectedPickupPayload)'>
             <input type="hidden" name="dropoff" class="js-transfer-dropoff-json" value='@json($dropoffData)'>
 
-            <div class="col-12 px-30 lg:py-20 lg:px-0">
-                <div class="transfer-map-wrapper js-transfer-map-wrapper mt-10 rounded-4 overflow-hidden" style="display: none;">
-                    <div class="js-transfer-map" style="height: 260px;"></div>
-                </div>
-            </div>
-
             <div class="col-lg-3 align-self-center px-30 lg:py-20 lg:px-0">
                 <div class="searchMenu-date item">
-                    <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('Date') }}</h4>
+                    <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('transfers.form.date_label') }}</h4>
                     <div class="text-15 text-light-1 ls-2 lh-16">
                         <input type="date" name="transfer_date" class="form-control js-transfer-date" value="{{ $transferDate }}">
                     </div>
@@ -129,7 +123,7 @@
             </div>
             <div class="col-lg-3 align-self-center px-30 lg:py-20 lg:px-0">
                 <div class="searchMenu-date item">
-                    <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('Time') }}</h4>
+                    <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('transfers.form.time_label') }}</h4>
                     <div class="text-15 text-light-1 ls-2 lh-16">
                         <input type="time" name="transfer_time" class="form-control js-transfer-time" value="{{ $transferTime }}">
                     </div>
@@ -163,7 +157,7 @@
     <div class="button-item">
         <button class="mainSearch__submit button {{ $button_classes }}" type="submit">
             <i class="icon-search text-20 mr-10"></i>
-            <span class="text-search">{{__("Search")}}</span>
+            <span class="text-search">{{ __('transfers.form.search_button') }}</span>
         </button>
     </div>
 </form>
