@@ -107,26 +107,41 @@
             priceSummary:function () {
                 var quote = this.transfer_quote || null;
                 var meta = this.pricing_meta || {};
-                var priceValue = null;
-                var distanceValue = null;
+                var priceNumeric = null;
+                var priceDisplay = null;
+                var distanceNumeric = null;
+                var distanceDisplay = null;
 
-                if (quote && typeof quote.price === 'number') {
-                    priceValue = quote.price;
-                } else if (meta && meta.mode === 'fixed' && typeof meta.fixed_price === 'number') {
-                    priceValue = meta.fixed_price;
+                if (quote) {
+                    priceNumeric = this.toNumeric(quote.price);
+                    if (priceNumeric === null && quote.price_formatted) {
+                        priceDisplay = quote.price_formatted;
+                    }
+                    distanceNumeric = this.toNumeric(quote.distance_km);
+                    if (distanceNumeric === null && quote.distance_formatted) {
+                        distanceDisplay = quote.distance_formatted;
+                    }
                 }
 
-                if (quote && typeof quote.distance_km === 'number') {
-                    distanceValue = quote.distance_km;
+                if (priceNumeric === null && priceDisplay === null && meta && meta.mode === 'fixed') {
+                    priceNumeric = this.toNumeric(meta.fixed_price);
                 }
 
-                if (priceValue === null) {
+                if (priceNumeric === null && priceDisplay === null) {
                     return null;
                 }
 
+                if (priceDisplay === null && priceNumeric !== null) {
+                    priceDisplay = this.formatMoney(priceNumeric);
+                }
+
+                if (distanceDisplay === null && distanceNumeric !== null) {
+                    distanceDisplay = this.formatDistance(distanceNumeric);
+                }
+
                 return {
-                    total: this.formatMoney(priceValue),
-                    distance: distanceValue !== null ? this.formatDistance(distanceValue) : null
+                    total: priceDisplay,
+                    distance: distanceDisplay
                 };
             },
             total_price:function(){
@@ -406,8 +421,8 @@
                 return window.bravo_format_money(m);
             },
             formatDistance:function (km) {
-                var value = parseFloat(km);
-                if (isNaN(value)) {
+                var value = this.toNumeric(km);
+                if (value === null) {
                     return null;
                 }
                 return value.toFixed(2) + ' km';
@@ -505,6 +520,16 @@
                     me.transfer_quote_loading = false;
                     me.quote_xhr = null;
                 });
+            },
+            toNumeric:function (value) {
+                if (value === null || typeof value === 'undefined' || value === '') {
+                    return null;
+                }
+                if (typeof value === 'number') {
+                    return isFinite(value) ? value : null;
+                }
+                var parsed = parseFloat(value);
+                return isNaN(parsed) ? null : parsed;
             },
             validate(){
                 this.syncTransferDateState();
@@ -604,8 +629,11 @@
                         extra_price:this.extra_price,
                         number:this.number,
                         pickup_location_id:this.pickup_location_id,
+                        pickup:this.pickup_location ? JSON.stringify(this.pickup_location) : '',
                         dropoff:this.dropoff,
                         transfer_datetime:this.transfer_datetime,
+                        transfer_date:this.transfer_date,
+                        transfer_time:this.transfer_time,
                     },
                     dataType:'json',
                     type:'post',

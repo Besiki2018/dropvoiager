@@ -270,16 +270,24 @@
                         <div class="col-12" v-if="html">
                             <div v-html="html"></div>
                         </div>
-                        <div class="col-12" v-if="priceSummary">
+                        <div class="col-12" v-if="transfer_quote_loading || transfer_quote_error || priceSummary">
                             <div class="px-20 py-15 border-light rounded-4 bg-light">
-                                <div class="d-flex justify-between text-15 mb-5" v-if="priceSummary.distance">
-                                    <span class="text-muted">{{ __('transfers.booking.price_details_distance') }}</span>
-                                    <span class="text-dark-1 fw-500">@{{ priceSummary.distance }}</span>
-                                </div>
-                                <div class="d-flex justify-between text-18">
-                                    <span class="text-muted">{{ __('transfers.booking.price_details_total') }}</span>
-                                    <span class="text-dark-1 fw-600">@{{ priceSummary.total }}</span>
-                                </div>
+                                <template v-if="transfer_quote_loading">
+                                    <div class="text-13 text-muted">{{ __('transfers.booking.price_details_loading') }}</div>
+                                </template>
+                                <template v-else-if="transfer_quote_error">
+                                    <div class="text-13 text-red-1" role="alert" v-text="transfer_quote_error"></div>
+                                </template>
+                                <template v-else-if="priceSummary">
+                                    <div class="d-flex justify-between text-15 mb-5" v-if="priceSummary.distance">
+                                        <span class="text-muted">{{ __('transfers.booking.price_details_distance') }}</span>
+                                        <span class="text-dark-1 fw-500">@{{ priceSummary.distance }}</span>
+                                    </div>
+                                    <div class="d-flex justify-between text-18">
+                                        <span class="text-muted">{{ __('transfers.booking.price_details_total') }}</span>
+                                        <span class="text-dark-1 fw-600" v-html="priceSummary.total"></span>
+                                    </div>
+                                </template>
                             </div>
                         </div>
                         <div class="col-12">
