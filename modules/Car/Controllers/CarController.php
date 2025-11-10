@@ -141,7 +141,6 @@ class CarController extends Controller
                 ]
             ]);
         }
-        $transferRoutes = TransferRoute::published()->orderBy('sort_order')->orderBy('pickup_name')->get();
         $data = [
             'rows'               => $list,
             'list_location'      => $this->locationClass::where('status', 'publish')->limit(1000)->with(['translation'])->get()->toTree(),
