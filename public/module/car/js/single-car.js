@@ -19,6 +19,8 @@
             quote_xhr:null,
             is_initialising:true,
             datetime_required_message:'',
+            pending_quote_refresh:false,
+            quote_refresh_timer:null,
             fieldErrors:{
                 pickup:'',
                 dropoff:'',
@@ -75,18 +77,14 @@
                         this.fetchEvents(day, day);
                     }
                 }
-                if (!this.is_initialising) {
-                    this.refreshTransferQuote();
-                }
+                this.handleTransferFieldChange();
             },
             transfer_time:function () {
                 this.syncTransferDateState();
                 if (this.transfer_date && this.transfer_time) {
                     this.setFieldError('datetime', '');
                 }
-                if (!this.is_initialising) {
-                    this.refreshTransferQuote();
-                }
+                this.handleTransferFieldChange();
             },
             number:function (value) {
                 if (this.suppressPassengerWatch) {
@@ -107,27 +105,19 @@
                     return;
                 }
                 this.setFieldError('passengers', '');
-                if (!this.is_initialising) {
-                    this.refreshTransferQuote();
-                }
+                this.handleTransferFieldChange();
             },
             pickup_location:{
                 handler:function () {
-                    if (this.is_initialising) {
-                        return;
-                    }
                     this.setFieldError('pickup', '');
-                    this.refreshTransferQuote();
+                    this.handleTransferFieldChange();
                 },
                 deep:true
             },
             dropoff:{
                 handler:function () {
-                    if (this.is_initialising) {
-                        return;
-                    }
                     this.setFieldError('dropoff', '');
-                    this.refreshTransferQuote();
+                    this.handleTransferFieldChange();
                 },
                 deep:true
             }
@@ -357,9 +347,7 @@
                 if (context.dropoff) {
                     me.dropoff = context.dropoff;
                 }
-                if (!me.is_initialising) {
-                    me.refreshTransferQuote();
-                }
+                me.handleTransferFieldChange();
             });
             $root.on('transfer:date-changed', function (event, isoDate) {
                 var value = isoDate || '';
@@ -400,11 +388,25 @@
             }
             this.syncTransferDateState();
             this.is_initialising = false;
-            if (!this.transfer_quote && this.dropoff && this.dropoff.place_id) {
-                this.refreshTransferQuote();
+            if (this.pending_quote_refresh) {
+                this.pending_quote_refresh = false;
+                this.queueQuoteRefresh(50);
+            } else {
+                this.queueQuoteRefresh(50);
             }
         },
+        beforeDestroy:function () {
+            this.cancelQuoteRequest();
+        },
         methods:{
+            handleTransferFieldChange:function () {
+                if (this.is_initialising) {
+                    this.pending_quote_refresh = true;
+                    return;
+                }
+                this.pending_quote_refresh = false;
+                this.queueQuoteRefresh();
+            },
             setFieldError:function (field, message) {
                 if (!this.fieldErrors || typeof field === 'undefined') {
                     return;
@@ -512,32 +514,66 @@
                 }
                 return value.toFixed(2) + ' km';
             },
+            shouldRequestQuote:function () {
+                var pickup = this.pickup_location || {};
+                var dropoff = this.dropoff || {};
+                var pickupLat = parseFloat(pickup.lat);
+                var pickupLng = parseFloat(pickup.lng);
+                var dropLat = parseFloat(dropoff.lat);
+                var dropLng = parseFloat(dropoff.lng);
+                if (isNaN(pickupLat) || isNaN(pickupLng)) {
+                    return false;
+                }
+                if (!dropoff.place_id || isNaN(dropLat) || isNaN(dropLng)) {
+                    return false;
+                }
+                return true;
+            },
+            queueQuoteRefresh:function (delay) {
+                var me = this;
+                var wait = typeof delay === 'number' ? delay : 200;
+                if (!this.shouldRequestQuote()) {
+                    this.cancelQuoteRequest();
+                    this.transfer_quote = null;
+                    this.transfer_quote_loading = false;
+                    this.transfer_quote_error = '';
+                    return;
+                }
+                if (this.quote_refresh_timer) {
+                    window.clearTimeout(this.quote_refresh_timer);
+                    this.quote_refresh_timer = null;
+                }
+                this.quote_refresh_timer = window.setTimeout(function () {
+                    me.quote_refresh_timer = null;
+                    me.refreshTransferQuote();
+                }, wait);
+            },
+            cancelQuoteRequest:function () {
+                if (this.quote_refresh_timer) {
+                    window.clearTimeout(this.quote_refresh_timer);
+                    this.quote_refresh_timer = null;
+                }
+                if (this.quote_xhr) {
+                    this.quote_xhr.abort();
+                    this.quote_xhr = null;
+                }
+            },
             refreshTransferQuote:function () {
                 if (!this.quote_url) {
                     return;
                 }
-                var dropoff = this.dropoff || {};
-                var dropLat = parseFloat(dropoff.lat);
-                var dropLng = parseFloat(dropoff.lng);
-                if (!dropoff.place_id || isNaN(dropLat) || isNaN(dropLng)) {
+                if (!this.shouldRequestQuote()) {
                     this.transfer_quote = null;
                     this.transfer_quote_error = '';
-                    if (this.quote_xhr) {
-                        this.quote_xhr.abort();
-                        this.quote_xhr = null;
-                    }
                     this.transfer_quote_loading = false;
                     return;
                 }
 
+                var dropoff = this.dropoff || {};
+                var dropLat = parseFloat(dropoff.lat);
+                var dropLng = parseFloat(dropoff.lng);
+
                 var pickup = this.pickup_location || {};
-                var pickupLat = parseFloat(pickup.lat);
-                var pickupLng = parseFloat(pickup.lng);
-                if (isNaN(pickupLat) || isNaN(pickupLng)) {
-                    this.transfer_quote = null;
-                    this.transfer_quote_error = '';
-                    return;
-                }
 
                 var passengerCount = this.getPassengerCount();
 
@@ -568,10 +604,7 @@
                 this.transfer_quote_loading = true;
                 this.transfer_quote_error = '';
 
-                if (this.quote_xhr) {
-                    this.quote_xhr.abort();
-                    this.quote_xhr = null;
-                }
+                this.cancelQuoteRequest();
 
                 var headers = {};
                 var csrf = $('meta[name="csrf-token"]').attr('content');
@@ -663,11 +696,6 @@
                 if(!this.dropoff || isNaN(dropLat) || isNaN(dropLng) || !this.dropoff.place_id){
                     this.setFieldError('dropoff', bravo_booking_i18n.dropoff_required || 'Please choose a drop-off location.');
                     isValid = false;
-                }
-                if(!this.dropoff.place_id){
-                    this.message.status = false;
-                    this.message.content = bravo_booking_i18n.dropoff_required || 'Please choose a drop-off location.';
-                    return false;
                 }
 
                 if (this.transfer_quote_error) {

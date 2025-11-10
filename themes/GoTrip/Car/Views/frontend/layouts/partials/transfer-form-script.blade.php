@@ -44,14 +44,24 @@
             var dropoffPlaceId = $form.find('.js-transfer-dropoff-place-id').first();
             var dateInput = $form.find('.js-transfer-date').first();
             var dateDisplay = $form.find('.js-transfer-date-display').first();
+            var dateError = $form.find('.js-transfer-date-error').first();
             var timeInput = $form.find('.js-transfer-time').first();
             var datetimeInput = $form.find('.js-transfer-datetime').first();
+            var suppressManualDateCheck = false;
 
             var fetchUrl = pickupSelect.data('fetch-url');
             var defaultOptionLabel = pickupSelect.data('default-label') || pickupSelect.find('option').first().text() || '';
             var pickupFetchLoaded = false;
             var suppressDropoffInput = false;
             var suppressDateSync = false;
+
+            function setDateError(message) {
+                if (dateError.length) {
+                    dateError.toggleClass('d-none', !message);
+                    dateError.text(message || '');
+                }
+                $form.trigger('transfer:date-error', message || '');
+            }
 
             function emitTransferUpdate() {
                 var context = {
@@ -92,8 +102,11 @@
                             displayValue = isoValue;
                         }
                     }
+                    suppressManualDateCheck = true;
                     dateDisplay.val(displayValue);
+                    suppressManualDateCheck = false;
                 }
+                setDateError('');
                 if (!options.silent) {
                     $form.trigger('transfer:date-changed', isoValue);
                 }
@@ -389,6 +402,36 @@
             }
             updateDatetimeValue();
 
+            function handleManualDateInput() {
+                if (!dateDisplay.length || suppressManualDateCheck) {
+                    return;
+                }
+                if (dateDisplay.prop('readonly')) {
+                    return;
+                }
+                var rawValue = dateDisplay.val();
+                if (!rawValue) {
+                    setDateValue('', {silent: true});
+                    setDateError('');
+                    return;
+                }
+                if (typeof moment === 'undefined') {
+                    setDateError('');
+                    return;
+                }
+                var parsed = moment(rawValue, getDateDisplayFormat(), true);
+                if (parsed.isValid()) {
+                    setDateError('');
+                    setDateValue(parsed.format('YYYY-MM-DD'));
+                    updateDatetimeValue();
+                } else {
+                    var invalidMessage = dateDisplay.data('invalid-message') || '{{ __('transfers.form.date_invalid') }}';
+                    setDateError(invalidMessage);
+                    setDateValue('', {silent: true});
+                    updateDatetimeValue();
+                }
+            }
+
             function setupDropoffAutocomplete() {
                 if (!dropoffDisplay.length || dropoffDisplay.data('autocomplete-bound')) {
                     return;
@@ -454,6 +497,10 @@
             var initialDropoff = parseJsonValue(dropoffJsonInput.val());
             if (initialDropoff) {
                 setDropoffPayload(initialDropoff, {preserveDisplay: false});
+            }
+
+            if (dateDisplay.length) {
+                dateDisplay.on('input change blur', handleManualDateInput);
             }
 
             emitTransferUpdate();
