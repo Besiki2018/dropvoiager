@@ -664,6 +664,11 @@
                     this.setFieldError('dropoff', bravo_booking_i18n.dropoff_required || 'Please choose a drop-off location.');
                     isValid = false;
                 }
+                if(!this.dropoff.place_id){
+                    this.message.status = false;
+                    this.message.content = bravo_booking_i18n.dropoff_required || 'Please choose a drop-off location.';
+                    return false;
+                }
 
                 if (this.transfer_quote_error) {
                     this.setFieldError('dropoff', this.transfer_quote_error);
@@ -692,6 +697,9 @@
 
                 var $root = $(this.$el);
                 this.pickup_location_id = $root.find('.js-transfer-pickup').val();
+                if (this.pickup_location_id === '__mylocation__') {
+                    this.pickup_location_id = '';
+                }
                 var pickupPayload = $root.find('.js-transfer-pickup-payload').val();
                 if (pickupPayload) {
                     try {

@@ -124,6 +124,7 @@
                                         name="pickup_location_id"
                                         data-default-label="{{ __('transfers.form.select_pickup_option') }}">
                                     <option value="">{{ __('transfers.form.select_pickup_option') }}</option>
+                                    <option value="__mylocation__" data-source="mylocation">{{ __('transfers.form.use_my_location') }}</option>
                                     @foreach($pickupLocations as $location)
                                         @php
                                             $payload = $location->toFrontendArray();
@@ -159,6 +160,12 @@
                                 <div class="text-13 text-red-1 mt-10" v-if="fieldErrors.dropoff" v-text="fieldErrors.dropoff"></div>
                             </div>
                         </div>
+                        <div class="col-12" v-if="transfer_quote_loading">
+                            <div class="px-20 py-10 border-light rounded-4 bg-light text-13 text-muted">{{ __('transfers.booking.price_details_loading') }}</div>
+                        </div>
+                        <div class="col-12" v-if="transfer_quote_error">
+                            <div class="px-20 py-10 border-light rounded-4 bg-light text-13 text-red-1">@{{ transfer_quote_error }}</div>
+                        </div>
                         <div class="col-md-6">
                             <div class="form-group px-20 py-10 border-light rounded-4 js-transfer-date-field" data-display-format="{{ get_moment_date_format() }}">
                                 <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('transfers.form.date_label') }}</h4>
@@ -180,6 +187,9 @@
                                 <div class="text-13 text-red-1 mt-5 js-transfer-date-error d-none"></div>
                                 <div class="text-13 text-red-1 mt-5" v-if="fieldErrors.datetime" v-text="fieldErrors.datetime"></div>
                             </div>
+                        </div>
+                        <div class="col-12" v-if="transfer_quote_error">
+                            <div class="px-20 py-10 border-light rounded-4 bg-light text-13 text-red-1">@{{ transfer_quote_error }}</div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-group px-20 py-10 border-light rounded-4">
