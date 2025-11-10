@@ -11,23 +11,25 @@ class CarPickupLocation extends Model
     protected $fillable = [
         'car_id',
         'name',
-        'address',
         'lat',
         'lng',
-        'base_price',
-        'price_coefficient',
+        'is_active',
     ];
 
     protected $casts = [
         'lat' => 'float',
         'lng' => 'float',
-        'base_price' => 'float',
-        'price_coefficient' => 'float',
+        'is_active' => 'boolean',
     ];
 
     public function car()
     {
         return $this->belongsTo(Car::class, 'car_id');
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
     }
 
     public function toFrontendArray(): array
@@ -36,11 +38,9 @@ class CarPickupLocation extends Model
             'id' => $this->id,
             'car_id' => $this->car_id,
             'name' => $this->name,
-            'address' => $this->address,
             'lat' => $this->lat,
             'lng' => $this->lng,
-            'base_price' => $this->base_price,
-            'price_coefficient' => $this->price_coefficient,
+            'is_active' => $this->is_active,
         ];
     }
 }
