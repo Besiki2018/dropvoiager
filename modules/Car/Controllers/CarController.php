@@ -119,8 +119,12 @@ class CarController extends Controller
             $metrics = $this->carClass::resolveRouteMetrics($pickupPayload, $dropoff);
             $transferDistanceKm = $metrics['distance_km'];
             $transferDurationMin = $metrics['duration_min'];
+            $passengers = (int) ($input['passengers'] ?? $input['number'] ?? $input['adults'] ?? 1);
+            if ($passengers < 1) {
+                $passengers = 1;
+            }
             $rows = $query->get();
-            $filtered = $rows->filter(function ($car) use ($selectedPickupLocation, $pickupLocationId, $pickupPayload, $dropoff, $transferDistanceKm, $transferDurationMin, $transferDate, $transferDatetime) {
+            $filtered = $rows->filter(function ($car) use ($selectedPickupLocation, $pickupLocationId, $pickupPayload, $dropoff, $transferDistanceKm, $transferDurationMin, $transferDate, $transferDatetime, $passengers) {
                 $pickupLocation = null;
                 if ($selectedPickupLocation && $selectedPickupLocation->car_id === $car->id) {
                     $pickupLocation = $selectedPickupLocation;
@@ -135,7 +139,8 @@ class CarController extends Controller
                     $transferDistanceKm,
                     $transferDurationMin,
                     $transferDate,
-                    $transferDatetime
+                    $transferDatetime,
+                    $passengers
                 );
             })->values();
             $currentPage = LengthAwarePaginator::resolveCurrentPage();
@@ -240,6 +245,15 @@ class CarController extends Controller
             return $this->sendError(__('transfers.booking.price_details_unavailable'), [], 404);
         }
 
+        $passengers = (int) $request->input('passengers', 1);
+        if ($passengers < 1) {
+            $passengers = 1;
+        }
+        $maxPassengers = (int) ($car->number ?? 0);
+        if ($maxPassengers > 0 && $passengers > $maxPassengers) {
+            $passengers = $maxPassengers;
+        }
+
         $pickupPayload = $request->input('pickup');
         if (is_string($pickupPayload)) {
             $decodedPickup = json_decode($pickupPayload, true);
@@ -323,25 +337,33 @@ class CarController extends Controller
             null,
             null,
             $transferDate,
-            $transferDatetime
+            $transferDatetime,
+            $passengers
         );
 
         if (!$applied) {
             return $this->sendError(__('transfers.booking.price_details_unavailable'), [], 422);
         }
 
+        $totalPrice = $car->calculated_price;
+        $singlePrice = $car->transfer_price_single;
         $quote = [
-            'price' => $car->calculated_price,
+            'price' => $totalPrice,
+            'total_price' => $totalPrice,
+            'price_single' => $singlePrice,
             'distance_km' => $car->transfer_distance_km,
             'duration_min' => $car->transfer_duration_min,
             'pricing_mode' => $car->transfer_pricing_mode,
             'unit_price' => $car->transfer_unit_price,
             'base_fee' => $car->transfer_base_fee,
+            'passengers' => $car->transfer_passengers,
             'pickup' => $car->transfer_pickup,
             'dropoff' => $car->transfer_dropoff,
             'pickup_label' => $car->transfer_pickup_name,
             'dropoff_label' => $car->transfer_dropoff_name,
-            'price_formatted' => $car->calculated_price !== null ? format_money($car->calculated_price) : null,
+            'price_formatted' => $totalPrice !== null ? format_money($totalPrice) : null,
+            'total_price_formatted' => $totalPrice !== null ? format_money($totalPrice) : null,
+            'price_single_formatted' => $singlePrice !== null ? format_money($singlePrice) : null,
             'unit_price_formatted' => $car->transfer_unit_price !== null ? format_money($car->transfer_unit_price) : null,
             'base_fee_formatted' => $car->transfer_base_fee !== null ? format_money($car->transfer_base_fee) : null,
             'distance_formatted' => $car->transfer_distance_km !== null ? number_format((float) $car->transfer_distance_km, 2) . ' km' : null,
@@ -415,6 +437,10 @@ class CarController extends Controller
         $pickupLng = isset($pickupPayload['lng']) && is_numeric($pickupPayload['lng']) ? (float) $pickupPayload['lng'] : null;
         $dropoffLat = isset($dropoff['lat']) && is_numeric($dropoff['lat']) ? (float) $dropoff['lat'] : null;
         $dropoffLng = isset($dropoff['lng']) && is_numeric($dropoff['lng']) ? (float) $dropoff['lng'] : null;
+        $passengers = (int) $request->input('number', 1);
+        if ($passengers < 1) {
+            $passengers = 1;
+        }
         if ($pickupLat !== null && $pickupLng !== null && $dropoffLat !== null && $dropoffLng !== null) {
             $metrics = $this->carClass::resolveRouteMetrics(array_merge($pickupPayload, ['lat' => $pickupLat, 'lng' => $pickupLng]), $dropoff);
             $routePickupLocation = $selectedPickupLocation && $selectedPickupLocation->car_id === $row->id ? $selectedPickupLocation : null;
@@ -425,7 +451,8 @@ class CarController extends Controller
                 $metrics['distance_km'],
                 $metrics['duration_min'],
                 $transferDate,
-                $transferDatetimeRaw
+                $transferDatetimeRaw,
+                $passengers
             );
         }
 

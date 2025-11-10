@@ -90,6 +90,7 @@ class Car extends Bookable
     protected $tmp_dates = [];
     protected array $transferContext = [
         'price' => null,
+        'price_single' => null,
         'route_distance' => null,
         'route_duration' => null,
         'pickup_location' => null,
@@ -99,6 +100,7 @@ class Car extends Bookable
         'pricing_mode' => null,
         'unit_price' => null,
         'base_fee' => null,
+        'passengers' => 1,
     ];
 
     public function __construct(array $attributes = [])
@@ -232,7 +234,11 @@ class Car extends Bookable
         $extra_price = [];
         $number = $request->input('number',1);
 
-        $total = $this->tmp_price * $number;
+        if ($this->hasTransferContext()) {
+            $total = $this->transferContext['price'] ?? 0;
+        } else {
+            $total = $this->tmp_price * $number;
+        }
 
         $duration_in_day = max(1,ceil(($end_date->getTimestamp() - $start_date->getTimestamp()) / DAY_IN_SECONDS ) + 1 );
         if ($this->enable_extra_price and !empty($this->extra_price)) {
@@ -282,7 +288,8 @@ class Car extends Bookable
         $booking->vendor_id = $this->author_id;
         $booking->customer_id = Auth::id();
         $booking->total = $total;
-        $booking->total_guests = 1;
+        $transferPassengers = (int) $request->attributes->get('transfer_passengers', $number);
+        $booking->total_guests = $transferPassengers > 0 ? $transferPassengers : 1;
         $booking->start_date = $start_date->format('Y-m-d H:i:s');
         $booking->end_date = $end_date->format('Y-m-d H:i:s');
 
@@ -376,6 +383,12 @@ class Car extends Bookable
                 if ($this->transferContext['base_fee'] !== null) {
                     $booking->addMeta('transfer_base_fee', $this->transferContext['base_fee']);
                 }
+                if ($this->transferContext['price_single'] !== null) {
+                    $booking->addMeta('transfer_price_single', $this->transferContext['price_single']);
+                }
+                if (!empty($this->transferContext['passengers'])) {
+                    $booking->addMeta('transfer_passengers', $this->transferContext['passengers']);
+                }
                 $booking->addMeta('transfer_price', $this->transferContext['price']);
             }
 
@@ -433,6 +446,14 @@ class Car extends Bookable
         }
 
         $this->clearTransferContext();
+        $passengers = (int) $total_number;
+        if ($passengers < 1) {
+            return $this->sendError(__('transfers.booking.passengers_invalid'));
+        }
+        $maxPassengers = (int) ($this->number ?? 0);
+        if ($maxPassengers > 0 && $passengers > $maxPassengers) {
+            return $this->sendError(__('transfers.booking.passengers_invalid'));
+        }
         $pickupPayload = $request->input('pickup');
         if (is_string($pickupPayload)) {
             $decoded = json_decode($pickupPayload, true);
@@ -504,11 +525,11 @@ class Car extends Bookable
         if (!$this->applyTransferContext($pickupLocation, array_merge($pickupPayload, [
             'lat' => $pickupLat,
             'lng' => $pickupLng,
-        ]), $dropoff, $metrics['distance_km'], $metrics['duration_min'], $transferDate, $transferDatetime)) {
+        ]), $dropoff, $metrics['distance_km'], $metrics['duration_min'], $transferDate, $transferDatetime, $passengers)) {
             return $this->sendError(__('transfers.booking.unavailable_pickup'));
         }
 
-        $this->tmp_price = $this->transferContext['price'];
+        $this->tmp_price = $this->transferContext['price_single'] ?? $this->transferContext['price'];
         $request->attributes->set('transfer_pickup_location', $pickupLocation);
         $request->attributes->set('transfer_pickup_payload', $this->transferContext['pickup_location']);
         $request->attributes->set('transfer_dropoff', $dropoff);
@@ -517,6 +538,7 @@ class Car extends Bookable
         $request->attributes->set('transfer_pricing_mode', $this->transferContext['pricing_mode']);
         $request->attributes->set('transfer_unit_price', $this->transferContext['unit_price']);
         $request->attributes->set('transfer_base_fee', $this->transferContext['base_fee']);
+        $request->attributes->set('transfer_passengers', $this->transferContext['passengers']);
 
         return true;
     }
@@ -1239,7 +1261,7 @@ class Car extends Bookable
             ->get();
     }
 
-    public function applyTransferContext(?CarPickupLocation $pickupLocation, array $pickupPayload, array $dropoff, ?float $routeDistanceKm = null, ?float $routeDurationMin = null, ?string $transferDate = null, ?string $transferDatetime = null): bool
+    public function applyTransferContext(?CarPickupLocation $pickupLocation, array $pickupPayload, array $dropoff, ?float $routeDistanceKm = null, ?float $routeDurationMin = null, ?string $transferDate = null, ?string $transferDatetime = null, ?int $passengers = null): bool
     {
         $pickupLat = static::toFloat(Arr::get($pickupPayload, 'lat', $pickupLocation?->lat));
         $pickupLng = static::toFloat(Arr::get($pickupPayload, 'lng', $pickupLocation?->lng));
@@ -1281,10 +1303,28 @@ class Car extends Bookable
             return false;
         }
 
+        $passengerCount = $passengers ?? 1;
+        $passengerCount = (int) $passengerCount;
+        if ($passengerCount < 1) {
+            $passengerCount = 1;
+        }
+        $maxPassengers = (int) ($this->number ?? 0);
+        if ($maxPassengers > 0 && $passengerCount > $maxPassengers) {
+            $passengerCount = $maxPassengers;
+        }
+
         $pricingMode = $this->pricing_mode ?: 'per_km';
         $unitPrice = null;
-        $calculatedPrice = null;
+        $singlePrice = null;
         $baseFee = null;
+        $baseFeeValue = null;
+
+        if (property_exists($this, 'base_fee') || isset($this->base_fee)) {
+            $baseFeeValue = static::toFloat($this->base_fee);
+            if ($baseFeeValue !== null && $baseFeeValue < 0) {
+                $baseFeeValue = 0.0;
+            }
+        }
 
         if ($distance !== null) {
             $distance = round($distance, 2);
@@ -1298,24 +1338,34 @@ class Car extends Bookable
         }
 
         if ($pricingMode === 'fixed') {
-            $unitPrice = $this->fixed_price;
-            if ($unitPrice === null || $unitPrice <= 0) {
+            $unitPrice = static::toFloat($this->fixed_price);
+            if ($unitPrice === null || $unitPrice < 0) {
                 return false;
             }
-            $calculatedPrice = round($unitPrice, 2);
-            $baseFee = $calculatedPrice;
+            $singlePrice = round(max($unitPrice, 0), 2);
         } else {
             $pricingMode = 'per_km';
-            $unitPrice = $this->price_per_km;
+            $unitPrice = static::toFloat($this->price_per_km);
             if ($unitPrice === null || $unitPrice <= 0) {
                 return false;
             }
-            $calculatedPrice = round($distance * $unitPrice, 2);
+            $singlePrice = round($distance * $unitPrice, 2);
         }
 
-        if ($calculatedPrice <= 0) {
+        if ($singlePrice === null || $singlePrice < 0) {
             return false;
         }
+
+        $basePortion = $baseFeeValue !== null ? round(max($baseFeeValue, 0), 2) : 0.0;
+        $totalPrice = round(($singlePrice * $passengerCount) + $basePortion, 2);
+        if ($pricingMode === 'per_km' && $singlePrice <= 0 && $basePortion <= 0) {
+            return false;
+        }
+        if ($totalPrice <= 0) {
+            return false;
+        }
+
+        $baseFee = $baseFeeValue !== null ? $basePortion : null;
 
         $pickupPayload = array_merge([
             'id' => $pickupLocation?->id,
@@ -1327,7 +1377,8 @@ class Car extends Bookable
         ]);
 
         $this->setTransferContext([
-            'price' => $calculatedPrice,
+            'price' => $totalPrice,
+            'price_single' => $singlePrice,
             'route_distance' => $distance,
             'route_duration' => $duration,
             'pickup_location' => $pickupPayload,
@@ -1337,6 +1388,7 @@ class Car extends Bookable
             'pricing_mode' => $pricingMode,
             'unit_price' => $unitPrice,
             'base_fee' => $baseFee,
+            'passengers' => $passengerCount,
         ]);
 
         if ($transferDate) {
@@ -1401,6 +1453,16 @@ class Car extends Bookable
         return $this->transferContext['base_fee'];
     }
 
+    public function getTransferPriceSingleAttribute(): ?float
+    {
+        return $this->transferContext['price_single'];
+    }
+
+    public function getTransferPassengersAttribute(): int
+    {
+        return (int) ($this->transferContext['passengers'] ?? 1);
+    }
+
     public function getDisplayPriceAttribute()
     {
         if ($this->hasTransferContext()) {
@@ -1423,6 +1485,7 @@ class Car extends Bookable
     {
         $this->transferContext = [
             'price' => null,
+            'price_single' => null,
             'route_distance' => null,
             'route_duration' => null,
             'pickup_location' => null,
@@ -1432,6 +1495,7 @@ class Car extends Bookable
             'pricing_mode' => null,
             'unit_price' => null,
             'base_fee' => null,
+            'passengers' => 1,
         ];
     }
 

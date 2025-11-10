@@ -12,6 +12,7 @@ return [
         'time_label' => 'Travel time',
         'search_button' => 'Search',
         'datetime_required' => 'Please choose a transfer date and time.',
+        'date_invalid' => 'Invalid date selected. Please choose a valid date from the calendar.',
     ],
     'search' => [
         'route_summary' => 'Route: :from → :to',
@@ -47,10 +48,12 @@ return [
         'price_details_unavailable' => 'This route is not available for the selected vehicle.',
         'pickup_required' => 'Please choose a pickup location.',
         'dropoff_required' => 'Please choose a drop-off location.',
+        'quote_required' => 'Please calculate a valid transfer price before booking.',
         'invalid_pickup_location' => 'The selected pickup location is no longer available.',
         'missing_dropoff' => 'Please choose a drop-off location.',
         'distance_error' => 'Unable to calculate the travel distance for the selected locations.',
         'unavailable_pickup' => 'This vehicle is not available for the chosen pickup location.',
+        'passengers_invalid' => 'Please choose a valid number of passengers.',
     ],
     'admin' => [
         'pickups' => [

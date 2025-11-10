@@ -19,6 +19,13 @@
             quote_xhr:null,
             is_initialising:true,
             datetime_required_message:'',
+            fieldErrors:{
+                pickup:'',
+                dropoff:'',
+                datetime:'',
+                passengers:''
+            },
+            suppressPassengerWatch:false,
             message:{
                 content:'',
                 type:false
@@ -56,6 +63,9 @@
             },
             transfer_date:function (value) {
                 this.syncTransferDateState();
+                if (value) {
+                    this.setFieldError('datetime', '');
+                }
                 if (this.$el) {
                     $(this.$el).trigger('transfer:update-date', [value || '']);
                 }
@@ -71,17 +81,34 @@
             },
             transfer_time:function () {
                 this.syncTransferDateState();
+                if (this.transfer_date && this.transfer_time) {
+                    this.setFieldError('datetime', '');
+                }
                 if (!this.is_initialising) {
                     this.refreshTransferQuote();
                 }
             },
-            number:function () {
-                var me = this;
-                if(parseInt(me.number) > parseInt(me.max_number)){
-                    me.number = parseInt(me.max_number);
+            number:function (value) {
+                if (this.suppressPassengerWatch) {
+                    this.suppressPassengerWatch = false;
+                    return;
                 }
-                if(parseInt(me.number) < 1){
-                    me.number = 1
+                var normalized = parseInt(value, 10);
+                if (isNaN(normalized) || normalized < 1) {
+                    normalized = 1;
+                }
+                var max = parseInt(this.max_number, 10);
+                if (!isNaN(max) && max > 0 && normalized > max) {
+                    normalized = max;
+                }
+                if (String(normalized) !== String(value)) {
+                    this.suppressPassengerWatch = true;
+                    this.number = normalized;
+                    return;
+                }
+                this.setFieldError('passengers', '');
+                if (!this.is_initialising) {
+                    this.refreshTransferQuote();
                 }
             },
             pickup_location:{
@@ -89,6 +116,7 @@
                     if (this.is_initialising) {
                         return;
                     }
+                    this.setFieldError('pickup', '');
                     this.refreshTransferQuote();
                 },
                 deep:true
@@ -98,6 +126,7 @@
                     if (this.is_initialising) {
                         return;
                     }
+                    this.setFieldError('dropoff', '');
                     this.refreshTransferQuote();
                 },
                 deep:true
@@ -107,40 +136,57 @@
             priceSummary:function () {
                 var quote = this.transfer_quote || null;
                 var meta = this.pricing_meta || {};
-                var priceNumeric = null;
-                var priceDisplay = null;
+                var passengerCount = this.getPassengerCount();
+                var totalNumeric = null;
+                var totalDisplay = null;
                 var distanceNumeric = null;
                 var distanceDisplay = null;
 
                 if (quote) {
-                    priceNumeric = this.toNumeric(quote.price);
-                    if (priceNumeric === null && quote.price_formatted) {
-                        priceDisplay = quote.price_formatted;
+                    var passengersFromQuote = this.toNumeric(quote.passengers);
+                    if (passengersFromQuote && passengersFromQuote > 0) {
+                        passengerCount = passengersFromQuote;
                     }
+                    var totalCandidate = typeof quote.total_price !== 'undefined' ? quote.total_price : quote.price;
+                    var totalCandidateNumeric = this.toNumeric(totalCandidate);
+                    var singlePriceNumeric = this.toNumeric(quote.price_single);
+                    if (totalCandidateNumeric !== null) {
+                        totalNumeric = totalCandidateNumeric;
+                    } else if (singlePriceNumeric !== null) {
+                        totalNumeric = singlePriceNumeric * passengerCount;
+                    }
+                    totalDisplay = quote.total_price_formatted || quote.price_formatted || null;
                     distanceNumeric = this.toNumeric(quote.distance_km);
-                    if (distanceNumeric === null && quote.distance_formatted) {
+                    if (!distanceDisplay && quote.distance_formatted) {
                         distanceDisplay = quote.distance_formatted;
                     }
                 }
 
-                if (priceNumeric === null && priceDisplay === null && meta && meta.mode === 'fixed') {
-                    priceNumeric = this.toNumeric(meta.fixed_price);
+                if (totalNumeric === null && totalDisplay === null && meta && meta.mode === 'fixed') {
+                    var fixedPrice = this.toNumeric(meta.fixed_price);
+                    if (fixedPrice !== null) {
+                        var metaBaseFee = this.toNumeric(meta.base_fee);
+                        totalNumeric = fixedPrice * passengerCount;
+                        if (metaBaseFee !== null) {
+                            totalNumeric += metaBaseFee;
+                        }
+                    }
                 }
 
-                if (priceNumeric === null && priceDisplay === null) {
+                if (totalNumeric === null && totalDisplay === null) {
                     return null;
                 }
 
-                if (priceDisplay === null && priceNumeric !== null) {
-                    priceDisplay = this.formatMoney(priceNumeric);
+                if (totalDisplay === null && totalNumeric !== null) {
+                    totalDisplay = this.formatMoney(totalNumeric);
                 }
 
-                if (distanceDisplay === null && distanceNumeric !== null) {
+                if (!distanceDisplay && distanceNumeric !== null) {
                     distanceDisplay = this.formatDistance(distanceNumeric);
                 }
 
                 return {
-                    total: priceDisplay,
+                    total: totalDisplay,
                     distance: distanceDisplay
                 };
             },
@@ -299,6 +345,9 @@
             if (window.BravoTransferForm && typeof window.BravoTransferForm.initAll === 'function') {
                 window.BravoTransferForm.initAll($root);
             }
+            $root.on('transfer:date-error', function (event, message) {
+                me.setFieldError('datetime', message || '');
+            });
             $root.on('transfer:context-changed', function (event, context) {
                 context = context || {};
                 if (context.pickup) {
@@ -356,6 +405,34 @@
             }
         },
         methods:{
+            setFieldError:function (field, message) {
+                if (!this.fieldErrors || typeof field === 'undefined') {
+                    return;
+                }
+                this.$set(this.fieldErrors, field, message || '');
+            },
+            clearFieldErrors:function () {
+                if (!this.fieldErrors) {
+                    return;
+                }
+                for (var key in this.fieldErrors) {
+                    if (!Object.prototype.hasOwnProperty.call(this.fieldErrors, key)) {
+                        continue;
+                    }
+                    this.$set(this.fieldErrors, key, '');
+                }
+            },
+            getPassengerCount:function () {
+                var count = parseInt(this.number, 10);
+                if (isNaN(count) || count < 1) {
+                    count = 1;
+                }
+                var max = parseInt(this.max_number, 10);
+                if (!isNaN(max) && max > 0 && count > max) {
+                    count = max;
+                }
+                return count;
+            },
             handleTotalPrice:function() {
             },
             syncTransferDateState:function () {
@@ -392,6 +469,14 @@
                                 var availability = json[idx];
                                 if (availability.start === me.transfer_date && typeof availability.number !== 'undefined') {
                                     me.max_number = availability.number;
+                                    var maxNormalized = parseInt(me.max_number, 10);
+                                    if (!isNaN(maxNormalized) && maxNormalized > 0 && parseInt(me.number, 10) > maxNormalized) {
+                                        me.suppressPassengerWatch = true;
+                                        me.number = maxNormalized;
+                                        if (!me.is_initialising) {
+                                            me.refreshTransferQuote();
+                                        }
+                                    }
                                     break;
                                 }
                             }
@@ -454,6 +539,8 @@
                     return;
                 }
 
+                var passengerCount = this.getPassengerCount();
+
                 var $root = $(this.$el);
                 var datetimeField = $root.find('.js-transfer-datetime');
                 var transferDatetime = datetimeField.length ? datetimeField.val() : '';
@@ -474,7 +561,8 @@
                     pickup_location_id: this.pickup_location_id || '',
                     transfer_datetime: transferDatetime,
                     transfer_date: this.transfer_date || '',
-                    transfer_time: this.transfer_time || ''
+                    transfer_time: this.transfer_time || '',
+                    passengers: passengerCount
                 };
 
                 this.transfer_quote_loading = true;
@@ -501,6 +589,13 @@
                 }).done(function (response) {
                     if (response && response.status && response.data && response.data.quote) {
                         me.transfer_quote = response.data.quote;
+                        if (response.data.quote.passengers) {
+                            var serverPassengers = parseInt(response.data.quote.passengers, 10);
+                            if (!isNaN(serverPassengers) && serverPassengers > 0 && serverPassengers !== parseInt(me.number, 10)) {
+                                me.suppressPassengerWatch = true;
+                                me.number = serverPassengers;
+                            }
+                        }
                         me.transfer_quote_error = '';
                     } else {
                         me.transfer_quote = null;
@@ -533,30 +628,41 @@
             },
             validate(){
                 this.syncTransferDateState();
+                this.message.status = false;
+                this.message.content = '';
+                this.clearFieldErrors();
+
+                var isValid = true;
                 if(!this.transfer_date || !this.transfer_time)
                 {
-                    this.message.status = false;
-                    this.message.content = this.datetime_required_message || bravo_booking_i18n.no_date_select;
-                    return false;
+                    this.setFieldError('datetime', this.datetime_required_message || bravo_booking_i18n.no_date_select);
+                    isValid = false;
                 }
-                if(!this.number )
-                {
-                    this.message.status = false;
-                    this.message.content = bravo_booking_i18n.no_guest_select;
-                    return false;
+
+                var rawPassengers = parseInt(this.number, 10);
+                var passengersMessage = bravo_booking_i18n.passengers_invalid || bravo_booking_i18n.no_guest_select;
+                if(isNaN(rawPassengers) || rawPassengers < 1) {
+                    this.setFieldError('passengers', passengersMessage);
+                    isValid = false;
+                } else {
+                    var max = parseInt(this.max_number, 10);
+                    if (!isNaN(max) && max > 0 && rawPassengers > max) {
+                        this.setFieldError('passengers', passengersMessage);
+                        isValid = false;
+                    }
                 }
+
                 var hasPickupCoordinates = this.pickup_location && this.pickup_location.lat && this.pickup_location.lng;
                 if(!this.pickup_location_id && !hasPickupCoordinates){
-                    this.message.status = false;
-                    this.message.content = bravo_booking_i18n.pickup_required || 'Please choose a pickup location.';
-                    return false;
+                    this.setFieldError('pickup', bravo_booking_i18n.pickup_required || 'Please choose a pickup location.');
+                    isValid = false;
                 }
+
                 var dropLat = parseFloat(this.dropoff && this.dropoff.lat);
                 var dropLng = parseFloat(this.dropoff && this.dropoff.lng);
-                if(!this.dropoff || isNaN(dropLat) || isNaN(dropLng)){
-                    this.message.status = false;
-                    this.message.content = bravo_booking_i18n.dropoff_required || 'Please choose a drop-off location.';
-                    return false;
+                if(!this.dropoff || isNaN(dropLat) || isNaN(dropLng) || !this.dropoff.place_id){
+                    this.setFieldError('dropoff', bravo_booking_i18n.dropoff_required || 'Please choose a drop-off location.');
+                    isValid = false;
                 }
                 if(!this.dropoff.place_id){
                     this.message.status = false;
@@ -564,7 +670,18 @@
                     return false;
                 }
 
-                return true;
+                if (this.transfer_quote_error) {
+                    this.setFieldError('dropoff', this.transfer_quote_error);
+                    isValid = false;
+                } else if (!this.transfer_quote && !this.transfer_quote_loading) {
+                    var quoteMessage = bravo_booking_i18n.quote_required || '';
+                    if (quoteMessage) {
+                        this.setFieldError('dropoff', quoteMessage);
+                        isValid = false;
+                    }
+                }
+
+                return isValid;
             },
             addNumberType(){
                 var me = this;

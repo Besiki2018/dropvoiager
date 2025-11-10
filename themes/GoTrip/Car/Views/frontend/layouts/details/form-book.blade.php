@@ -30,11 +30,15 @@
     if (!empty($detailPricingMode) && $detailTotalPrice) {
         $initialQuote = [
             'price' => $detailTotalPrice,
+            'total_price' => $detailTotalPrice,
             'distance_km' => $detailDistance,
             'duration_min' => $detailDuration,
             'pricing_mode' => $detailPricingMode,
             'unit_price' => $detailUnitPrice,
             'base_fee' => $detailBaseFee,
+            'total_price_formatted' => $detailTotalPrice ? format_money($detailTotalPrice) : null,
+            'distance_formatted' => $detailDistance !== null ? number_format((float) $detailDistance, 2) . ' km' : null,
+            'passengers' => $row->transfer_passengers,
             'pickup' => $selectedPickupPayload,
             'dropoff' => $dropoffData,
             'pickup_label' => $detailPickupLabel,
@@ -68,6 +72,7 @@
              v-cloak
              class="px-30 py-30 rounded-4 border-light shadow-4 bg-white w-360 lg:w-full"
              data-datetime-required="{{ __('transfers.form.datetime_required') }}"
+             data-date-invalid="{{ __('transfers.form.date_invalid') }}"
              data-quote-url="{{ route('car.transfer.quote', $row->id) }}"
              data-pricing-meta='@json($pricingMeta)'
              data-initial-quote='@json($initialQuote)'>
@@ -115,6 +120,7 @@
                             <div class="form-group px-20 py-10 border-light rounded-4">
                                 <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('transfers.form.from_label') }}</h4>
                                 <select class="form-control js-transfer-pickup"
+                                        :class="{'is-invalid': fieldErrors.pickup}"
                                         name="pickup_location_id"
                                         data-default-label="{{ __('transfers.form.select_pickup_option') }}">
                                     <option value="">{{ __('transfers.form.select_pickup_option') }}</option>
@@ -130,12 +136,19 @@
                                         <option value="{{ $location->id }}" data-source="backend" data-payload='@json($payload)' @if($location->id == $selectedPickupId) selected @endif>{{ $label }}</option>
                                     @endforeach
                                 </select>
+                                <div class="text-13 text-red-1 mt-10" v-if="fieldErrors.pickup" v-text="fieldErrors.pickup"></div>
                             </div>
                         </div>
                         <div class="col-12">
                             <div class="form-group px-20 py-10 border-light rounded-4">
                                 <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('transfers.form.to_label') }}</h4>
-                                <input type="text" class="form-control js-transfer-dropoff-display" value="{{ $dropoffData['address'] ?? $dropoffData['name'] ?? '' }}" placeholder="{{ __('transfers.form.to_placeholder') }}" minlength="3" autocomplete="off">
+                                <input type="text"
+                                       class="form-control js-transfer-dropoff-display"
+                                       :class="{'is-invalid': fieldErrors.dropoff}"
+                                       value="{{ $dropoffData['address'] ?? $dropoffData['name'] ?? '' }}"
+                                       placeholder="{{ __('transfers.form.to_placeholder') }}"
+                                       minlength="3"
+                                       autocomplete="off">
                                 <input type="hidden" class="js-transfer-dropoff-address" value="{{ $dropoffData['address'] ?? $dropoffData['name'] ?? '' }}">
                                 <input type="hidden" class="js-transfer-dropoff-name" value="{{ $dropoffData['name'] ?? $dropoffData['address'] ?? '' }}">
                                 <input type="hidden" class="js-transfer-dropoff-lat" value="{{ $dropoffData['lat'] ?? '' }}">
@@ -144,6 +157,7 @@
                                 <input type="hidden" class="js-transfer-pickup-payload" value='@json($selectedPickupPayload)'>
                                 <input type="hidden" class="js-transfer-pickup-json" value='@json($selectedPickupPayload)'>
                                 <input type="hidden" class="js-transfer-dropoff-json" value='@json($dropoffData)'>
+                                <div class="text-13 text-red-1 mt-10" v-if="fieldErrors.dropoff" v-text="fieldErrors.dropoff"></div>
                             </div>
                         </div>
                         <div class="col-12" v-if="transfer_quote_loading">
@@ -157,7 +171,9 @@
                                 <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('transfers.form.date_label') }}</h4>
                                 <input type="text"
                                        class="form-control js-transfer-date-display"
+                                       :class="{'is-invalid': fieldErrors.datetime}"
                                        data-display-format="{{ get_moment_date_format() }}"
+                                       data-invalid-message="{{ __('transfers.form.date_invalid') }}"
                                        value="{{ $transferDateDisplay }}"
                                        placeholder="{{ __('transfers.form.date_label') }}"
                                        readonly
@@ -168,6 +184,8 @@
                                        ref="transfer_date"
                                        v-model="transfer_date"
                                        value="{{ $transferDateValue }}">
+                                <div class="text-13 text-red-1 mt-5 js-transfer-date-error d-none"></div>
+                                <div class="text-13 text-red-1 mt-5" v-if="fieldErrors.datetime" v-text="fieldErrors.datetime"></div>
                             </div>
                         </div>
                         <div class="col-12" v-if="transfer_quote_error">
@@ -178,6 +196,7 @@
                                 <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('transfers.form.time_label') }}</h4>
                                 <input type="time"
                                        class="form-control js-transfer-time"
+                                       :class="{'is-invalid': fieldErrors.datetime}"
                                        v-model="transfer_time"
                                        value="{{ $transferTimeValue }}">
                             </div>
@@ -202,7 +221,7 @@
                                                     <button class="button -outline-blue-1 text-blue-1 size-38 rounded-4 js-down" @click="minusNumberType()">
                                                         <i class="icon-minus text-12"></i>
                                                     </button>
-                                                    <span class="input"><input type="number" v-model="number" min="0"/></span>
+                                                    <span class="input"><input type="number" v-model="number" min="0" :class="{'is-invalid': fieldErrors.passengers}"/></span>
                                                     <button class="button -outline-blue-1 text-blue-1 size-38 rounded-4 js-up" @click="addNumberType()">
                                                         <i class="icon-plus text-12"></i>
                                                     </button>
@@ -211,6 +230,7 @@
                                         </div>
                                     </div>
                                 </div>
+                                <div class="text-13 text-red-1 mt-10" v-if="fieldErrors.passengers" v-text="fieldErrors.passengers"></div>
                             </div>
                         </div>
                         <div class="col-12" v-if="extra_price.length">
@@ -279,14 +299,8 @@
                                     <div class="text-13 text-red-1" role="alert" v-text="transfer_quote_error"></div>
                                 </template>
                                 <template v-else-if="priceSummary">
-                                    <div class="d-flex justify-between text-15 mb-5" v-if="priceSummary.distance">
-                                        <span class="text-muted">{{ __('transfers.booking.price_details_distance') }}</span>
-                                        <span class="text-dark-1 fw-500">@{{ priceSummary.distance }}</span>
-                                    </div>
-                                    <div class="d-flex justify-between text-18">
-                                        <span class="text-muted">{{ __('transfers.booking.price_details_total') }}</span>
-                                        <span class="text-dark-1 fw-600" v-html="priceSummary.total"></span>
-                                    </div>
+                                    <div class="text-13 text-dark-1 mb-5" v-if="priceSummary.distance" v-text="priceSummary.distance"></div>
+                                    <div class="text-22 text-dark-1 fw-600" v-if="priceSummary.total" v-html="priceSummary.total"></div>
                                 </template>
                             </div>
                         </div>
