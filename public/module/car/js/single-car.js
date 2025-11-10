@@ -555,6 +555,9 @@
 
                 var $root = $(this.$el);
                 this.pickup_location_id = $root.find('.js-transfer-pickup').val();
+                if (this.pickup_location_id === '__mylocation__') {
+                    this.pickup_location_id = '';
+                }
                 var pickupPayload = $root.find('.js-transfer-pickup-payload').val();
                 if (pickupPayload) {
                     try {
