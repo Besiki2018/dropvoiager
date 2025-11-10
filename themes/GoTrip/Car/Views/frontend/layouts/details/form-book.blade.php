@@ -100,6 +100,11 @@
                                 <input type="hidden" class="js-transfer-dropoff-json" value='@json($dropoffData)'>
                             </div>
                         </div>
+                        <div class="col-12">
+                            <div class="px-20 py-10 border-light rounded-4 js-transfer-map-wrapper" style="display: none;">
+                                <div class="js-transfer-map" style="height: 260px;"></div>
+                            </div>
+                        </div>
                         <div class="col-md-6">
                             <div class="form-group px-20 py-10 border-light rounded-4">
                                 <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('Date') }}</h4>

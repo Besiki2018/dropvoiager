@@ -1091,7 +1091,10 @@ class Car extends Bookable
         if (is_array($pickupFilter)) {
             $pickupLat = isset($pickupFilter['lat']) && is_numeric($pickupFilter['lat']) ? (float) $pickupFilter['lat'] : null;
             $pickupLng = isset($pickupFilter['lng']) && is_numeric($pickupFilter['lng']) ? (float) $pickupFilter['lng'] : null;
-            if ($pickupLat !== null && $pickupLng !== null) {
+            $pickupSource = Arr::get($pickupFilter, 'source');
+            $isBackendPickup = ($pickupSource === 'backend') || Arr::get($pickupFilter, 'id');
+
+            if ($pickupLat !== null && $pickupLng !== null && !$isBackendPickup) {
                 $latColumn = $query->qualifyColumn('service_center_lat');
                 $lngColumn = $query->qualifyColumn('service_center_lng');
                 $radiusColumn = $query->qualifyColumn('service_radius_km');
@@ -1268,6 +1271,11 @@ class Car extends Bookable
         }
 
         if ($distance === null) {
+            return false;
+        }
+
+        $radiusLimit = static::toFloat($this->service_radius_km);
+        if ($radiusLimit !== null && $radiusLimit > 0 && $distance > $radiusLimit) {
             return false;
         }
 

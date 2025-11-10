@@ -110,6 +110,12 @@
             <input type="hidden" name="pickup" class="js-transfer-pickup-json" value='@json($selectedPickupPayload)'>
             <input type="hidden" name="dropoff" class="js-transfer-dropoff-json" value='@json($dropoffData)'>
 
+            <div class="col-12 px-30 lg:py-20 lg:px-0">
+                <div class="transfer-map-wrapper js-transfer-map-wrapper mt-10 rounded-4 overflow-hidden" style="display: none;">
+                    <div class="js-transfer-map" style="height: 260px;"></div>
+                </div>
+            </div>
+
             <div class="col-lg-3 align-self-center px-30 lg:py-20 lg:px-0">
                 <div class="searchMenu-date item">
                     <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('Date') }}</h4>
@@ -167,6 +173,8 @@
                 var locationErrorMessage = '{{ __('transfers.form.location_error') }}';
                 var geolocationUnsupported = '{{ __('transfers.form.location_unsupported') }}';
                 var dropoffRequiredMessage = '{{ __('transfers.form.dropoff_coordinates_required') }}';
+                var defaultMapLat = Number('{{ (float) setting_item('map_lat_default', 41.715133) }}') || 0;
+                var defaultMapLng = Number('{{ (float) setting_item('map_lng_default', 44.827096) }}') || 0;
 
                 function parseJsonValue(value) {
                     if (!value) {
@@ -197,6 +205,121 @@
                     var timeInput = $form.find('.js-transfer-time');
                     var datetimeInput = $form.find('.js-transfer-datetime');
                     var geocodeInProgress = false;
+                    var mapWrapper = $form.find('.js-transfer-map-wrapper');
+                    var mapCanvas = mapWrapper.find('.js-transfer-map');
+                    var mapInstance = null;
+                    var pickupMarker = null;
+                    var dropoffMarker = null;
+
+                    if (mapWrapper.length) {
+                        mapWrapper.hide();
+                    }
+
+                    function ensureMapInstance() {
+                        if (!mapCanvas.length) {
+                            return null;
+                        }
+                        if (typeof google === 'undefined' || !google.maps) {
+                            return null;
+                        }
+                        if (!mapInstance) {
+                            mapInstance = new google.maps.Map(mapCanvas[0], {
+                                zoom: 12,
+                                center: {
+                                    lat: defaultMapLat || 0,
+                                    lng: defaultMapLng || 0
+                                },
+                                streetViewControl: false,
+                                mapTypeControl: false,
+                            });
+                        }
+
+                        return mapInstance;
+                    }
+
+                    function updateMapMarkers() {
+                        if (!mapWrapper.length) {
+                            return;
+                        }
+
+                        var pickupPayload = parseJsonValue(pickupJsonInput.val());
+                        var dropoffPayload = parseJsonValue(dropoffJsonInput.val());
+                        var hasPickup = pickupPayload && pickupPayload.lat && pickupPayload.lng;
+                        var hasDropoff = dropoffPayload && dropoffPayload.lat && dropoffPayload.lng;
+
+                        if (!hasPickup && !hasDropoff) {
+                            mapWrapper.hide();
+                            if (pickupMarker) {
+                                pickupMarker.setMap(null);
+                                pickupMarker = null;
+                            }
+                            if (dropoffMarker) {
+                                dropoffMarker.setMap(null);
+                                dropoffMarker = null;
+                            }
+                            return;
+                        }
+
+                        if (typeof google === 'undefined' || !google.maps) {
+                            return;
+                        }
+
+                        mapWrapper.show();
+                        var map = ensureMapInstance();
+                        if (!map) {
+                            return;
+                        }
+
+                        google.maps.event.trigger(map, 'resize');
+
+                        var bounds = new google.maps.LatLngBounds();
+
+                        if (hasPickup) {
+                            var pickupLatLng = new google.maps.LatLng(parseFloat(pickupPayload.lat), parseFloat(pickupPayload.lng));
+                            if (!pickupMarker) {
+                                pickupMarker = new google.maps.Marker({
+                                    map: map,
+                                    position: pickupLatLng,
+                                    label: {text: 'A', fontWeight: 'bold'},
+                                });
+                            } else {
+                                pickupMarker.setPosition(pickupLatLng);
+                                pickupMarker.setMap(map);
+                            }
+                            bounds.extend(pickupLatLng);
+                        } else if (pickupMarker) {
+                            pickupMarker.setMap(null);
+                            pickupMarker = null;
+                        }
+
+                        if (hasDropoff) {
+                            var dropoffLatLng = new google.maps.LatLng(parseFloat(dropoffPayload.lat), parseFloat(dropoffPayload.lng));
+                            if (!dropoffMarker) {
+                                dropoffMarker = new google.maps.Marker({
+                                    map: map,
+                                    position: dropoffLatLng,
+                                    label: {text: 'B', fontWeight: 'bold'},
+                                });
+                            } else {
+                                dropoffMarker.setPosition(dropoffLatLng);
+                                dropoffMarker.setMap(map);
+                            }
+                            bounds.extend(dropoffLatLng);
+                        } else if (dropoffMarker) {
+                            dropoffMarker.setMap(null);
+                            dropoffMarker = null;
+                        }
+
+                        if (hasPickup && hasDropoff) {
+                            map.fitBounds(bounds);
+                        } else if (hasPickup && pickupMarker) {
+                            map.setCenter(pickupMarker.getPosition());
+                            map.setZoom(13);
+                        } else if (hasDropoff && dropoffMarker) {
+                            map.setCenter(dropoffMarker.getPosition());
+                            map.setZoom(13);
+                        }
+                    }
 
                     function emitTransferUpdate() {
                         var context = {
@@ -219,6 +342,7 @@
                                 pickupSelect.val('');
                             }
                         }
+                        updateMapMarkers();
                         emitTransferUpdate();
                     }
 
@@ -231,6 +355,7 @@
                         if (payload && (payload.address || payload.name)) {
                             dropoffDisplay.val(payload.address || payload.name);
                         }
+                        updateMapMarkers();
                         emitTransferUpdate();
                     }
 
@@ -307,6 +432,7 @@
 
                     ensurePickupSelection();
                     emitTransferUpdate();
+                    updateMapMarkers();
 
                     if (typeof google !== 'undefined' && google.maps && google.maps.places) {
                         var autocomplete = new google.maps.places.Autocomplete(dropoffDisplay[0], {
