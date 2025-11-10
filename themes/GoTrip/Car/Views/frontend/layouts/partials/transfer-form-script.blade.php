@@ -43,6 +43,7 @@
             var dropoffLng = $form.find('.js-transfer-dropoff-lng').first();
             var dropoffPlaceId = $form.find('.js-transfer-dropoff-place-id').first();
             var dateInput = $form.find('.js-transfer-date').first();
+            var dateDisplay = $form.find('.js-transfer-date-display').first();
             var timeInput = $form.find('.js-transfer-time').first();
             var datetimeInput = $form.find('.js-transfer-datetime').first();
 
@@ -50,6 +51,7 @@
             var defaultOptionLabel = pickupSelect.data('default-label') || pickupSelect.find('option').first().text() || '';
             var pickupFetchLoaded = false;
             var suppressDropoffInput = false;
+            var suppressDateSync = false;
 
             function emitTransferUpdate() {
                 var context = {
@@ -57,6 +59,133 @@
                     dropoff: parseJsonValue(dropoffJsonInput.val())
                 };
                 $form.trigger('transfer:context-changed', context);
+            }
+
+            function getDateDisplayFormat() {
+                var defaultFormat = (window.bookingCore && bookingCore.date_format) ? bookingCore.date_format : 'YYYY-MM-DD';
+                if (!dateDisplay.length) {
+                    return defaultFormat;
+                }
+                var attrFormat = dateDisplay.data('display-format');
+                return attrFormat || defaultFormat;
+            }
+
+            function setDateValue(value, options) {
+                options = options || {};
+                var isoValue = value || '';
+                if (dateInput.length && !options.skipInput) {
+                    suppressDateSync = true;
+                    dateInput.val(isoValue);
+                    if (!options.silent) {
+                        dateInput.trigger('change');
+                        dateInput.trigger('input');
+                    }
+                    suppressDateSync = false;
+                }
+                if (dateDisplay.length) {
+                    var displayValue = '';
+                    if (isoValue && typeof moment !== 'undefined') {
+                        var parsed = moment(isoValue, 'YYYY-MM-DD', true);
+                        if (parsed.isValid()) {
+                            displayValue = parsed.format(getDateDisplayFormat());
+                        } else {
+                            displayValue = isoValue;
+                        }
+                    }
+                    dateDisplay.val(displayValue);
+                }
+                if (!options.silent) {
+                    $form.trigger('transfer:date-changed', isoValue);
+                }
+            }
+
+            if (dateInput.length) {
+                dateInput.on('change', function () {
+                    if (suppressDateSync) {
+                        return;
+                    }
+                    setDateValue($(this).val(), {silent: true, skipInput: true});
+                });
+            }
+
+            $form.on('transfer:update-date', function (event, isoDate) {
+                setDateValue(isoDate, {silent: true, skipInput: true});
+            });
+
+            function setupDatePicker() {
+                if (!dateDisplay.length || dateDisplay.data('drp-bound')) {
+                    return;
+                }
+                if (typeof jQuery === 'undefined' || typeof $.fn.daterangepicker === 'undefined') {
+                    schedule(setupDatePicker, 400);
+                    return;
+                }
+                var rtl = !!(window.bookingCore && bookingCore.rtl);
+                var options = {
+                    singleDatePicker: true,
+                    autoApply: true,
+                    sameDate: true,
+                    showCalendar: false,
+                    disabledPast: true,
+                    enableLoading: true,
+                    showEventTooltip: true,
+                    classNotAvailable: ['disabled', 'off'],
+                    disableHightLight: true,
+                    opens: rtl ? 'right' : 'left',
+                    locale: {
+                        direction: rtl ? 'rtl' : 'ltr'
+                    },
+                    isInvalidDate: function (date) {
+                        var events = dateDisplay.data('transferEvents');
+                        if (!Array.isArray(events)) {
+                            return false;
+                        }
+                        for (var i = 0; i < events.length; i++) {
+                            var item = events[i];
+                            if (item && item.start === date.format('YYYY-MM-DD')) {
+                                if (typeof item.active !== 'undefined' && !item.active) {
+                                    return true;
+                                }
+                            }
+                        }
+                        return false;
+                    }
+                };
+                if (typeof daterangepickerLocale === 'object') {
+                    options.locale = $.extend(true, {}, daterangepickerLocale, options.locale);
+                }
+                if (typeof moment !== 'undefined') {
+                    options.minDate = moment();
+                }
+                dateDisplay.daterangepicker(options).on('apply.daterangepicker', function (ev, picker) {
+                    var isoDate = picker.startDate.format('YYYY-MM-DD');
+                    setDateValue(isoDate);
+                }).on('show.daterangepicker', function () {
+                    var drp = dateDisplay.data('daterangepicker');
+                    if (drp) {
+                        drp.updateCalendars();
+                    }
+                });
+                dateDisplay.data('drp-bound', true);
+                dateDisplay.on('click', function () {
+                    $(this).trigger('focus');
+                });
+                var initialValue = dateInput.length ? dateInput.val() : '';
+                if (initialValue) {
+                    setDateValue(initialValue, {silent: true, skipInput: true});
+                    if (typeof moment !== 'undefined') {
+                        var parsed = moment(initialValue, 'YYYY-MM-DD', true);
+                        if (parsed.isValid()) {
+                            var drpInstance = dateDisplay.data('daterangepicker');
+                            if (drpInstance) {
+                                drpInstance.setStartDate(parsed);
+                                drpInstance.setEndDate(parsed);
+                            }
+                        }
+                    }
+                } else {
+                    setDateValue('', {silent: true, skipInput: true});
+                }
             }
 
             function setPickupPayload(payload, options) {
@@ -254,6 +383,10 @@
             if (timeInput.length) {
                 timeInput.on('change', updateDatetimeValue);
             }
+            setupDatePicker();
+            if (dateInput.length) {
+                setDateValue(dateInput.val(), {silent: true, skipInput: true});
+            }
             updateDatetimeValue();
 
             function setupDropoffAutocomplete() {
@@ -267,7 +400,7 @@
                 dropoffDisplay.data('autocomplete-bound', true);
                 var autocomplete = new google.maps.places.Autocomplete(dropoffDisplay[0], {
                     fields: ['formatted_address', 'geometry', 'name', 'place_id'],
-                    componentRestrictions: {country: ['ge']}
+                    componentRestrictions: {country: ['GE']}
                 });
                 autocomplete.addListener('place_changed', function () {
                     var place = autocomplete.getPlace();

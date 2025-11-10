@@ -56,6 +56,9 @@
             },
             transfer_date:function (value) {
                 this.syncTransferDateState();
+                if (this.$el) {
+                    $(this.$el).trigger('transfer:update-date', [value || '']);
+                }
                 if (value && typeof moment !== 'undefined') {
                     var day = moment(value, 'YYYY-MM-DD', true);
                     if (day.isValid()) {
@@ -101,75 +104,29 @@
             }
         },
         computed:{
-            priceDetails:function () {
-                var quote = this.transfer_quote || {};
+            priceSummary:function () {
+                var quote = this.transfer_quote || null;
                 var meta = this.pricing_meta || {};
-                var mode = quote.pricing_mode || meta.mode || null;
-                if (!mode && !meta.price_per_km && !meta.fixed_price) {
+                var priceValue = null;
+                var distanceValue = null;
+
+                if (quote && typeof quote.price === 'number') {
+                    priceValue = quote.price;
+                } else if (meta && meta.mode === 'fixed' && typeof meta.fixed_price === 'number') {
+                    priceValue = meta.fixed_price;
+                }
+
+                if (quote && typeof quote.distance_km === 'number') {
+                    distanceValue = quote.distance_km;
+                }
+
+                if (priceValue === null) {
                     return null;
                 }
 
-                mode = mode || 'per_km';
-
-                var fromLabel = quote.pickup_label || '';
-                if (!fromLabel && quote.pickup && (quote.pickup.address || quote.pickup.name)) {
-                    fromLabel = quote.pickup.address || quote.pickup.name;
-                }
-                if (!fromLabel && this.pickup_location && (this.pickup_location.address || this.pickup_location.name)) {
-                    fromLabel = this.pickup_location.address || this.pickup_location.name;
-                }
-
-                var toLabel = quote.dropoff_label || '';
-                if (!toLabel && quote.dropoff && (quote.dropoff.address || quote.dropoff.name)) {
-                    toLabel = quote.dropoff.address || quote.dropoff.name;
-                }
-                if (!toLabel && this.dropoff && (this.dropoff.address || this.dropoff.name)) {
-                    toLabel = this.dropoff.address || this.dropoff.name;
-                }
-
-                var distanceValue = (typeof quote.distance_km === 'number') ? quote.distance_km : null;
-                var priceValue = (typeof quote.price === 'number') ? quote.price : null;
-                var unitPriceValue = (typeof quote.unit_price === 'number') ? quote.unit_price : null;
-                var baseFeeValue = (quote.base_fee !== null && typeof quote.base_fee !== 'undefined') ? quote.base_fee : null;
-                if ((baseFeeValue === null || baseFeeValue === '') && typeof meta.base_fee === 'number') {
-                    baseFeeValue = meta.base_fee;
-                }
-
-                var formattedUnit = null;
-                var formattedBase = null;
-                var formattedTotal = null;
-
-                if (mode === 'fixed') {
-                    if (priceValue === null && typeof meta.fixed_price === 'number') {
-                        priceValue = meta.fixed_price;
-                    }
-                    if (priceValue !== null) {
-                        formattedTotal = this.formatMoney(priceValue);
-                        formattedBase = this.formatMoney(priceValue);
-                    }
-                } else {
-                    if (unitPriceValue === null && typeof meta.price_per_km === 'number') {
-                        unitPriceValue = meta.price_per_km;
-                    }
-                    if (unitPriceValue !== null) {
-                        formattedUnit = this.formatMoney(unitPriceValue) + '/km';
-                    }
-                    if (priceValue !== null) {
-                        formattedTotal = this.formatMoney(priceValue);
-                    }
-                    if (baseFeeValue !== null && baseFeeValue !== '' && !isNaN(parseFloat(baseFeeValue))) {
-                        formattedBase = this.formatMoney(parseFloat(baseFeeValue));
-                    }
-                }
-
                 return {
-                    from: fromLabel,
-                    to: toLabel,
-                    distance: distanceValue !== null ? this.formatDistance(distanceValue) : null,
-                    pricePerKm: formattedUnit,
-                    baseFee: formattedBase,
-                    total: formattedTotal,
-                    pricingMode: mode
+                    total: this.formatMoney(priceValue),
+                    distance: distanceValue !== null ? this.formatDistance(distanceValue) : null
                 };
             },
             total_price:function(){
@@ -340,6 +297,12 @@
                     me.refreshTransferQuote();
                 }
             });
+            $root.on('transfer:date-changed', function (event, isoDate) {
+                var value = isoDate || '';
+                if (me.transfer_date !== value) {
+                    me.transfer_date = value;
+                }
+            });
             var initialPickupPayload = $root.find('.js-transfer-pickup-payload').val();
             if (initialPickupPayload) {
                 try {
@@ -419,9 +382,12 @@
                             }
                         }
                         if (me.$refs && me.$refs.start_date) {
-                            var drp = $(me.$refs.start_date).data('daterangepicker');
+                            var $dateDisplay = $(me.$refs.start_date);
+                            $dateDisplay.data('transferEvents', json);
+                            var drp = $dateDisplay.data('daterangepicker');
                             if (drp) {
                                 drp.allEvents = json;
+                                drp.transferEvents = json;
                                 drp.renderCalendar('left');
                                 if (!drp.singleDatePicker) {
                                     drp.renderCalendar('right');

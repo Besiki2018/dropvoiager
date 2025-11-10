@@ -8,6 +8,7 @@
     $transferDatetimeValue = $transfer_datetime_value ?? ($booking_data['transfer_datetime'] ?? '');
     $transferDateValue = '';
     $transferTimeValue = '';
+    $transferDateDisplay = '';
     $pricingMeta = [
         'mode' => $row->pricing_mode ?: 'per_km',
         'price_per_km' => $row->price_per_km,
@@ -50,6 +51,13 @@
         } catch (\Exception $exception) {
             $transferDateValue = '';
             $transferTimeValue = '';
+        }
+    }
+    if (!empty($transferDateValue)) {
+        try {
+            $transferDateDisplay = display_date($transferDateValue);
+        } catch (\Exception $exception) {
+            $transferDateDisplay = $transferDateValue;
         }
     }
 @endphp
@@ -138,51 +146,32 @@
                                 <input type="hidden" class="js-transfer-dropoff-json" value='@json($dropoffData)'>
                             </div>
                         </div>
-                        <div class="col-12" v-if="priceDetails">
-                            <div class="px-20 py-15 border-light rounded-4 bg-light">
-                                <h5 class="text-15 fw-500 mb-15">{{ __('transfers.booking.price_details_title') }}</h5>
-                                <div class="d-flex justify-between text-13 mb-5">
-                                    <span class="text-muted">{{ __('transfers.booking.price_details_from') }}</span>
-                                    <span class="text-dark-1">@{{ priceDetails.from || '—' }}</span>
-                                </div>
-                                <div class="d-flex justify-between text-13 mb-5">
-                                    <span class="text-muted">{{ __('transfers.booking.price_details_to') }}</span>
-                                    <span class="text-dark-1">@{{ priceDetails.to || '—' }}</span>
-                                </div>
-                                <div class="d-flex justify-between text-13 mb-5">
-                                    <span class="text-muted">{{ __('transfers.booking.price_details_distance') }}</span>
-                                    <span class="text-dark-1" v-if="priceDetails.distance">@{{ priceDetails.distance }}</span>
-                                    <span class="text-dark-1" v-else>{{ __('transfers.booking.price_details_not_applicable') }}</span>
-                                </div>
-                                <div class="d-flex justify-between text-13 mb-5">
-                                    <span class="text-muted">{{ __('transfers.booking.price_details_price_per_km') }}</span>
-                                    <span class="text-dark-1" v-if="priceDetails.pricePerKm">@{{ priceDetails.pricePerKm }}</span>
-                                    <span class="text-dark-1" v-else>{{ __('transfers.booking.price_details_not_applicable') }}</span>
-                                </div>
-                                <div class="d-flex justify-between text-13 mb-5">
-                                    <span class="text-muted">{{ __('transfers.booking.price_details_base_fee') }}</span>
-                                    <span class="text-dark-1" v-if="priceDetails.baseFee">@{{ priceDetails.baseFee }}</span>
-                                    <span class="text-dark-1" v-else>{{ __('transfers.booking.price_details_not_applicable') }}</span>
-                                </div>
-                                <div class="d-flex justify-between text-13">
-                                    <span class="text-muted">{{ __('transfers.booking.price_details_total') }}</span>
-                                    <span class="text-dark-1 fw-600" v-if="priceDetails.total">@{{ priceDetails.total }}</span>
-                                    <span class="text-dark-1" v-else>{{ __('transfers.booking.price_details_not_applicable') }}</span>
-                                </div>
-                                <div class="text-13 text-muted mt-10" v-if="transfer_quote_loading">{{ __('transfers.booking.price_details_loading') }}</div>
-                            </div>
+                        <div class="col-12" v-if="transfer_quote_loading">
+                            <div class="px-20 py-10 border-light rounded-4 bg-light text-13 text-muted">{{ __('transfers.booking.price_details_loading') }}</div>
                         </div>
                         <div class="col-12" v-if="transfer_quote_error">
                             <div class="px-20 py-10 border-light rounded-4 bg-light text-13 text-red-1">@{{ transfer_quote_error }}</div>
                         </div>
                         <div class="col-md-6">
-                            <div class="form-group px-20 py-10 border-light rounded-4">
+                            <div class="form-group px-20 py-10 border-light rounded-4 js-transfer-date-field" data-display-format="{{ get_moment_date_format() }}">
                                 <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('transfers.form.date_label') }}</h4>
-                                <input type="date"
-                                       class="form-control js-transfer-date"
+                                <input type="text"
+                                       class="form-control js-transfer-date-display"
+                                       data-display-format="{{ get_moment_date_format() }}"
+                                       value="{{ $transferDateDisplay }}"
+                                       placeholder="{{ __('transfers.form.date_label') }}"
+                                       readonly
+                                       autocomplete="off"
+                                       ref="start_date">
+                                <input type="hidden"
+                                       class="js-transfer-date"
+                                       ref="transfer_date"
                                        v-model="transfer_date"
                                        value="{{ $transferDateValue }}">
                             </div>
+                        </div>
+                        <div class="col-12" v-if="transfer_quote_error">
+                            <div class="px-20 py-10 border-light rounded-4 bg-light text-13 text-red-1">@{{ transfer_quote_error }}</div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-group px-20 py-10 border-light rounded-4">
@@ -280,6 +269,18 @@
                         </div>
                         <div class="col-12" v-if="html">
                             <div v-html="html"></div>
+                        </div>
+                        <div class="col-12" v-if="priceSummary">
+                            <div class="px-20 py-15 border-light rounded-4 bg-light">
+                                <div class="d-flex justify-between text-15 mb-5" v-if="priceSummary.distance">
+                                    <span class="text-muted">{{ __('transfers.booking.price_details_distance') }}</span>
+                                    <span class="text-dark-1 fw-500">@{{ priceSummary.distance }}</span>
+                                </div>
+                                <div class="d-flex justify-between text-18">
+                                    <span class="text-muted">{{ __('transfers.booking.price_details_total') }}</span>
+                                    <span class="text-dark-1 fw-600">@{{ priceSummary.total }}</span>
+                                </div>
+                            </div>
                         </div>
                         <div class="col-12">
                             <div class="submit-group">

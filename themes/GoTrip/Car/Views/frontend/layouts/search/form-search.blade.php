@@ -116,7 +116,24 @@
                 <div class="searchMenu-date item">
                     <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('transfers.form.date_label') }}</h4>
                     <div class="text-15 text-light-1 ls-2 lh-16">
-                        <input type="date" name="transfer_date" class="form-control js-transfer-date" value="{{ $transferDate }}">
+                        @php
+                            $transferDateDisplay = '';
+                            if (!empty($transferDate)) {
+                                try {
+                                    $transferDateDisplay = display_date($transferDate);
+                                } catch (\Exception $exception) {
+                                    $transferDateDisplay = $transferDate;
+                                }
+                            }
+                        @endphp
+                        <input type="text"
+                               class="form-control js-transfer-date-display"
+                               data-display-format="{{ get_moment_date_format() }}"
+                               value="{{ $transferDateDisplay }}"
+                               placeholder="{{ __('transfers.form.date_label') }}"
+                               readonly
+                               autocomplete="off">
+                        <input type="hidden" name="transfer_date" class="js-transfer-date" value="{{ $transferDate }}">
                     </div>
                 </div>
             </div>
