@@ -59,9 +59,6 @@ class CarController extends Controller
         }
 
         $pickupLocationId = Arr::get($pickupPayload, 'id') ?? $request->input('pickup_location_id');
-        if ($pickupLocationId === '__mylocation__') {
-            $pickupLocationId = null;
-        }
         $selectedPickupLocation = null;
         if ($pickupLocationId) {
             $selectedPickupLocation = CarPickupLocation::with('car')->find($pickupLocationId);
@@ -264,9 +261,6 @@ class CarController extends Controller
 
         $selectedPickupLocation = null;
         $pickupLocationId = Arr::get($pickupPayload, 'id') ?? $request->input('pickup_location_id');
-        if ($pickupLocationId === '__mylocation__') {
-            $pickupLocationId = null;
-        }
         if ($pickupLocationId) {
             $selectedPickupLocation = $row->pickupLocations()->where('id', $pickupLocationId)->where('is_active', true)->first();
             if ($selectedPickupLocation) {

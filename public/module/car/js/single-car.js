@@ -345,6 +345,11 @@
                     this.message.content = bravo_booking_i18n.dropoff_required || 'Please choose a drop-off location.';
                     return false;
                 }
+                if(!this.dropoff.place_id){
+                    this.message.status = false;
+                    this.message.content = bravo_booking_i18n.dropoff_required || 'Please choose a drop-off location.';
+                    return false;
+                }
 
                 return true;
             },
@@ -380,6 +385,7 @@
                     name: $root.find('.js-transfer-dropoff-name').val(),
                     lat: $root.find('.js-transfer-dropoff-lat').val(),
                     lng: $root.find('.js-transfer-dropoff-lng').val(),
+                    place_id: $root.find('.js-transfer-dropoff-place-id').val(),
                 };
                 var transferDate = $root.find('.js-transfer-date').val();
                 var transferTime = $root.find('.js-transfer-time').val();

@@ -98,6 +98,7 @@ class Car extends Bookable
         'transfer_datetime' => null,
         'pricing_mode' => null,
         'unit_price' => null,
+        'base_fee' => null,
     ];
 
     public function __construct(array $attributes = [])
@@ -372,6 +373,9 @@ class Car extends Bookable
                 $booking->addMeta('transfer_datetime', $request->input('transfer_datetime'));
                 $booking->addMeta('transfer_pricing_mode', $this->transferContext['pricing_mode']);
                 $booking->addMeta('transfer_unit_price', $this->transferContext['unit_price']);
+                if ($this->transferContext['base_fee'] !== null) {
+                    $booking->addMeta('transfer_base_fee', $this->transferContext['base_fee']);
+                }
                 $booking->addMeta('transfer_price', $this->transferContext['price']);
             }
 
@@ -441,9 +445,6 @@ class Car extends Bookable
         }
 
         $pickupLocationId = $request->input('pickup_location_id') ?? Arr::get($pickupPayload, 'id');
-        if ($pickupLocationId === '__mylocation__') {
-            $pickupLocationId = null;
-        }
         $pickupLocation = null;
         if ($pickupLocationId) {
             $pickupLocation = $this->pickupLocations()->where('id', $pickupLocationId)->first();
@@ -515,6 +516,7 @@ class Car extends Bookable
         $request->attributes->set('transfer_duration_min', $this->transferContext['route_duration']);
         $request->attributes->set('transfer_pricing_mode', $this->transferContext['pricing_mode']);
         $request->attributes->set('transfer_unit_price', $this->transferContext['unit_price']);
+        $request->attributes->set('transfer_base_fee', $this->transferContext['base_fee']);
 
         return true;
     }
@@ -1282,6 +1284,18 @@ class Car extends Bookable
         $pricingMode = $this->pricing_mode ?: 'per_km';
         $unitPrice = null;
         $calculatedPrice = null;
+        $baseFee = null;
+
+        if ($distance !== null) {
+            $distance = round($distance, 2);
+        }
+        if ($duration !== null) {
+            $duration = round($duration, 2);
+        }
+
+        if ($pricingMode !== 'fixed' && ($distance === null || $distance <= 0)) {
+            return false;
+        }
 
         if ($pricingMode === 'fixed') {
             $unitPrice = $this->fixed_price;
@@ -1289,6 +1303,7 @@ class Car extends Bookable
                 return false;
             }
             $calculatedPrice = round($unitPrice, 2);
+            $baseFee = $calculatedPrice;
         } else {
             $pricingMode = 'per_km';
             $unitPrice = $this->price_per_km;
@@ -1321,6 +1336,7 @@ class Car extends Bookable
             'transfer_datetime' => $transferDatetime,
             'pricing_mode' => $pricingMode,
             'unit_price' => $unitPrice,
+            'base_fee' => $baseFee,
         ]);
 
         if ($transferDate) {
@@ -1380,6 +1396,11 @@ class Car extends Bookable
         return $this->transferContext['unit_price'];
     }
 
+    public function getTransferBaseFeeAttribute(): ?float
+    {
+        return $this->transferContext['base_fee'];
+    }
+
     public function getDisplayPriceAttribute()
     {
         if ($this->hasTransferContext()) {
@@ -1410,6 +1431,7 @@ class Car extends Bookable
             'transfer_datetime' => null,
             'pricing_mode' => null,
             'unit_price' => null,
+            'base_fee' => null,
         ];
     }
 
@@ -1500,6 +1522,13 @@ class Car extends Bookable
 
         if ($distanceKm === null) {
             $distanceKm = static::haversineDistance($pickupLat, $pickupLng, $dropoffLat, $dropoffLng);
+        }
+
+        if ($distanceKm !== null) {
+            $distanceKm = round($distanceKm, 2);
+        }
+        if ($durationMin !== null) {
+            $durationMin = round($durationMin, 2);
         }
 
         return [
