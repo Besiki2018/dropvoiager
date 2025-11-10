@@ -118,6 +118,7 @@
                                         name="pickup_location_id"
                                         data-default-label="{{ __('transfers.form.select_pickup_option') }}">
                                     <option value="">{{ __('transfers.form.select_pickup_option') }}</option>
+                                    <option value="__mylocation__" data-source="mylocation">{{ __('transfers.form.use_my_location') }}</option>
                                     @foreach($pickupLocations as $location)
                                         @php
                                             $payload = $location->toFrontendArray();
@@ -145,6 +146,12 @@
                                 <input type="hidden" class="js-transfer-dropoff-json" value='@json($dropoffData)'>
                             </div>
                         </div>
+                        <div class="col-12" v-if="transfer_quote_loading">
+                            <div class="px-20 py-10 border-light rounded-4 bg-light text-13 text-muted">{{ __('transfers.booking.price_details_loading') }}</div>
+                        </div>
+                        <div class="col-12" v-if="transfer_quote_error">
+                            <div class="px-20 py-10 border-light rounded-4 bg-light text-13 text-red-1">@{{ transfer_quote_error }}</div>
+                        </div>
                         <div class="col-md-6">
                             <div class="form-group px-20 py-10 border-light rounded-4 js-transfer-date-field" data-display-format="{{ get_moment_date_format() }}">
                                 <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('transfers.form.date_label') }}</h4>
@@ -162,6 +169,9 @@
                                        v-model="transfer_date"
                                        value="{{ $transferDateValue }}">
                             </div>
+                        </div>
+                        <div class="col-12" v-if="transfer_quote_error">
+                            <div class="px-20 py-10 border-light rounded-4 bg-light text-13 text-red-1">@{{ transfer_quote_error }}</div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-group px-20 py-10 border-light rounded-4">
