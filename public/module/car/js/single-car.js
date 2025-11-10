@@ -195,6 +195,39 @@
         },
         mounted(){
             var me = this;
+            var $root = $(this.$el);
+            if (window.BravoTransferForm && typeof window.BravoTransferForm.initAll === 'function') {
+                window.BravoTransferForm.initAll($root);
+            }
+            $root.on('transfer:context-changed', function (event, context) {
+                context = context || {};
+                if (context.pickup) {
+                    me.pickup_location = context.pickup;
+                    me.pickup_location_id = context.pickup.id || '';
+                }
+                if (context.dropoff) {
+                    me.dropoff = context.dropoff;
+                }
+            });
+            var initialPickupPayload = $root.find('.js-transfer-pickup-payload').val();
+            if (initialPickupPayload) {
+                try {
+                    var parsedPickup = JSON.parse(initialPickupPayload);
+                    if (parsedPickup) {
+                        me.pickup_location = parsedPickup;
+                        me.pickup_location_id = parsedPickup.id || '';
+                    }
+                } catch (err) {}
+            }
+            var initialDropoffPayload = $root.find('.js-transfer-dropoff-json').val();
+            if (initialDropoffPayload) {
+                try {
+                    var parsedDropoff = JSON.parse(initialDropoffPayload);
+                    if (parsedDropoff) {
+                        me.dropoff = parsedDropoff;
+                    }
+                } catch (err) {}
+            }
             var options = {
                 // singleDatePicker: true,
                 showCalendar: false,
@@ -312,7 +345,8 @@
                     this.message.content = bravo_booking_i18n.no_guest_select;
                     return false;
                 }
-                if(!this.pickup_location_id){
+                var hasPickupCoordinates = this.pickup_location && this.pickup_location.lat && this.pickup_location.lng;
+                if(!this.pickup_location_id && !hasPickupCoordinates){
                     this.message.status = false;
                     this.message.content = bravo_booking_i18n.pickup_required || 'Please choose a pickup location.';
                     return false;
@@ -341,6 +375,9 @@
 
                 var $root = $(this.$el);
                 this.pickup_location_id = $root.find('.js-transfer-pickup').val();
+                if (this.pickup_location_id === '__mylocation__') {
+                    this.pickup_location_id = '';
+                }
                 var pickupPayload = $root.find('.js-transfer-pickup-payload').val();
                 if (pickupPayload) {
                     try {
@@ -359,8 +396,9 @@
                 };
                 var transferDate = $root.find('.js-transfer-date').val();
                 var transferTime = $root.find('.js-transfer-time').val();
-                this.transfer_datetime = '';
-                if (transferDate && transferTime) {
+                var transferDatetimeField = $root.find('.js-transfer-datetime');
+                this.transfer_datetime = transferDatetimeField.length ? transferDatetimeField.val() : '';
+                if (!this.transfer_datetime && transferDate && transferTime) {
                     this.transfer_datetime = transferDate + 'T' + transferTime + ':00+04:00';
                 }
 
