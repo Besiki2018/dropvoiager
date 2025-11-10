@@ -62,11 +62,6 @@ class ModuleProvider extends ModuleServiceProvider
                         'title'      => __('Availability'),
                         'permission' => 'car_create',
                     ],
-                    'transfer_routes'=>[
-                        'url'        => route('car.admin.transfer-routes.index'),
-                        'title'      => __('transfers.admin.routes.menu'),
-                        'permission' => 'car_manage_attributes',
-                    ],
                     'recovery'=>[
                         'url'        => route('car.admin.recovery'),
                         'title'      => __('Recovery'),
