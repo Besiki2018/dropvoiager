@@ -9,6 +9,16 @@
             pickup_location:null,
             dropoff:{},
             transfer_datetime:'',
+            transfer_date:'',
+            transfer_time:'',
+            quote_url:'',
+            pricing_meta:null,
+            transfer_quote:null,
+            transfer_quote_loading:false,
+            transfer_quote_error:'',
+            quote_xhr:null,
+            is_initialising:true,
+            datetime_required_message:'',
             message:{
                 content:'',
                 type:false
@@ -20,7 +30,6 @@
             start_date_html:'',
 
             step:1,
-            start_date_obj:'',
             allEvents:[],
             number:0,
             max_number:1,
@@ -45,6 +54,27 @@
             start_date(){
                 this.step = 1;
             },
+            transfer_date:function (value) {
+                this.syncTransferDateState();
+                if (this.$el) {
+                    $(this.$el).trigger('transfer:update-date', [value || '']);
+                }
+                if (value && typeof moment !== 'undefined') {
+                    var day = moment(value, 'YYYY-MM-DD', true);
+                    if (day.isValid()) {
+                        this.fetchEvents(day, day);
+                    }
+                }
+                if (!this.is_initialising) {
+                    this.refreshTransferQuote();
+                }
+            },
+            transfer_time:function () {
+                this.syncTransferDateState();
+                if (!this.is_initialising) {
+                    this.refreshTransferQuote();
+                }
+            },
             number:function () {
                 var me = this;
                 if(parseInt(me.number) > parseInt(me.max_number)){
@@ -53,9 +83,52 @@
                 if(parseInt(me.number) < 1){
                     me.number = 1
                 }
+            },
+            pickup_location:{
+                handler:function () {
+                    if (this.is_initialising) {
+                        return;
+                    }
+                    this.refreshTransferQuote();
+                },
+                deep:true
+            },
+            dropoff:{
+                handler:function () {
+                    if (this.is_initialising) {
+                        return;
+                    }
+                    this.refreshTransferQuote();
+                },
+                deep:true
             }
         },
         computed:{
+            priceSummary:function () {
+                var quote = this.transfer_quote || null;
+                var meta = this.pricing_meta || {};
+                var priceValue = null;
+                var distanceValue = null;
+
+                if (quote && typeof quote.price === 'number') {
+                    priceValue = quote.price;
+                } else if (meta && meta.mode === 'fixed' && typeof meta.fixed_price === 'number') {
+                    priceValue = meta.fixed_price;
+                }
+
+                if (quote && typeof quote.distance_km === 'number') {
+                    distanceValue = quote.distance_km;
+                }
+
+                if (priceValue === null) {
+                    return null;
+                }
+
+                return {
+                    total: this.formatMoney(priceValue),
+                    distance: distanceValue !== null ? this.formatDistance(distanceValue) : null
+                };
+            },
             total_price:function(){
                 var me = this;
                 if (me.start_date !== "") {
@@ -195,73 +268,90 @@
         },
         mounted(){
             var me = this;
-            var options = {
-                // singleDatePicker: true,
-                showCalendar: false,
-                sameDate: true,
-                autoApply           : true,
-                disabledPast        : true,
-                dateFormat          : bookingCore.date_format,
-                enableLoading       : true,
-                showEventTooltip    : true,
-                classNotAvailable   : ['disabled', 'off'],
-                disableHightLight: true,
-                minDate:this.minDate,
-                opens: bookingCore.rtl ? 'right':'left',
-                locale:{
-                    direction: bookingCore.rtl ? 'rtl':'ltr',
-                    firstDay:daterangepickerLocale.first_day_of_week
-                },
-                isInvalidDate:function (date) {
-                    for(var k = 0 ; k < me.allEvents.length ; k++){
-                        var item = me.allEvents[k];
-                        if(item.start == date.format('YYYY-MM-DD')){
-                            return item.active ? false : true;
-                        }
-                    }
-                    return false;
-                },
-                addClassCustom:function (date) {
-                    for(var k = 0 ; k < me.allEvents.length ; k++){
-                        var item = me.allEvents[k];
-                        if(item.start == date.format('YYYY-MM-DD') && item.classNames !== undefined){
-                            var class_names = "";
-                            for(var i = 0 ; i < item.classNames.length ; i++){
-                                var classItem = item.classNames[i];
-                                class_names += " "+classItem;
-                            }
-                            return class_names;
-                        }
-                    }
-                    return "";
-                }
-            };
-
-            if (typeof  daterangepickerLocale == 'object') {
-                options.locale = _.merge(daterangepickerLocale,options.locale);
+            var $root = $(this.$el);
+            var quoteUrl = $root.data('quoteUrl');
+            if (quoteUrl) {
+                this.quote_url = quoteUrl;
             }
-
-            this.$nextTick(function () {
-
-                $(this.$refs.start_date).daterangepicker(options).on('apply.daterangepicker',
-                    function (ev, picker) {
-                        me.start_date = picker.startDate.format('YYYY-MM-DD');
-                        me.end_date = picker.endDate.format('YYYY-MM-DD');
-                        me.start_date_html = picker.startDate.format(bookingCore.date_format) +' <i class="fa fa-long-arrow-right" style="font-size: inherit"></i> '+ picker.endDate.format(bookingCore.date_format);
-                        for(var k = 0 ; k < me.allEvents.length ; k++){
-                            var item = me.allEvents[k];
-                            if(item.start === picker.endDate.format('YYYY-MM-DD')){
-                                me.max_number =  item.number;
-                            }
-                        }
-                    })
-                    .on('update-calendar',function (e,obj) {
-                        me.fetchEvents(obj.leftCalendar.calendar[0][0], obj.rightCalendar.calendar[5][6])
-                    });
-            })
+            var pricingMeta = $root.data('pricingMeta');
+            if (pricingMeta) {
+                this.pricing_meta = pricingMeta;
+            }
+            var initialQuote = $root.data('initialQuote');
+            if (initialQuote) {
+                this.transfer_quote = initialQuote;
+            }
+            if (window.BravoTransferForm && typeof window.BravoTransferForm.initAll === 'function') {
+                window.BravoTransferForm.initAll($root);
+            }
+            $root.on('transfer:context-changed', function (event, context) {
+                context = context || {};
+                if (context.pickup) {
+                    me.pickup_location = context.pickup;
+                    me.pickup_location_id = context.pickup.id || '';
+                }
+                if (context.dropoff) {
+                    me.dropoff = context.dropoff;
+                }
+                if (!me.is_initialising) {
+                    me.refreshTransferQuote();
+                }
+            });
+            $root.on('transfer:date-changed', function (event, isoDate) {
+                var value = isoDate || '';
+                if (me.transfer_date !== value) {
+                    me.transfer_date = value;
+                }
+            });
+            var initialPickupPayload = $root.find('.js-transfer-pickup-payload').val();
+            if (initialPickupPayload) {
+                try {
+                    var parsedPickup = JSON.parse(initialPickupPayload);
+                    if (parsedPickup) {
+                        me.pickup_location = parsedPickup;
+                        me.pickup_location_id = parsedPickup.id || '';
+                    }
+                } catch (err) {}
+            }
+            var initialDropoffPayload = $root.find('.js-transfer-dropoff-json').val();
+            if (initialDropoffPayload) {
+                try {
+                    var parsedDropoff = JSON.parse(initialDropoffPayload);
+                    if (parsedDropoff) {
+                        me.dropoff = parsedDropoff;
+                    }
+                } catch (err) {}
+            }
+            var dateField = $root.find('.js-transfer-date');
+            if (dateField.length) {
+                this.transfer_date = dateField.val() || '';
+            }
+            var timeField = $root.find('.js-transfer-time');
+            if (timeField.length) {
+                this.transfer_time = timeField.val() || '';
+            }
+            var datetimeMessage = $root.data('datetimeRequired');
+            if (datetimeMessage) {
+                this.datetime_required_message = datetimeMessage;
+            }
+            this.syncTransferDateState();
+            this.is_initialising = false;
+            if (!this.transfer_quote && this.dropoff && this.dropoff.place_id) {
+                this.refreshTransferQuote();
+            }
         },
         methods:{
             handleTotalPrice:function() {
+            },
+            syncTransferDateState:function () {
+                var date = this.transfer_date || '';
+                this.start_date = date;
+                this.end_date = date;
+                if (date && typeof moment !== 'undefined') {
+                    this.start_date_html = moment(date, 'YYYY-MM-DD').format(bookingCore.date_format);
+                } else {
+                    this.start_date_html = date ? date : '';
+                }
             },
             fetchEvents(start,end){
                 var me = this;
@@ -282,11 +372,27 @@
                     },
                     success:function (json) {
                         me.allEvents = json;
-                        var drp = $(me.$refs.start_date).data('daterangepicker');
-                        drp.allEvents = json;
-                        drp.renderCalendar('left');
-                        if (!drp.singleDatePicker) {
-                            drp.renderCalendar('right');
+                        if (me.transfer_date) {
+                            for (var idx = 0; idx < json.length; idx++) {
+                                var availability = json[idx];
+                                if (availability.start === me.transfer_date && typeof availability.number !== 'undefined') {
+                                    me.max_number = availability.number;
+                                    break;
+                                }
+                            }
+                        }
+                        if (me.$refs && me.$refs.start_date) {
+                            var $dateDisplay = $(me.$refs.start_date);
+                            $dateDisplay.data('transferEvents', json);
+                            var drp = $dateDisplay.data('daterangepicker');
+                            if (drp) {
+                                drp.allEvents = json;
+                                drp.transferEvents = json;
+                                drp.renderCalendar('left');
+                                if (!drp.singleDatePicker) {
+                                    drp.renderCalendar('right');
+                                }
+                            }
                         }
                         $('.daterangepicker').removeClass("loading");
                     },
@@ -299,20 +405,123 @@
             formatMoney: function (m) {
                 return window.bravo_format_money(m);
             },
+            formatDistance:function (km) {
+                var value = parseFloat(km);
+                if (isNaN(value)) {
+                    return null;
+                }
+                return value.toFixed(2) + ' km';
+            },
+            refreshTransferQuote:function () {
+                if (!this.quote_url) {
+                    return;
+                }
+                var dropoff = this.dropoff || {};
+                var dropLat = parseFloat(dropoff.lat);
+                var dropLng = parseFloat(dropoff.lng);
+                if (!dropoff.place_id || isNaN(dropLat) || isNaN(dropLng)) {
+                    this.transfer_quote = null;
+                    this.transfer_quote_error = '';
+                    if (this.quote_xhr) {
+                        this.quote_xhr.abort();
+                        this.quote_xhr = null;
+                    }
+                    this.transfer_quote_loading = false;
+                    return;
+                }
+
+                var pickup = this.pickup_location || {};
+                var pickupLat = parseFloat(pickup.lat);
+                var pickupLng = parseFloat(pickup.lng);
+                if (isNaN(pickupLat) || isNaN(pickupLng)) {
+                    this.transfer_quote = null;
+                    this.transfer_quote_error = '';
+                    return;
+                }
+
+                var $root = $(this.$el);
+                var datetimeField = $root.find('.js-transfer-datetime');
+                var transferDatetime = datetimeField.length ? datetimeField.val() : '';
+                if (!transferDatetime && this.transfer_date && this.transfer_time) {
+                    transferDatetime = this.transfer_date + 'T' + this.transfer_time + ':00+04:00';
+                }
+                this.transfer_datetime = transferDatetime;
+
+                var requestData = {
+                    pickup: JSON.stringify(pickup),
+                    dropoff: JSON.stringify({
+                        address: dropoff.address || dropoff.name || '',
+                        name: dropoff.name || dropoff.address || '',
+                        lat: dropLat,
+                        lng: dropLng,
+                        place_id: dropoff.place_id
+                    }),
+                    pickup_location_id: this.pickup_location_id || '',
+                    transfer_datetime: transferDatetime,
+                    transfer_date: this.transfer_date || '',
+                    transfer_time: this.transfer_time || ''
+                };
+
+                this.transfer_quote_loading = true;
+                this.transfer_quote_error = '';
+
+                if (this.quote_xhr) {
+                    this.quote_xhr.abort();
+                    this.quote_xhr = null;
+                }
+
+                var headers = {};
+                var csrf = $('meta[name="csrf-token"]').attr('content');
+                if (csrf) {
+                    headers['X-CSRF-TOKEN'] = csrf;
+                }
+
+                var me = this;
+                this.quote_xhr = $.ajax({
+                    url: this.quote_url,
+                    method: 'POST',
+                    dataType: 'json',
+                    data: requestData,
+                    headers: headers
+                }).done(function (response) {
+                    if (response && response.status && response.data && response.data.quote) {
+                        me.transfer_quote = response.data.quote;
+                        me.transfer_quote_error = '';
+                    } else {
+                        me.transfer_quote = null;
+                        me.transfer_quote_error = response && response.message ? response.message : '';
+                    }
+                }).fail(function (xhr) {
+                    if (xhr && xhr.statusText === 'abort') {
+                        return;
+                    }
+                    me.transfer_quote = null;
+                    if (xhr && xhr.responseJSON && xhr.responseJSON.message) {
+                        me.transfer_quote_error = xhr.responseJSON.message;
+                    } else {
+                        me.transfer_quote_error = '';
+                    }
+                }).always(function () {
+                    me.transfer_quote_loading = false;
+                    me.quote_xhr = null;
+                });
+            },
             validate(){
-                if(!this.start_date || !this.end_date)
+                this.syncTransferDateState();
+                if(!this.transfer_date || !this.transfer_time)
                 {
-                                        this.message.status = false;
-                    this.message.content = bravo_booking_i18n.no_date_select;
+                    this.message.status = false;
+                    this.message.content = this.datetime_required_message || bravo_booking_i18n.no_date_select;
                     return false;
                 }
                 if(!this.number )
                 {
-                                        this.message.status = false;
+                    this.message.status = false;
                     this.message.content = bravo_booking_i18n.no_guest_select;
                     return false;
                 }
-                if(!this.pickup_location_id){
+                var hasPickupCoordinates = this.pickup_location && this.pickup_location.lat && this.pickup_location.lng;
+                if(!this.pickup_location_id && !hasPickupCoordinates){
                     this.message.status = false;
                     this.message.content = bravo_booking_i18n.pickup_required || 'Please choose a pickup location.';
                     return false;
@@ -320,6 +529,11 @@
                 var dropLat = parseFloat(this.dropoff && this.dropoff.lat);
                 var dropLng = parseFloat(this.dropoff && this.dropoff.lng);
                 if(!this.dropoff || isNaN(dropLat) || isNaN(dropLng)){
+                    this.message.status = false;
+                    this.message.content = bravo_booking_i18n.dropoff_required || 'Please choose a drop-off location.';
+                    return false;
+                }
+                if(!this.dropoff.place_id){
                     this.message.status = false;
                     this.message.content = bravo_booking_i18n.dropoff_required || 'Please choose a drop-off location.';
                     return false;
@@ -356,11 +570,13 @@
                     name: $root.find('.js-transfer-dropoff-name').val(),
                     lat: $root.find('.js-transfer-dropoff-lat').val(),
                     lng: $root.find('.js-transfer-dropoff-lng').val(),
+                    place_id: $root.find('.js-transfer-dropoff-place-id').val(),
                 };
                 var transferDate = $root.find('.js-transfer-date').val();
                 var transferTime = $root.find('.js-transfer-time').val();
-                this.transfer_datetime = '';
-                if (transferDate && transferTime) {
+                var transferDatetimeField = $root.find('.js-transfer-datetime');
+                this.transfer_datetime = transferDatetimeField.length ? transferDatetimeField.val() : '';
+                if (!this.transfer_datetime && transferDate && transferTime) {
                     this.transfer_datetime = transferDate + 'T' + transferTime + ':00+04:00';
                 }
 
@@ -510,9 +726,6 @@
                 }
                 return true;
             },
-            openStartDate(){
-                $(this.$refs.start_date).trigger('click');
-            }
         }
 
     });
