@@ -4,9 +4,43 @@
     $selectedPickup = $pickup_location ?? null;
     $selectedPickupId = $selectedPickup->id ?? ($booking_data['pickup_location_id'] ?? '');
     $dropoffData = $dropoff ?? ($booking_data['dropoff'] ?? []);
+    $selectedPickupPayload = $pickup_payload ?? ($selectedPickup ? $selectedPickup->toFrontendArray() : null);
     $transferDatetimeValue = $transfer_datetime_value ?? ($booking_data['transfer_datetime'] ?? '');
     $transferDateValue = '';
     $transferTimeValue = '';
+    $transferDateDisplay = '';
+    $pricingMeta = [
+        'mode' => $row->pricing_mode ?: 'per_km',
+        'price_per_km' => $row->price_per_km,
+        'fixed_price' => $row->fixed_price,
+        'base_fee' => $row->base_fee ?? null,
+    ];
+    $detailPickupLabel = $selectedPickupPayload['name'] ?? ($selectedPickupPayload['address'] ?? '');
+    $detailDropoffLabel = $dropoffData['address'] ?? ($dropoffData['name'] ?? '');
+    $detailDistance = $transfer_distance_km ?? $row->transfer_distance_km;
+    $detailDuration = $row->transfer_duration_min;
+    $detailPricingMode = $row->transfer_pricing_mode;
+    $detailUnitPrice = $row->transfer_unit_price;
+    $detailTotalPrice = $row->calculated_price;
+    $detailBaseFee = $row->transfer_base_fee;
+    if ($detailBaseFee === null && $detailPricingMode === 'fixed') {
+        $detailBaseFee = $detailTotalPrice ?? $detailUnitPrice;
+    }
+    $initialQuote = null;
+    if (!empty($detailPricingMode) && $detailTotalPrice) {
+        $initialQuote = [
+            'price' => $detailTotalPrice,
+            'distance_km' => $detailDistance,
+            'duration_min' => $detailDuration,
+            'pricing_mode' => $detailPricingMode,
+            'unit_price' => $detailUnitPrice,
+            'base_fee' => $detailBaseFee,
+            'pickup' => $selectedPickupPayload,
+            'dropoff' => $dropoffData,
+            'pickup_label' => $detailPickupLabel,
+            'dropoff_label' => $detailDropoffLabel,
+        ];
+    }
     if (!empty($transfer_datetime_display)) {
         $transferDateValue = $transfer_datetime_display->toDateString();
         $transferTimeValue = $transfer_datetime_display->format('H:i');
@@ -19,11 +53,24 @@
             $transferTimeValue = '';
         }
     }
+    if (!empty($transferDateValue)) {
+        try {
+            $transferDateDisplay = display_date($transferDateValue);
+        } catch (\Exception $exception) {
+            $transferDateDisplay = $transferDateValue;
+        }
+    }
 @endphp
 <div class="bravo_single_book_wrap d-flex justify-end">
     <div class="bravo_single_book">
         @include('Layout::common.detail.vendor')
-        <div id="bravo_car_book_app" v-cloak class="px-30 py-30 rounded-4 border-light shadow-4 bg-white w-360 lg:w-full">
+        <div id="bravo_car_book_app"
+             v-cloak
+             class="px-30 py-30 rounded-4 border-light shadow-4 bg-white w-360 lg:w-full"
+             data-datetime-required="{{ __('transfers.form.datetime_required') }}"
+             data-quote-url="{{ route('car.transfer.quote', $row->id) }}"
+             data-pricing-meta='@json($pricingMeta)'
+             data-initial-quote='@json($initialQuote)'>
             <div class="row y-gap-15 items-center justify-between">
                 <div class="col-auto">
                     <div class="text-14 text-light-1">
@@ -62,12 +109,14 @@
                 </div>
             </div>
             <div class="form-book" :class="{'d-none':enquiry_type!='book'}">
-                <div class="form-content">
+                <div class="form-content js-transfer-form">
                     <div class="row y-gap-20 pt-20">
                         <div class="col-12">
                             <div class="form-group px-20 py-10 border-light rounded-4">
                                 <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('transfers.form.from_label') }}</h4>
-                                <select class="form-control js-transfer-pickup" name="pickup_location_id">
+                                <select class="form-control js-transfer-pickup"
+                                        name="pickup_location_id"
+                                        data-default-label="{{ __('transfers.form.select_pickup_option') }}">
                                     <option value="">{{ __('transfers.form.select_pickup_option') }}</option>
                                     @foreach($pickupLocations as $location)
                                         @php
@@ -77,70 +126,53 @@
                                                 $label .= ' — ' . $location->car->title;
                                             }
                                         @endphp
-                                        <option value="{{ $location->id }}" data-payload='@json($payload)' @if($location->id == $selectedPickupId) selected @endif>{{ $label }}</option>
+                                        <option value="{{ $location->id }}" data-source="backend" data-payload='@json($payload)' @if($location->id == $selectedPickupId) selected @endif>{{ $label }}</option>
                                     @endforeach
                                 </select>
-                                @if($pickupLocations->isEmpty())
-                                    <small class="text-danger d-block mt-2">{{ __('transfers.form.no_pickups_available') }}</small>
-                                @endif
                             </div>
                         </div>
                         <div class="col-12">
                             <div class="form-group px-20 py-10 border-light rounded-4">
                                 <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('transfers.form.to_label') }}</h4>
-                                <input type="text" class="form-control js-transfer-dropoff-display" value="{{ $dropoffData['address'] ?? $dropoffData['name'] ?? '' }}" placeholder="{{ __('transfers.form.to_placeholder') }}">
+                                <input type="text" class="form-control js-transfer-dropoff-display" value="{{ $dropoffData['address'] ?? $dropoffData['name'] ?? '' }}" placeholder="{{ __('transfers.form.to_placeholder') }}" minlength="3" autocomplete="off">
                                 <input type="hidden" class="js-transfer-dropoff-address" value="{{ $dropoffData['address'] ?? $dropoffData['name'] ?? '' }}">
                                 <input type="hidden" class="js-transfer-dropoff-name" value="{{ $dropoffData['name'] ?? $dropoffData['address'] ?? '' }}">
                                 <input type="hidden" class="js-transfer-dropoff-lat" value="{{ $dropoffData['lat'] ?? '' }}">
                                 <input type="hidden" class="js-transfer-dropoff-lng" value="{{ $dropoffData['lng'] ?? '' }}">
-                                <input type="hidden" class="js-transfer-pickup-payload" value='@json($selectedPickup ? $selectedPickup->toFrontendArray() : null)'>
+                                <input type="hidden" class="js-transfer-dropoff-place-id" value="{{ $dropoffData['place_id'] ?? '' }}">
+                                <input type="hidden" class="js-transfer-pickup-payload" value='@json($selectedPickupPayload)'>
+                                <input type="hidden" class="js-transfer-pickup-json" value='@json($selectedPickupPayload)'>
+                                <input type="hidden" class="js-transfer-dropoff-json" value='@json($dropoffData)'>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group px-20 py-10 border-light rounded-4 js-transfer-date-field" data-display-format="{{ get_moment_date_format() }}">
+                                <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('transfers.form.date_label') }}</h4>
+                                <input type="text"
+                                       class="form-control js-transfer-date-display"
+                                       data-display-format="{{ get_moment_date_format() }}"
+                                       value="{{ $transferDateDisplay }}"
+                                       placeholder="{{ __('transfers.form.date_label') }}"
+                                       readonly
+                                       autocomplete="off"
+                                       ref="start_date">
+                                <input type="hidden"
+                                       class="js-transfer-date"
+                                       ref="transfer_date"
+                                       v-model="transfer_date"
+                                       value="{{ $transferDateValue }}">
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-group px-20 py-10 border-light rounded-4">
-                                <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('Date') }}</h4>
-                                <input type="date" class="form-control js-transfer-date" value="{{ $transferDateValue }}">
+                                <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('transfers.form.time_label') }}</h4>
+                                <input type="time"
+                                       class="form-control js-transfer-time"
+                                       v-model="transfer_time"
+                                       value="{{ $transferTimeValue }}">
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="form-group px-20 py-10 border-light rounded-4">
-                                <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('Time') }}</h4>
-                                <input type="time" class="form-control js-transfer-time" value="{{ $transferTimeValue }}">
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="form-group form-date-field form-date-search clearfix px-20 py-10 border-light rounded-4 -right position-relative" data-format="{{get_moment_date_format()}}">
-                                <div class="date-wrapper clearfix" @click="openStartDate">
-                                    <div class="check-in-wrapper">
-                                        <h4 class="text-15 fw-500 ls-2 lh-16">{{__("Select Dates")}}</h4>
-                                        <div class="render check-in-render" v-html="start_date_html"></div>
-                                        @if(!empty($row->min_day_before_booking))
-                                            <div class="render check-in-render">
-                                                <small>
-                                                    @if($row->min_day_before_booking > 1)
-                                                        - {{ __("Book :number days in advance",["number"=>$row->min_day_before_booking]) }}
-                                                    @else
-                                                        - {{ __("Book :number day in advance",["number"=>$row->min_day_before_booking]) }}
-                                                    @endif
-                                                </small>
-                                            </div>
-                                        @endif
-                                        @if(!empty($row->min_day_stays))
-                                            <div class="render check-in-render">
-                                                <small>
-                                                    @if($row->min_day_stays > 1)
-                                                        - {{ __("Stay at least :number days",["number"=>$row->min_day_stays]) }}
-                                                    @else
-                                                        - {{ __("Stay at least :number day",["number"=>$row->min_day_stays]) }}
-                                                    @endif
-                                                </small>
-                                            </div>
-                                        @endif
-                                    </div>
-                                </div>
-                                <input type="text" class="start_date" ref="start_date" style="height: 1px;visibility: hidden;position: absolute;left: 0;">
-                            </div>
-                        </div>
+                        <input type="hidden" class="js-transfer-datetime" value="{{ $transferDatetimeValue }}">
                         <div class="col-12">
                             <div class="searchMenu-guests px-20 py-10 border-light rounded-4 js-form-dd">
                                 <div data-x-dd-click="searchMenu-guests">
@@ -228,6 +260,26 @@
                         <div class="col-12" v-if="html">
                             <div v-html="html"></div>
                         </div>
+                        <div class="col-12" v-if="transfer_quote_loading || transfer_quote_error || priceSummary">
+                            <div class="px-20 py-15 border-light rounded-4 bg-light">
+                                <template v-if="transfer_quote_loading">
+                                    <div class="text-13 text-muted">{{ __('transfers.booking.price_details_loading') }}</div>
+                                </template>
+                                <template v-else-if="transfer_quote_error">
+                                    <div class="text-13 text-red-1" role="alert" v-text="transfer_quote_error"></div>
+                                </template>
+                                <template v-else-if="priceSummary">
+                                    <div class="d-flex justify-between text-15 mb-5" v-if="priceSummary.distance">
+                                        <span class="text-muted">{{ __('transfers.booking.price_details_distance') }}</span>
+                                        <span class="text-dark-1 fw-500">@{{ priceSummary.distance }}</span>
+                                    </div>
+                                    <div class="d-flex justify-between text-18">
+                                        <span class="text-muted">{{ __('transfers.booking.price_details_total') }}</span>
+                                        <span class="text-dark-1 fw-600" v-html="priceSummary.total"></span>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
                         <div class="col-12">
                             <div class="submit-group">
                                 <a class="button -dark-1 py-15 px-35 h-60 col-12 rounded-4 bg-blue-1 text-white cursor-pointer" @click="doSubmit($event)" :class="{'disabled':onSubmit,'btn-success':(step == 2),'btn-primary':step == 1}" name="submit">
@@ -250,3 +302,8 @@
     </div>
 </div>
 @include("Booking::frontend.global.enquiry-form",['service_type'=>'car'])
+@push('js')
+    @once('transfer-form-script')
+        @include('Car::frontend.layouts.partials.transfer-form-script')
+    @endonce
+@endpush

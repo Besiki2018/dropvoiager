@@ -1,6 +1,18 @@
 <?php
 $translation = $service->translate();
 $lang_local = app()->getLocale();
+$transferPickupMeta = $booking->getJsonMeta('transfer_pickup_location') ?? [];
+$transferDropoffMeta = $booking->getJsonMeta('transfer_dropoff') ?? [];
+$transferPickupLabel = $booking->pickup_name ?: ($transferPickupMeta['address'] ?? $transferPickupMeta['name'] ?? '');
+$transferDropoffLabel = $booking->dropoff_address ?: ($transferDropoffMeta['address'] ?? $transferDropoffMeta['name'] ?? '');
+$transferDistanceEmail = $booking->distance_km ?? $booking->getMeta('transfer_distance_km');
+$transferPricingModeEmail = $booking->pricing_mode ?? $booking->getMeta('transfer_pricing_mode');
+$transferUnitPriceEmail = $booking->unit_price ?? $booking->getMeta('transfer_unit_price');
+$transferTotalPriceEmail = $booking->total_price ?? $booking->getMeta('transfer_price');
+$transferBaseFeeEmail = $booking->getMeta('transfer_base_fee');
+if ($transferBaseFeeEmail === null && $transferPricingModeEmail === 'fixed') {
+    $transferBaseFeeEmail = $transferUnitPriceEmail ?? $transferTotalPriceEmail;
+}
 ?>
 <div class="b-panel-title">{{__('Car information')}}</div>
 <div class="b-table-wrap">
@@ -40,6 +52,57 @@ $lang_local = app()->getLocale();
                 </td>
             @endif
         </tr>
+        @if($transferTotalPriceEmail !== null && $transferTotalPriceEmail !== '')
+            <tr>
+                <td class="label">{{ __('transfers.booking.price_details_title') }}</td>
+                <td class="val">
+                    <table class="pricing-list" width="100%">
+                        <tr>
+                            <td class="label">{{ __('transfers.booking.price_details_from') }}</td>
+                            <td class="val">{{ $transferPickupLabel ?: '—' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">{{ __('transfers.booking.price_details_to') }}</td>
+                            <td class="val">{{ $transferDropoffLabel ?: '—' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">{{ __('transfers.booking.price_details_distance') }}</td>
+                            <td class="val">
+                                @if($transferDistanceEmail !== null && $transferDistanceEmail !== '')
+                                    {{ number_format((float)$transferDistanceEmail, 2) }} km
+                                @else
+                                    {{ __('transfers.booking.price_details_not_applicable') }}
+                                @endif
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="label">{{ __('transfers.booking.price_details_price_per_km') }}</td>
+                            <td class="val">
+                                @if($transferPricingModeEmail === 'per_km' && $transferUnitPriceEmail)
+                                    {{ format_money($transferUnitPriceEmail) }}/km
+                                @else
+                                    {{ __('transfers.booking.price_details_not_applicable') }}
+                                @endif
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="label">{{ __('transfers.booking.price_details_base_fee') }}</td>
+                            <td class="val">
+                                @if($transferBaseFeeEmail !== null && $transferBaseFeeEmail !== '')
+                                    {{ format_money($transferBaseFeeEmail) }}
+                                @else
+                                    {{ __('transfers.booking.price_details_not_applicable') }}
+                                @endif
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="label">{{ __('transfers.booking.price_details_total') }}</td>
+                            <td class="val"><strong>{{ format_money($transferTotalPriceEmail) }}</strong></td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        @endif
         @if($booking->start_date && $booking->end_date)
             <tr>
                 <td class="label">{{__('Start date')}}</td>
