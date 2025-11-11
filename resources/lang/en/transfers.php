@@ -71,7 +71,7 @@ return [
             'title' => 'Pickup locations',
             'instructions' => 'Place a pin on the map and fill in the details to add a pickup location for this vehicle.',
             'form' => [
-                'name' => 'Location name',
+                'name' => 'Display name',
                 'name_placeholder' => 'e.g. Tbilisi International Airport',
                 'coordinates' => 'Coordinates',
                 'coordinates_hint' => 'Click the map to set latitude and longitude',

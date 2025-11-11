@@ -186,10 +186,6 @@
                     }
                 }
 
-                if (totalNumeric === null && totalDisplay === null) {
-                    return null;
-                }
-
                 if (totalDisplay === null && totalNumeric !== null) {
                     totalDisplay = this.formatMoney(totalNumeric);
                 }
@@ -198,48 +194,8 @@
                     distanceDisplay = this.formatDistance(distanceNumeric);
                 }
 
-                var mode = (quote && quote.pricing_mode) || meta.mode || 'per_km';
-                if (mode !== 'fixed') {
-                    mode = 'per_km';
-                }
-
-                var modeDisplay = '';
-                var modeLabel = messages.pricing_mode_label || '';
-                var fixedLabel = messages.pricing_mode_fixed || '';
-                var perKmLabel = messages.pricing_mode_per_km || '';
-                var modeValueLabel = mode === 'fixed' ? (fixedLabel || 'Fixed price') : (perKmLabel || 'Per kilometer');
-                if (modeLabel && modeValueLabel) {
-                    modeDisplay = modeLabel + ': ' + modeValueLabel;
-                } else if (modeValueLabel) {
-                    modeDisplay = modeValueLabel;
-                }
-
-                var unitPriceLabel = '';
-                if (mode === 'fixed') {
-                    var fixedValue = this.toNumeric((quote && typeof quote.unit_price !== 'undefined') ? quote.unit_price : meta.fixed_price);
-                    if (fixedValue !== null) {
-                        var formattedFixed = this.formatMoney(fixedValue);
-                        var fixedTemplate = messages.fixed_price_display || '';
-                        unitPriceLabel = fixedTemplate ? fixedTemplate.replace(':price', formattedFixed) : formattedFixed;
-                    }
-                } else {
-                    var perKmValue = this.toNumeric((quote && typeof quote.unit_price !== 'undefined') ? quote.unit_price : meta.price_per_km);
-                    if (perKmValue !== null) {
-                        var formattedPerKm = this.formatMoney(perKmValue);
-                        var perKmTemplate = messages.price_per_km_display || '';
-                        unitPriceLabel = perKmTemplate ? perKmTemplate.replace(':price', formattedPerKm) : formattedPerKm;
-                    }
-                }
-
-                var serviceRadiusLabel = '';
-                var radiusValue = this.toNumeric(meta.service_radius_km);
-                if (radiusValue !== null && radiusValue > 0) {
-                    var radiusTemplate = messages.service_radius_display || '';
-                    if (radiusTemplate) {
-                        serviceRadiusLabel = radiusTemplate.replace(':radius', radiusValue.toFixed(2));
-                    } else {
-                        serviceRadiusLabel = radiusValue.toFixed(2) + ' km';
-                    }
+                if (!totalDisplay && !distanceDisplay) {
+                    return null;
                 }
 
                 return {
@@ -508,6 +464,7 @@
             } else {
                 this.clearAvailabilityState();
             }
+            this.updateRouteContext();
             this.is_initialising = false;
             if (this.pending_quote_refresh) {
                 this.pending_quote_refresh = false;
@@ -537,7 +494,50 @@
                     return null;
                 }
             },
+            buildRoutePickup:function () {
+                var pickup = this.pickup_location || null;
+                if (!pickup || typeof pickup !== 'object') {
+                    return null;
+                }
+                var lat = this.toNumeric(pickup.lat);
+                var lng = this.toNumeric(pickup.lng);
+                if (lat === null || lng === null) {
+                    return null;
+                }
+                return {
+                    lat: lat,
+                    lng: lng,
+                    display_name: pickup.display_name || pickup.name || pickup.address || '',
+                    name: pickup.name || pickup.display_name || pickup.address || '',
+                    address: pickup.address || ''
+                };
+            },
+            buildRouteDropoff:function () {
+                var dropoff = this.dropoff || null;
+                if (!dropoff || typeof dropoff !== 'object') {
+                    return null;
+                }
+                var lat = this.toNumeric(dropoff.lat);
+                var lng = this.toNumeric(dropoff.lng);
+                if (lat === null || lng === null) {
+                    return null;
+                }
+                return {
+                    lat: lat,
+                    lng: lng,
+                    display_name: dropoff.address || dropoff.name || '',
+                    name: dropoff.name || '',
+                    address: dropoff.address || ''
+                };
+            },
+            updateRouteContext:function () {
+                if (!window.BravoTransferRoute || typeof window.BravoTransferRoute.setContext !== 'function') {
+                    return;
+                }
+                window.BravoTransferRoute.setContext(this.buildRoutePickup(), this.buildRouteDropoff());
+            },
             handleTransferFieldChange:function () {
+                this.updateRouteContext();
                 if (this.is_initialising) {
                     this.pending_quote_refresh = true;
                     return;
@@ -1040,11 +1040,12 @@
                     return;
                 }
 
+                var pickup = this.pickup_location || {};
                 var dropoff = this.dropoff || {};
+                var pickupLat = parseFloat(pickup.lat);
+                var pickupLng = parseFloat(pickup.lng);
                 var dropLat = parseFloat(dropoff.lat);
                 var dropLng = parseFloat(dropoff.lng);
-
-                var pickup = this.pickup_location || {};
 
                 var passengerCount = this.getPassengerCount();
 
@@ -1057,7 +1058,15 @@
                 this.transfer_datetime = transferDatetime;
 
                 var requestData = {
-                    pickup: JSON.stringify(pickup),
+                    pickup: JSON.stringify({
+                        id: pickup.id || '',
+                        name: pickup.display_name || pickup.name || pickup.address || '',
+                        display_name: pickup.display_name || pickup.name || pickup.address || '',
+                        address: pickup.address || pickup.display_name || pickup.name || '',
+                        lat: pickupLat,
+                        lng: pickupLng,
+                        place_id: pickup.place_id || ''
+                    }),
                     dropoff: JSON.stringify({
                         address: dropoff.address || dropoff.name || '',
                         name: dropoff.name || dropoff.address || '',

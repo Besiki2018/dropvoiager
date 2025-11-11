@@ -233,7 +233,8 @@ class CarController extends Controller
             ->map(function (CarPickupLocation $location) {
                 $payload = $location->toFrontendArray();
                 $payload['car_title'] = $location->car?->title;
-                $payload['label'] = $payload['name'] . (!empty($payload['car_title']) ? ' — ' . $payload['car_title'] : '');
+                $displayLabel = $payload['display_name'] ?? $payload['name'] ?? $payload['address'] ?? '';
+                $payload['label'] = $displayLabel . (!empty($payload['car_title']) ? ' — ' . $payload['car_title'] : '');
                 return $payload;
             })
             ->values();
@@ -483,16 +484,45 @@ class CarController extends Controller
             $end->format('Y-m-d H:i:s')
         );
 
-        if ($ranges instanceof \Illuminate\Support\Collection) {
-            if ($ranges->isEmpty()) {
-                return [];
-            }
-        } elseif (empty($ranges)) {
+        $rangeCollection = $ranges instanceof \Illuminate\Support\Collection
+            ? $ranges
+            : collect($ranges);
+
+        if ($rangeCollection->isEmpty()) {
+            return [];
+        }
+
+        $authorId = $car->author_id ? (int) $car->author_id : null;
+        $prioritisedRanges = $rangeCollection
+            ->groupBy(function ($item) {
+                try {
+                    return Carbon::parse($item->start_date)->toDateString();
+                } catch (\Throwable $exception) {
+                    return null;
+                }
+            })
+            ->filter(function ($group, $key) {
+                return $key !== null;
+            })
+            ->map(function ($group) use ($authorId) {
+                if ($authorId !== null) {
+                    $vendorMatch = $group->first(function ($item) use ($authorId) {
+                        return (int) ($item->create_user ?? 0) === $authorId;
+                    });
+                    if ($vendorMatch) {
+                        return $vendorMatch;
+                    }
+                }
+                return $group->first();
+            })
+            ->filter();
+
+        if ($prioritisedRanges->isEmpty()) {
             return [];
         }
 
         $slots = [];
-        foreach ($ranges as $range) {
+        foreach ($prioritisedRanges as $range) {
             if (!$range->active) {
                 continue;
             }

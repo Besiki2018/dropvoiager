@@ -701,6 +701,10 @@ class Car extends Bookable
         $query->where('target_id',$this->id);
         $query->where('start_date','>=',date('Y-m-d H:i:s',strtotime($start_date)));
         $query->where('end_date','<=',date('Y-m-d H:i:s',strtotime($end_date)));
+        $query->orderBy('start_date');
+        if ($this->author_id) {
+            $query->orderByRaw('CASE WHEN create_user = ? THEN 0 ELSE 1 END ASC', [$this->author_id]);
+        }
 
         return $query->take(100)->get();
     }
@@ -1735,6 +1739,8 @@ class Car extends Bookable
         $idsToKeep = [];
         foreach ($locations as $location) {
             $name = trim((string) Arr::get($location, 'name'));
+            $address = trim((string) Arr::get($location, 'address'));
+            $placeId = trim((string) Arr::get($location, 'place_id'));
             $lat = static::toFloat(Arr::get($location, 'lat'));
             $lng = static::toFloat(Arr::get($location, 'lng'));
 
@@ -1744,6 +1750,8 @@ class Car extends Bookable
 
             $payload = [
                 'name' => $name,
+                'address' => $address ?: null,
+                'place_id' => $placeId ?: null,
                 'lat' => $lat,
                 'lng' => $lng,
                 'is_active' => Arr::get($location, 'is_active', true) ? true : false,

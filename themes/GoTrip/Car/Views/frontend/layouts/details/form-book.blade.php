@@ -18,7 +18,7 @@
         'available_time_start' => $row->transfer_time_start,
         'available_time_end' => $row->transfer_time_end,
     ];
-    $detailPickupLabel = $selectedPickupPayload['name'] ?? ($selectedPickupPayload['address'] ?? '');
+    $detailPickupLabel = $selectedPickupPayload['display_name'] ?? $selectedPickupPayload['name'] ?? ($selectedPickupPayload['address'] ?? '');
     $detailDropoffLabel = $dropoffData['address'] ?? ($dropoffData['name'] ?? '');
     $detailDistance = $transfer_distance_km ?? $row->transfer_distance_km;
     $detailDuration = $row->transfer_duration_min;
@@ -56,12 +56,6 @@
         'time_required' => __('transfers.booking.availability_time_required'),
         'loading' => __('transfers.booking.availability_loading'),
         'available_hours_range' => __('transfers.booking.available_hours_range'),
-        'pricing_mode_label' => __('transfers.booking.pricing_mode_label'),
-        'pricing_mode_fixed' => __('transfers.booking.pricing_mode_fixed'),
-        'pricing_mode_per_km' => __('transfers.booking.pricing_mode_per_km'),
-        'price_per_km_display' => __('transfers.booking.price_per_km_display'),
-        'fixed_price_display' => __('transfers.booking.fixed_price_display'),
-        'service_radius_display' => __('transfers.booking.service_radius_display'),
     ];
     if (!empty($transfer_datetime_display)) {
         $transferDateValue = $transfer_datetime_display->toDateString();
@@ -142,7 +136,7 @@
                                     @foreach($pickupLocations as $location)
                                         @php
                                             $payload = $location->toFrontendArray();
-                                            $label = $location->name;
+                                            $label = $payload['display_name'] ?? $location->display_name ?? $location->name ?? $location->address ?? '';
                                             if (!empty($location->car?->title)) {
                                                 $label .= ' — ' . $location->car->title;
                                             }
@@ -265,9 +259,6 @@
                         </div>
                         <div class="col-12" v-if="priceSummary">
                             <div class="px-20 py-15 border-light rounded-4 bg-light">
-                                <div class="text-13 text-dark-1 mb-5" v-if="priceSummary.mode_display" v-text="priceSummary.mode_display"></div>
-                                <div class="text-13 text-dark-1 mb-5" v-if="priceSummary.unit_price_display" v-text="priceSummary.unit_price_display"></div>
-                                <div class="text-13 text-dark-1 mb-5" v-if="priceSummary.service_radius_display" v-text="priceSummary.service_radius_display"></div>
                                 <div class="text-13 text-dark-1 mb-5" v-if="priceSummary.distance" v-text="priceSummary.distance"></div>
                                 <div class="text-22 text-dark-1 fw-600" v-if="priceSummary.total" v-html="priceSummary.total"></div>
                             </div>

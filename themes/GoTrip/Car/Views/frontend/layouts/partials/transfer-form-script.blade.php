@@ -10,6 +10,148 @@
         var googleMapsGeocoderInstance = null;
         var googleMapsScriptLoading = false;
 
+        var transferRouteManager = (function () {
+            var state = {
+                pickup: null,
+                dropoff: null,
+                mapEngine: null,
+                map: null,
+                directionsService: null,
+                directionsRenderer: null,
+                lastRequestId: 0
+            };
+
+            function normaliseLocation(location) {
+                if (!location || typeof location !== 'object') {
+                    return null;
+                }
+                var lat = parseFloat(location.lat);
+                var lng = parseFloat(location.lng);
+                if (isNaN(lat) || isNaN(lng)) {
+                    return null;
+                }
+                var label = '';
+                if (location.display_name) {
+                    label = String(location.display_name);
+                } else if (location.name) {
+                    label = String(location.name);
+                } else if (location.address) {
+                    label = String(location.address);
+                }
+                return {
+                    lat: lat,
+                    lng: lng,
+                    label: label
+                };
+            }
+
+            function ensureDirections() {
+                if (typeof google === 'undefined' || !google.maps) {
+                    return null;
+                }
+                if (!state.directionsService) {
+                    state.directionsService = new google.maps.DirectionsService();
+                }
+                if (!state.directionsRenderer && state.map) {
+                    state.directionsRenderer = new google.maps.DirectionsRenderer({
+                        map: state.map,
+                        suppressMarkers: false,
+                        polylineOptions: {
+                            strokeColor: '#0066ff',
+                            strokeOpacity: 0.8,
+                            strokeWeight: 4
+                        }
+                    });
+                } else if (state.directionsRenderer && state.map && typeof state.directionsRenderer.setMap === 'function') {
+                    state.directionsRenderer.setMap(state.map);
+                }
+                return state.directionsService;
+            }
+
+            function clearRoute() {
+                if (state.directionsRenderer && typeof state.directionsRenderer.setDirections === 'function') {
+                    state.directionsRenderer.setDirections({routes: []});
+                }
+            }
+
+            function requestRoute() {
+                ensureGoogleMapsScript();
+                if (!state.map) {
+                    clearRoute();
+                    return;
+                }
+                var pickup = state.pickup;
+                var dropoff = state.dropoff;
+                if (!pickup || !dropoff) {
+                    clearRoute();
+                    return;
+                }
+                if (typeof google === 'undefined' || !google.maps) {
+                    return;
+                }
+                var service = ensureDirections();
+                if (!service) {
+                    return;
+                }
+                state.lastRequestId += 1;
+                var requestId = state.lastRequestId;
+                service.route({
+                    origin: {lat: pickup.lat, lng: pickup.lng},
+                    destination: {lat: dropoff.lat, lng: dropoff.lng},
+                    travelMode: google.maps.TravelMode.DRIVING
+                }, function (response, status) {
+                    if (requestId !== state.lastRequestId) {
+                        return;
+                    }
+                    if (status === google.maps.DirectionsStatus.OK && response) {
+                        ensureDirections();
+                        if (state.directionsRenderer && typeof state.directionsRenderer.setDirections === 'function') {
+                            state.directionsRenderer.setDirections(response);
+                        }
+                    } else {
+                        clearRoute();
+                    }
+                });
+            }
+
+            return {
+                setContext: function (pickup, dropoff) {
+                    state.pickup = normaliseLocation(pickup);
+                    state.dropoff = normaliseLocation(dropoff);
+                    requestRoute();
+                },
+                attachToMap: function (engine) {
+                    if (!engine) {
+                        return;
+                    }
+                    state.mapEngine = engine;
+                    var incomingMap = null;
+                    if (engine.map) {
+                        incomingMap = engine.map;
+                    } else if (engine.mapObject) {
+                        incomingMap = engine.mapObject;
+                    }
+                    if (incomingMap && incomingMap !== state.map) {
+                        if (state.directionsRenderer && typeof state.directionsRenderer.setMap === 'function') {
+                            state.directionsRenderer.setMap(null);
+                        }
+                        state.directionsRenderer = null;
+                    }
+                    if (incomingMap) {
+                        state.map = incomingMap;
+                    }
+                    ensureDirections();
+                    requestRoute();
+                },
+                refresh: function () {
+                    ensureDirections();
+                    requestRoute();
+                }
+            };
+        })();
+
+        window.BravoTransferRoute = transferRouteManager;
+
         function getSiteLocale() {
             if (window.bookingCore) {
                 if (bookingCore.locale) {
@@ -53,6 +195,9 @@
             script.onload = function () {
                 googleMapsScriptLoading = false;
                 resetPlacesSessionToken();
+                if (window.BravoTransferRoute && typeof window.BravoTransferRoute.refresh === 'function') {
+                    window.BravoTransferRoute.refresh();
+                }
             };
             script.onerror = function () {
                 googleMapsScriptLoading = false;
@@ -255,6 +400,9 @@
                     dropoff: parseJsonValue(dropoffJsonInput.val(), {onError: handleJsonParseError})
                 };
                 $form.trigger('transfer:context-changed', context);
+                if (window.BravoTransferRoute && typeof window.BravoTransferRoute.setContext === 'function') {
+                    window.BravoTransferRoute.setContext(context.pickup, context.dropoff);
+                }
             }
 
             function getDateDisplayFormat() {
@@ -599,9 +747,9 @@
                         if (!location) {
                             return;
                         }
-                        var label = location.label || location.name || '';
-                        if (!location.label && location.car_title) {
-                            label = location.name + ' — ' + location.car_title;
+                        var label = location.label || location.display_name || location.name || location.address || '';
+                        if (!label && typeof location.id !== 'undefined') {
+                            label = 'Location #' + location.id;
                         }
                         fragment.appendChild(buildOption(label, String(location.id), {'data-source': 'backend'}, location));
                     });

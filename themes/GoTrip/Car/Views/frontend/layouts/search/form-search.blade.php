@@ -80,7 +80,7 @@
                                 @foreach($pickupLocations as $location)
                                     @php
                                         $payload = $location->toFrontendArray();
-                                        $label = $location->name;
+                                        $label = $payload['display_name'] ?? $location->display_name ?? $location->name ?? $location->address ?? '';
                                         if (!empty($location->car?->title)) {
                                             $label .= ' — ' . $location->car->title;
                                         }
