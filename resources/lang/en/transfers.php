@@ -13,6 +13,8 @@ return [
         'search_button' => 'Search',
         'datetime_required' => 'Please choose a transfer date and time.',
         'date_invalid' => 'Invalid date selected. Please choose a valid date from the calendar.',
+        'exact_pickup_label' => 'Exact pickup address (Google Maps)',
+        'exact_pickup_placeholder' => 'Search for an exact pickup address',
     ],
     'search' => [
         'route_summary' => 'Route: :from → :to',
