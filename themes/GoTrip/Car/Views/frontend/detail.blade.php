@@ -80,6 +80,9 @@
                             iconUrl:"{{get_file_url(setting_item("car_icon_marker_map"),'full') ?? url('images/icons/png/pin.png') }}"
                         }
                     });
+                    if (window.BravoTransferRoute && typeof window.BravoTransferRoute.attachToMap === 'function') {
+                        window.BravoTransferRoute.attachToMap(engineMap);
+                    }
                 }
             });
             @endif

@@ -78,10 +78,32 @@
                                 <label ><input true-value=1 false-value=0 type="checkbox" v-model="form.active"> {{__('Available for booking?')}}</label>
                             </div>
                         </div>
-                        <div class="col-md-6" v-show="form.active">
+                        <div class="col-md-12" v-show="form.active">
                             <div class="form-group">
-                                <label >{{__('Price')}}</label>
-                                <input type="number"  v-model="form.price" class="form-control">
+                                <label>{{ __('transfers.admin.pricing.time_range_label') }}</label>
+                                <div class="d-flex align-items-center">
+                                    <input type="time" class="form-control" v-model="form.available_start">
+                                    <span class="mx-2">–</span>
+                                    <input type="time" class="form-control" v-model="form.available_end">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-12" v-show="form.active">
+                            <div class="form-group">
+                                <label>{{ __('transfers.admin.pricing.available_hours_label') }}</label>
+                                <div class="available-hours-list">
+                                    <div class="d-flex align-items-center mb-2" v-for="(hour, index) in form.available_hours" :key="'available-hour-' + index">
+                                        <input type="time" class="form-control" v-model="form.available_hours[index]">
+                                        <button type="button" class="btn btn-outline-danger btn-sm ml-2" @click="removeAvailableHour(index)">&times;</button>
+                                    </div>
+                                    <div class="text-muted" v-if="!form.available_hours || !form.available_hours.length">
+                                        {{ __('transfers.admin.pricing.available_hours_empty') }}
+                                    </div>
+                                    <button type="button" class="btn btn-outline-primary btn-sm mt-2" @click="addAvailableHour">
+                                        {{ __('transfers.admin.pricing.available_hours_add') }}
+                                    </button>
+                                </div>
+                                <small class="form-text text-muted">{{ __('transfers.admin.pricing.available_hours_hint') }}</small>
                             </div>
                         </div>
                         <div class="col-md-6" v-show="form.active">
@@ -178,10 +200,9 @@
                     });
 				},
                 eventClick:function (info) {
-					var form = Object.assign({},info.event.extendedProps);
+                                        var form = Object.assign({},info.event.extendedProps);
                     form.start_date = moment(info.event.start).format('YYYY-MM-DD');
                     form.end_date = moment(info.event.start).format('YYYY-MM-DD');
-                    console.log(form);
                     formModal.show(form);
                 },
                 eventRender: function (info) {
@@ -193,6 +214,19 @@
 
         $('.event-name:first-child a').trigger('click');
 
+        function createDefaultAvailabilityForm() {
+            return {
+                id:'',
+                start_date:'',
+                end_date:'',
+                active:0,
+                number:0,
+                available_start:'',
+                available_end:'',
+                available_hours:[]
+            };
+        }
+
         formModal = new Vue({
             el:'#bravo_modal_calendar',
             data:{
@@ -200,69 +234,110 @@
                     status:null,
                     message:''
                 },
-                form:{
-                    id:'',
-                    price:'',
-                    start_date:'',
-                    end_date:'',
-                    is_instant:'',
-                    enable_person:0,
-                    min_guests:0,
-                    max_guests:0,
-                    active:0,
-                    number:0
-                },
-                formDefault:{
-                    id:'',
-                    price:'',
-                    start_date:'',
-                    end_date:'',
-                    is_instant:'',
-                    enable_person:0,
-                    min_guests:0,
-                    max_guests:0,
-                    active:0,
-                    number:0
-                },
-                person_types:[
-
-                ],
-                person_type_item:{
-                    name:'',
-                    desc:'',
-                    min:'',
-                    max:'',
-                    price:'',
-                },
+                form:createDefaultAvailabilityForm(),
                 onSubmit:false
             },
             methods:{
+                prepareFormData:function (form) {
+                    var payload = createDefaultAvailabilityForm();
+                    if (form && typeof form === 'object') {
+                        for (var key in form) {
+                            if (!Object.prototype.hasOwnProperty.call(form, key)) {
+                                continue;
+                            }
+                            if (Object.prototype.hasOwnProperty.call(payload, key)) {
+                                payload[key] = form[key];
+                            }
+                        }
+                    }
+                    payload.active = payload.active ? 1 : 0;
+                    payload.number = payload.number ? parseInt(payload.number, 10) || 0 : 0;
+                    payload.available_start = this.normaliseHourValue(payload.available_start) || '';
+                    payload.available_end = this.normaliseHourValue(payload.available_end) || '';
+                    payload.available_hours = this.sanitiseHours(payload.available_hours);
+                    return payload;
+                },
                 show:function (form) {
                     $(this.$el).modal('show');
                     this.lastResponse.message = '';
                     this.onSubmit = false;
-
-                    if(typeof form !='undefined'){
-                        this.form = Object.assign({},form);
-                        if(typeof this.form.person_types == 'object'){
-                            this.person_types = Object.assign({},this.form.person_types);
-                        }
-
-                        if(form.start_date){
-                            var drp = $('.has-daterangepicker').data('daterangepicker');
+                    this.form = this.prepareFormData(form);
+                    if(form && form.start_date){
+                        var drp = $('.has-daterangepicker').data('daterangepicker');
+                        if (drp) {
                             drp.setStartDate(moment(form.start_date).format(bookingCore.date_format));
                             drp.setEndDate(moment(form.end_date).format(bookingCore.date_format));
-
                         }
                     }
                 },
                 hide:function () {
                     $(this.$el).modal('hide');
-                    this.form = Object.assign({},this.formDefault);
-                    this.person_types = [];
+                    this.form = createDefaultAvailabilityForm();
+                },
+                addAvailableHour:function () {
+                    if (!Array.isArray(this.form.available_hours)) {
+                        this.$set(this.form, 'available_hours', []);
+                    }
+                    this.form.available_hours.push('');
+                },
+                removeAvailableHour:function (index) {
+                    if (!Array.isArray(this.form.available_hours)) {
+                        return;
+                    }
+                    this.form.available_hours.splice(index,1);
+                },
+                normaliseHourValue:function (value) {
+                    if (value === null || typeof value === 'undefined') {
+                        return '';
+                    }
+                    var text = $.trim(String(value));
+                    if (!text) {
+                        return '';
+                    }
+                    if (typeof moment !== 'undefined') {
+                        var parsed = moment(text, 'HH:mm', true);
+                        if (!parsed.isValid()) {
+                            parsed = moment(text, 'H:mm', true);
+                        }
+                        if (parsed.isValid()) {
+                            return parsed.format('HH:mm');
+                        }
+                    }
+                    if (/^\d{1,2}:\d{2}$/.test(text)) {
+                        var parts = text.split(':');
+                        var hour = parseInt(parts[0], 10);
+                        var minute = parseInt(parts[1], 10);
+                        if (!isNaN(hour) && !isNaN(minute) && hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) {
+                            var h = hour < 10 ? '0' + hour : String(hour);
+                            var m = minute < 10 ? '0' + minute : String(minute);
+                            return h + ':' + m;
+                        }
+                    }
+                    return '';
+                },
+                sanitiseHours:function (hours) {
+                    var results = {};
+                    if (Array.isArray(hours)) {
+                        for (var i = 0; i < hours.length; i++) {
+                            var value = this.normaliseHourValue(hours[i]);
+                            if (value) {
+                                results[value] = value;
+                            }
+                        }
+                    } else if (typeof hours === 'string' && hours.length) {
+                        var pieces = hours.split(',');
+                        for (var j = 0; j < pieces.length; j++) {
+                            var trimmed = this.normaliseHourValue(pieces[j]);
+                            if (trimmed) {
+                                results[trimmed] = trimmed;
+                            }
+                        }
+                    }
+                    var values = Object.keys(results);
+                    values.sort();
+                    return values;
                 },
                 saveForm:function () {
-                    this.form.target_id = lastId;
                     var me = this;
                     me.lastResponse.message = '';
                     if(this.onSubmit) return;
@@ -270,10 +345,13 @@
                     if(!this.validateForm()) return;
 
                     this.onSubmit = true;
-                    this.form.person_types = Object.assign({},this.person_types);
+                    var payload = this.prepareFormData(this.form);
+                    payload.target_id = lastId;
+                    this.form = this.prepareFormData(payload);
+
                     $.ajax({
                         url:'{{route('car.vendor.availability.store')}}',
-                        data:this.form,
+                        data:payload,
                         dataType:'json',
                         method:'post',
                         success:function (json) {
@@ -285,23 +363,18 @@
                             me.lastResponse = json;
                             me.onSubmit = false;
                         },
-                        error:function (e) {
+                        error:function () {
                             me.onSubmit = false;
                         }
                     });
                 },
                 validateForm:function(){
-                    if(!this.form.start_date) return false;
-                    if(!this.form.end_date) return false;
+                    var prepared = this.prepareFormData(this.form);
+                    if(!prepared.start_date) return false;
+                    if(!prepared.end_date) return false;
 
+                    this.form = prepared;
                     return true;
-                },
-                addItem:function () {
-                    console.log(this.person_types);
-                    this.person_types.push(Object.assign({},this.person_type_item));
-                },
-                deleteItem:function (index) {
-                    this.person_types.splice(index,1);
                 }
             },
             created:function () {
@@ -309,16 +382,12 @@
                 this.$nextTick(function () {
                     $('.has-daterangepicker').daterangepicker({ "locale": {"format": bookingCore.date_format}})
                      .on('apply.daterangepicker',function (e,picker) {
-                         console.log(picker);
-                         me.form.start_date = picker.startDate.format('YYYY-MM-DD');
-                         me.form.end_date = picker.endDate.format('YYYY-MM-DD');
+                        me.form.start_date = picker.startDate.format('YYYY-MM-DD');
+                        me.form.end_date = picker.endDate.format('YYYY-MM-DD');
                      });
 
                     $(me.$el).on('hide.bs.modal',function () {
-
-                        this.form = Object.assign({},this.formDefault);
-                        this.person_types = [];
-
+                        me.form = createDefaultAvailabilityForm();
                     });
 
                 })

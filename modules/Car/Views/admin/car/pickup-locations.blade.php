@@ -14,6 +14,8 @@
             <div class="col-md-4">
                 <label class="form-label">{{ __('transfers.admin.pickups.form.name') }}</label>
                 <input type="text" class="form-control js-pickup-form-name" placeholder="{{ __('transfers.admin.pickups.form.name_placeholder') }}">
+                <input type="hidden" class="js-pickup-form-address">
+                <input type="hidden" class="js-pickup-form-place">
             </div>
             <div class="col-md-4">
                 <div class="fw-bold">{{ __('transfers.admin.pickups.form.coordinates') }}</div>
@@ -49,6 +51,8 @@
                                 <input type="hidden" name="pickup_locations[{{ $index }}][id]" value="{{ $location['id'] ?? '' }}">
                                 <input type="hidden" name="pickup_locations[{{ $index }}][lat]" class="js-pickup-lat" value="{{ $location['lat'] ?? '' }}">
                                 <input type="hidden" name="pickup_locations[{{ $index }}][lng]" class="js-pickup-lng" value="{{ $location['lng'] ?? '' }}">
+                                <input type="hidden" name="pickup_locations[{{ $index }}][address]" class="js-pickup-address" value="{{ $location['address'] ?? '' }}">
+                                <input type="hidden" name="pickup_locations[{{ $index }}][place_id]" class="js-pickup-place" value="{{ $location['place_id'] ?? '' }}">
                                 <input type="hidden" name="pickup_locations[{{ $index }}][is_active]" class="js-pickup-active" value="{{ ($location['is_active'] ?? true) ? 1 : 0 }}">
                                 <input type="text" name="pickup_locations[{{ $index }}][name]" class="form-control js-pickup-name" value="{{ $location['name'] ?? '' }}">
                             </td>
@@ -126,6 +130,8 @@
                 var formNameInput = wrapper.find('.js-pickup-form-name');
                 var formLatInput = wrapper.find('.js-pickup-form-lat');
                 var formLngInput = wrapper.find('.js-pickup-form-lng');
+                var formAddressInput = wrapper.find('.js-pickup-form-address');
+                var formPlaceInput = wrapper.find('.js-pickup-form-place');
                 var formCoordsDisplay = wrapper.find('.js-pickup-form-coords');
                 var formActiveCheckbox = wrapper.find('.js-pickup-form-active');
                 var formMarker = null;
@@ -241,10 +247,14 @@
                 function updateRowCoordinates(row, lat, lng, shouldReverse) {
                     var latInput = row.find('.js-pickup-lat');
                     var lngInput = row.find('.js-pickup-lng');
+                    var addressInput = row.find('.js-pickup-address');
+                    var placeInput = row.find('.js-pickup-place');
                     var display = row.find('.js-pickup-coordinate-display');
                     if (lat === null || lng === null) {
                         latInput.val('');
                         lngInput.val('');
+                        addressInput.val('');
+                        placeInput.val('');
                         display.text(noCoordinatesLabel);
                         var marker = row.data('mapMarker');
                         if (marker) {
@@ -254,13 +264,22 @@
                     }
                     latInput.val(lat);
                     lngInput.val(lng);
+                    if (!shouldReverse && !addressInput.val()) {
+                        addressInput.val(row.find('.js-pickup-name').val());
+                    }
                     display.text(formatCoordinate(lat) + ', ' + formatCoordinate(lng));
                     var marker = ensureRowMarker(row);
                     if (shouldReverse) {
                         reverseGeocode(lat, lng, function (address) {
                             if (address) {
                                 row.find('.js-pickup-name').val(address);
-                                marker && marker.setTitle(address);
+                                addressInput.val(address);
+                            } else {
+                                addressInput.val('');
+                            }
+                            placeInput.val('');
+                            if (marker) {
+                                marker.setTitle(row.find('.js-pickup-name').val() || '');
                             }
                         });
                     }
@@ -270,6 +289,8 @@
                     if (lat === null || lng === null) {
                         formLatInput.val('');
                         formLngInput.val('');
+                        formAddressInput.val('');
+                        formPlaceInput.val('');
                         formCoordsDisplay.text(coordinateHint);
                         if (formMarker) {
                             formMarker.setMap(null);
@@ -278,14 +299,24 @@
                     }
                     formLatInput.val(lat);
                     formLngInput.val(lng);
+                     if (!shouldReverse) {
+                        formPlaceInput.val(formPlaceInput.val() || '');
+                     }
+                    formAddressInput.val(shouldReverse ? '' : formAddressInput.val());
                     formCoordsDisplay.text(formatCoordinate(lat) + ', ' + formatCoordinate(lng));
                     focusFormMarker();
                     if (shouldReverse) {
                         reverseGeocode(lat, lng, function (address) {
                             if (address) {
                                 formNameInput.val(address);
+                                formAddressInput.val(address);
+                            } else {
+                                formAddressInput.val('');
                             }
+                            formPlaceInput.val('');
                         });
+                    } else if (!formAddressInput.val()) {
+                        formAddressInput.val(formNameInput.val());
                     }
                 }
 
@@ -319,6 +350,8 @@
                     formNameInput.val('');
                     formLatInput.val('');
                     formLngInput.val('');
+                    formAddressInput.val('');
+                    formPlaceInput.val('');
                     formCoordsDisplay.text(coordinateHint);
                     formActiveCheckbox.prop('checked', true);
                     if (formMarker) {
@@ -326,13 +359,15 @@
                     }
                 }
 
-                function appendRow(name, lat, lng, isActive) {
+                function appendRow(name, lat, lng, isActive, address, placeId) {
                     var index = nextIndex++;
                     var row = $('<tr/>', {'data-index': index});
                     var nameCell = $('<td/>');
                     nameCell.append($('<input>', {type: 'hidden', name: 'pickup_locations[' + index + '][id]', value: ''}));
                     nameCell.append($('<input>', {type: 'hidden', 'class': 'js-pickup-lat', name: 'pickup_locations[' + index + '][lat]', value: lat}));
                     nameCell.append($('<input>', {type: 'hidden', 'class': 'js-pickup-lng', name: 'pickup_locations[' + index + '][lng]', value: lng}));
+                    nameCell.append($('<input>', {type: 'hidden', 'class': 'js-pickup-address', name: 'pickup_locations[' + index + '][address]', value: address || ''}));
+                    nameCell.append($('<input>', {type: 'hidden', 'class': 'js-pickup-place', name: 'pickup_locations[' + index + '][place_id]', value: placeId || ''}));
                     nameCell.append($('<input>', {type: 'hidden', 'class': 'js-pickup-active', name: 'pickup_locations[' + index + '][is_active]', value: isActive ? 1 : 0}));
                     nameCell.append($('<input>', {type: 'text', 'class': 'form-control js-pickup-name', name: 'pickup_locations[' + index + '][name]', value: name}));
                     row.append(nameCell);
@@ -395,6 +430,8 @@
                         var lat = place.geometry.location.lat();
                         var lng = place.geometry.location.lng();
                         formNameInput.val(place.formatted_address || place.name || '');
+                        formAddressInput.val(place.formatted_address || place.name || '');
+                        formPlaceInput.val(place.place_id || '');
                         updateFormCoordinates(lat, lng, false);
                         focusFormMarker();
                     });
@@ -431,7 +468,9 @@
                         return;
                     }
 
-                    appendRow(name, lat, lng, isActive);
+                    var address = (formAddressInput.val() || '').trim();
+                    var placeId = (formPlaceInput.val() || '').trim();
+                    appendRow(name, lat, lng, isActive, address, placeId);
                     resetForm();
                 });
 
@@ -523,12 +562,18 @@
                 function setFormCoordinates(latLng) {
                     wrapper.find('.js-pickup-form-lat').val(latLng[0]);
                     wrapper.find('.js-pickup-form-lng').val(latLng[1]);
+                    wrapper.find('.js-pickup-form-address').val('');
+                    wrapper.find('.js-pickup-form-place').val('');
                     wrapper.find('.js-pickup-form-coords').text(latLng[0].toFixed(6) + ', ' + latLng[1].toFixed(6));
                 }
 
                 function updateRowCoordinates(row, latLng) {
                     row.find('.js-pickup-lat').val(latLng[0]);
                     row.find('.js-pickup-lng').val(latLng[1]);
+                    if (!row.find('.js-pickup-address').val()) {
+                        row.find('.js-pickup-address').val(row.find('.js-pickup-name').val());
+                    }
+                    row.find('.js-pickup-place').val('');
                     row.find('.js-pickup-coordinate-display').text(latLng[0].toFixed(6) + ', ' + latLng[1].toFixed(6));
                 }
 
@@ -536,6 +581,8 @@
                     wrapper.find('.js-pickup-form-name').val('');
                     wrapper.find('.js-pickup-form-lat').val('');
                     wrapper.find('.js-pickup-form-lng').val('');
+                    wrapper.find('.js-pickup-form-address').val('');
+                    wrapper.find('.js-pickup-form-place').val('');
                     wrapper.find('.js-pickup-form-coords').text(coordinateHint);
                     wrapper.find('.js-pickup-form-active').prop('checked', true);
                 }
@@ -544,6 +591,8 @@
                     var name = wrapper.find('.js-pickup-form-name').val().trim();
                     var lat = wrapper.find('.js-pickup-form-lat').val();
                     var lng = wrapper.find('.js-pickup-form-lng').val();
+                    var address = wrapper.find('.js-pickup-form-address').val().trim();
+                    var placeId = wrapper.find('.js-pickup-form-place').val().trim();
                     var isActive = wrapper.find('.js-pickup-form-active').is(':checked');
 
                     if (!name || !lat || !lng) {
@@ -556,6 +605,8 @@
                         '        <input type="hidden" name="pickup_locations[' + nextIndex + '][id]" value="">\n' +
                         '        <input type="hidden" name="pickup_locations[' + nextIndex + '][lat]" class="js-pickup-lat" value="' + lat + '">\n' +
                         '        <input type="hidden" name="pickup_locations[' + nextIndex + '][lng]" class="js-pickup-lng" value="' + lng + '">\n' +
+                        '        <input type="hidden" name="pickup_locations[' + nextIndex + '][address]" class="js-pickup-address" value="' + (address ? address.replace(/"/g, '&quot;') : name.replace(/"/g, '&quot;')) + '">\n' +
+                        '        <input type="hidden" name="pickup_locations[' + nextIndex + '][place_id]" class="js-pickup-place" value="' + placeId.replace(/"/g, '&quot;') + '">\n' +
                         '        <input type="hidden" name="pickup_locations[' + nextIndex + '][is_active]" class="js-pickup-active" value="' + (isActive ? 1 : 0) + '">\n' +
                         '        <input type="text" name="pickup_locations[' + nextIndex + '][name]" class="form-control js-pickup-name" value="' + name.replace(/"/g, '&quot;') + '">\n' +
                         '    </td>\n' +
