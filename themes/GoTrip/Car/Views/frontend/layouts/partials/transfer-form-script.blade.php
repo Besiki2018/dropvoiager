@@ -44,6 +44,7 @@
             var dropoffPlaceId = $form.find('.js-transfer-dropoff-place-id').first();
             var dateInput = $form.find('.js-transfer-date').first();
             var dateDisplay = $form.find('.js-transfer-date-display').first();
+            var dateFieldWrapper = $form.find('.js-transfer-date-field').first();
             var dateError = $form.find('.js-transfer-date-error').first();
             var timeInput = $form.find('.js-transfer-time').first();
             var datetimeInput = $form.find('.js-transfer-datetime').first();
@@ -138,7 +139,7 @@
                     singleDatePicker: true,
                     autoApply: true,
                     sameDate: true,
-                    showCalendar: false,
+                    showCalendar: true,
                     disabledPast: true,
                     enableLoading: true,
                     showEventTooltip: true,
@@ -178,11 +179,46 @@
                     if (drp) {
                         drp.updateCalendars();
                     }
+                    if (dateFieldWrapper.length) {
+                        dateFieldWrapper.attr('aria-expanded', 'true');
+                    }
+                }).on('hide.daterangepicker', function () {
+                    if (dateFieldWrapper.length) {
+                        dateFieldWrapper.attr('aria-expanded', 'false');
+                    }
                 });
                 dateDisplay.data('drp-bound', true);
                 dateDisplay.on('click', function () {
                     $(this).trigger('focus');
                 });
+                dateDisplay.on('focus', function () {
+                    var drp = dateDisplay.data('daterangepicker');
+                    if (drp && typeof drp.show === 'function' && !drp.isShowing) {
+                        drp.show();
+                    }
+                });
+                if (dateFieldWrapper.length) {
+                    if (!dateFieldWrapper.attr('tabindex')) {
+                        dateFieldWrapper.attr('tabindex', '0');
+                    }
+                    dateFieldWrapper.attr('role', 'button');
+                    dateFieldWrapper.attr('aria-haspopup', 'dialog');
+                    dateFieldWrapper.attr('aria-expanded', dateDisplay.val() ? 'true' : 'false');
+                    dateFieldWrapper.on('click', function (event) {
+                        if (event.target !== dateDisplay[0]) {
+                            event.preventDefault();
+                            dateDisplay.trigger('focus');
+                            dateDisplay.trigger('click');
+                        }
+                    });
+                    dateFieldWrapper.on('keydown', function (event) {
+                        if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
+                            event.preventDefault();
+                            dateDisplay.trigger('focus');
+                            dateDisplay.trigger('click');
+                        }
+                    });
+                }
                 var initialValue = dateInput.length ? dateInput.val() : '';
                 if (initialValue) {
                     setDateValue(initialValue, {silent: true, skipInput: true});

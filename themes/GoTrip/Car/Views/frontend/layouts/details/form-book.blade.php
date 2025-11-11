@@ -167,7 +167,7 @@
                             <div class="px-20 py-10 border-light rounded-4 bg-light text-13 text-red-1">@{{ transfer_quote_error }}</div>
                         </div>
                         <div class="col-md-6">
-                            <div class="form-group px-20 py-10 border-light rounded-4 js-transfer-date-field" data-display-format="{{ get_moment_date_format() }}">
+                            <div class="form-group px-20 py-10 border-light rounded-4 js-transfer-date-field" tabindex="0" data-display-format="{{ get_moment_date_format() }}">
                                 <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('transfers.form.date_label') }}</h4>
                                 <input type="text"
                                        class="form-control js-transfer-date-display"
@@ -198,6 +198,7 @@
                                        class="form-control js-transfer-time"
                                        :class="{'is-invalid': fieldErrors.datetime}"
                                        v-model="transfer_time"
+                                       step="60"
                                        value="{{ $transferTimeValue }}">
                             </div>
                         </div>
