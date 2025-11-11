@@ -14,6 +14,9 @@
         'price_per_km' => $row->price_per_km,
         'fixed_price' => $row->fixed_price,
         'base_fee' => $row->base_fee ?? null,
+        'service_radius_km' => $row->service_radius_km,
+        'available_time_start' => $row->transfer_time_start,
+        'available_time_end' => $row->transfer_time_end,
     ];
     $detailPickupLabel = $selectedPickupPayload['name'] ?? ($selectedPickupPayload['address'] ?? '');
     $detailDropoffLabel = $dropoffData['address'] ?? ($dropoffData['name'] ?? '');
@@ -52,6 +55,13 @@
         'invalid_date' => __('transfers.booking.availability_invalid_date'),
         'time_required' => __('transfers.booking.availability_time_required'),
         'loading' => __('transfers.booking.availability_loading'),
+        'available_hours_range' => __('transfers.booking.available_hours_range'),
+        'pricing_mode_label' => __('transfers.booking.pricing_mode_label'),
+        'pricing_mode_fixed' => __('transfers.booking.pricing_mode_fixed'),
+        'pricing_mode_per_km' => __('transfers.booking.pricing_mode_per_km'),
+        'price_per_km_display' => __('transfers.booking.price_per_km_display'),
+        'fixed_price_display' => __('transfers.booking.fixed_price_display'),
+        'service_radius_display' => __('transfers.booking.service_radius_display'),
     ];
     if (!empty($transfer_datetime_display)) {
         $transferDateValue = $transfer_datetime_display->toDateString();
@@ -87,15 +97,8 @@
              data-quote-url="{{ route('car.transfer.quote', $row->id) }}"
              data-pricing-meta='@json($pricingMeta)'
              data-initial-quote='@json($initialQuote)'>
-            <div class="row y-gap-15 items-center justify-between">
-                <div class="col-auto">
-                    <div class="text-14 text-light-1">
-                        {{__("From")}}
-                        <span class="text-14 text-red-1 line-through">{{ $row->display_sale_price }}</span>
-                        <span class="text-20 fw-500 text-dark-1">{{ $row->display_price }}</span>
-                    </div>
-                </div>
-                @if($review_score)
+            @if($review_score)
+                <div class="row y-gap-15 items-center justify-between">
                     <div class="col-auto">
                         <div class="d-flex items-center">
                             <div class="text-14 text-right mr-10">
@@ -114,8 +117,8 @@
                             </div>
                         </div>
                     </div>
-                @endif
-            </div>
+                </div>
+            @endif
             <div class="nav-enquiry" v-if="is_form_enquiry_and_book">
                 <div class="enquiry-item active" >
                     <span>{{ __("Book") }}</span>
@@ -220,6 +223,7 @@
                                 <div class="text-13 text-muted mt-10" v-if="transfer_availability_loading" v-text="getAvailabilityMessage('loading')"></div>
                                 <div class="text-13 text-red-1 mt-10" v-if="transfer_availability_error" v-text="transfer_availability_error"></div>
                                 <div class="text-13 text-dark-1 mt-10" v-if="!transfer_availability_error && transfer_availability_note" v-text="transfer_availability_note"></div>
+                                <div class="text-13 text-dark-1 mt-10" v-if="availableHoursMessage && !transfer_availability_error" v-text="availableHoursMessage"></div>
                             </div>
                         </div>
                         <input type="hidden" class="js-transfer-datetime" value="{{ $transferDatetimeValue }}">
@@ -308,21 +312,27 @@
                                 </li>
                             </ul>
                         </div>
-                        <div class="col-12" v-if="transfer_quote_loading || transfer_quote_error || priceSummary || form_error_message">
+                        <div class="col-12" v-if="transfer_quote_loading">
                             <div class="px-20 py-15 border-light rounded-4 bg-light">
-                                <template v-if="form_error_message">
-                                    <div class="text-13 text-red-1" role="alert" v-text="form_error_message"></div>
-                                </template>
-                                <template v-if="transfer_quote_loading">
-                                    <div class="text-13 text-muted">{{ __('transfers.booking.price_details_loading') }}</div>
-                                </template>
-                                <template v-else-if="transfer_quote_error">
-                                    <div class="text-13 text-red-1" role="alert" v-text="transfer_quote_error"></div>
-                                </template>
-                                <template v-else-if="priceSummary">
-                                    <div class="text-13 text-dark-1 mb-5" v-if="priceSummary.distance" v-text="priceSummary.distance"></div>
-                                    <div class="text-22 text-dark-1 fw-600" v-if="priceSummary.total" v-html="priceSummary.total"></div>
-                                </template>
+                                <div class="text-13 text-muted">{{ __('transfers.booking.price_details_loading') }}</div>
+                            </div>
+                        </div>
+                        <div class="col-12" v-if="!transfer_quote_loading && (transfer_quote_error || form_error_message)">
+                            <div class="px-20 py-15 border-light rounded-4 bg-light">
+                                <div class="text-13 text-red-1" role="alert" v-if="transfer_quote_error" v-text="transfer_quote_error"></div>
+                                <div class="text-13 text-red-1" role="alert" v-if="form_error_message" v-text="form_error_message"></div>
+                            </div>
+                        </div>
+                        <div class="col-12" v-if="html">
+                            <div v-html="html"></div>
+                        </div>
+                        <div class="col-12" v-if="priceSummary">
+                            <div class="px-20 py-15 border-light rounded-4 bg-light">
+                                <div class="text-13 text-dark-1 mb-5" v-if="priceSummary.mode_display" v-text="priceSummary.mode_display"></div>
+                                <div class="text-13 text-dark-1 mb-5" v-if="priceSummary.unit_price_display" v-text="priceSummary.unit_price_display"></div>
+                                <div class="text-13 text-dark-1 mb-5" v-if="priceSummary.service_radius_display" v-text="priceSummary.service_radius_display"></div>
+                                <div class="text-13 text-dark-1 mb-5" v-if="priceSummary.distance" v-text="priceSummary.distance"></div>
+                                <div class="text-22 text-dark-1 fw-600" v-if="priceSummary.total" v-html="priceSummary.total"></div>
                             </div>
                         </div>
                         <div class="col-12" v-if="html">

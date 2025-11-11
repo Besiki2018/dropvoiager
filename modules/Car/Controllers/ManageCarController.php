@@ -177,6 +177,8 @@ class ManageCarController extends FrontendController
             'pricing_mode',
             'fixed_price',
             'price_per_km',
+            'transfer_time_start',
+            'transfer_time_end',
             'number',
             'price',
             'sale_price',

@@ -148,6 +148,7 @@
             priceSummary:function () {
                 var quote = this.transfer_quote || null;
                 var meta = this.pricing_meta || {};
+                var messages = this.availability_messages || {};
                 var passengerCount = this.getPassengerCount();
                 var totalNumeric = null;
                 var totalDisplay = null;
@@ -175,10 +176,10 @@
                 }
 
                 if (totalNumeric === null && totalDisplay === null && meta && meta.mode === 'fixed') {
-                    var fixedPrice = this.toNumeric(meta.fixed_price);
-                    if (fixedPrice !== null) {
+                    var fixedMetaPrice = this.toNumeric(meta.fixed_price);
+                    if (fixedMetaPrice !== null) {
                         var metaBaseFee = this.toNumeric(meta.base_fee);
-                        totalNumeric = fixedPrice * passengerCount;
+                        totalNumeric = fixedMetaPrice * passengerCount;
                         if (metaBaseFee !== null) {
                             totalNumeric += metaBaseFee;
                         }
@@ -197,10 +198,70 @@
                     distanceDisplay = this.formatDistance(distanceNumeric);
                 }
 
+                var mode = (quote && quote.pricing_mode) || meta.mode || 'per_km';
+                if (mode !== 'fixed') {
+                    mode = 'per_km';
+                }
+
+                var modeDisplay = '';
+                var modeLabel = messages.pricing_mode_label || '';
+                var fixedLabel = messages.pricing_mode_fixed || '';
+                var perKmLabel = messages.pricing_mode_per_km || '';
+                var modeValueLabel = mode === 'fixed' ? (fixedLabel || 'Fixed price') : (perKmLabel || 'Per kilometer');
+                if (modeLabel && modeValueLabel) {
+                    modeDisplay = modeLabel + ': ' + modeValueLabel;
+                } else if (modeValueLabel) {
+                    modeDisplay = modeValueLabel;
+                }
+
+                var unitPriceLabel = '';
+                if (mode === 'fixed') {
+                    var fixedValue = this.toNumeric((quote && typeof quote.unit_price !== 'undefined') ? quote.unit_price : meta.fixed_price);
+                    if (fixedValue !== null) {
+                        var formattedFixed = this.formatMoney(fixedValue);
+                        var fixedTemplate = messages.fixed_price_display || '';
+                        unitPriceLabel = fixedTemplate ? fixedTemplate.replace(':price', formattedFixed) : formattedFixed;
+                    }
+                } else {
+                    var perKmValue = this.toNumeric((quote && typeof quote.unit_price !== 'undefined') ? quote.unit_price : meta.price_per_km);
+                    if (perKmValue !== null) {
+                        var formattedPerKm = this.formatMoney(perKmValue);
+                        var perKmTemplate = messages.price_per_km_display || '';
+                        unitPriceLabel = perKmTemplate ? perKmTemplate.replace(':price', formattedPerKm) : formattedPerKm;
+                    }
+                }
+
+                var serviceRadiusLabel = '';
+                var radiusValue = this.toNumeric(meta.service_radius_km);
+                if (radiusValue !== null && radiusValue > 0) {
+                    var radiusTemplate = messages.service_radius_display || '';
+                    if (radiusTemplate) {
+                        serviceRadiusLabel = radiusTemplate.replace(':radius', radiusValue.toFixed(2));
+                    } else {
+                        serviceRadiusLabel = radiusValue.toFixed(2) + ' km';
+                    }
+                }
+
                 return {
                     total: totalDisplay,
-                    distance: distanceDisplay
+                    distance: distanceDisplay,
+                    mode_display: modeDisplay,
+                    unit_price_display: unitPriceLabel,
+                    service_radius_display: serviceRadiusLabel
                 };
+            },
+            availableHoursMessage:function () {
+                var meta = this.pricing_meta || {};
+                var start = meta.available_time_start || '';
+                var end = meta.available_time_end || '';
+                if (!start || !end) {
+                    return '';
+                }
+                var template = (this.availability_messages && this.availability_messages.available_hours_range) || '';
+                if (template) {
+                    return template.replace(':start', start).replace(':end', end);
+                }
+                return start + ' – ' + end;
             },
             total_price:function(){
                 var me = this;
@@ -647,7 +708,7 @@
             queueAvailabilityFetch:function (delay) {
                 var me = this;
                 var wait = typeof delay === 'number' ? delay : 200;
-                if (!this.shouldRequestAvailability()) {
+                if (!this.transfer_date) {
                     this.cancelAvailabilityRequest();
                     this.clearAvailabilityState();
                     return;
@@ -689,7 +750,7 @@
                 this.transfer_time_slots = [];
             },
             fetchTransferAvailability:function () {
-                if (!this.availability_url || !this.shouldRequestAvailability()) {
+                if (!this.availability_url || !this.transfer_date) {
                     this.clearAvailabilityState();
                     return;
                 }
@@ -714,14 +775,6 @@
                 if (!isNaN(pickupLng)) {
                     requestData.pickup_lng = pickupLng;
                 }
-                requestData.pickup = JSON.stringify({
-                    id: pickup.id || '',
-                    name: pickup.name || pickup.address || '',
-                    address: pickup.address || pickup.name || '',
-                    lat: pickupLat,
-                    lng: pickupLng,
-                    source: pickup.source || ''
-                });
                 var dropoff = this.dropoff || {};
                 var dropLat = parseFloat(dropoff.lat);
                 var dropLng = parseFloat(dropoff.lng);
@@ -733,17 +786,6 @@
                 }
                 if (dropoff.place_id) {
                     requestData.dropoff_place_id = dropoff.place_id;
-                }
-                requestData.dropoff = JSON.stringify({
-                    address: dropoff.address || dropoff.name || '',
-                    name: dropoff.name || dropoff.address || '',
-                    lat: dropLat,
-                    lng: dropLng,
-                    place_id: dropoff.place_id || ''
-                });
-                if (this.transfer_time) {
-                    requestData.transfer_time = this.transfer_time;
-                    requestData.transfer_datetime = this.buildTransferDatetime(this.transfer_date, this.transfer_time);
                 }
                 var me = this;
                 this.availability_xhr = $.ajax({
