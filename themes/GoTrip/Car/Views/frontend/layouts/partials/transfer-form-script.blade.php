@@ -1155,6 +1155,7 @@
                     var displayValue = sanitised.address || sanitised.name || '';
                     setDropoffDisplayValue(displayValue);
                 }
+                updateDropoffMarker(sanitised, options);
                 dropoffDisplay.each(function () {
                     this.setCustomValidity('');
                 });
@@ -1169,6 +1170,135 @@
             function clearDropoffPayload() {
                 lastResolvedDropoffValue = '';
                 setDropoffPayload(null, {preserveDisplay: true});
+                updateDropoffMarker(null);
+            }
+
+            function updateDropoffMarker(payload, options) {
+                if (!dropoffMapContainer.length) {
+                    return;
+                }
+                options = options || {};
+                ensureDropoffMap();
+                if (!dropoffMap || !dropoffMarker || typeof google === 'undefined' || !google.maps) {
+                    return;
+                }
+                var lat = payload && payload.lat !== undefined ? parseFloat(payload.lat) : NaN;
+                var lng = payload && payload.lng !== undefined ? parseFloat(payload.lng) : NaN;
+                var hasCoords = !isNaN(lat) && !isNaN(lng);
+                if (!hasCoords) {
+                    dropoffMarker.setVisible(false);
+                    return;
+                }
+                var position = new google.maps.LatLng(lat, lng);
+                dropoffMarker.setPosition(position);
+                dropoffMarker.setVisible(true);
+                if (!options.preserveCenter) {
+                    dropoffMap.setCenter(position);
+                }
+            }
+
+            function resolveDropoffLatLng(latLng) {
+                ensureGoogleMapsScript();
+                var geocoder = getGeocoder();
+                if (!geocoder || !latLng) {
+                    return;
+                }
+                if (dropoffResolveToken && typeof dropoffResolveToken.cancelled !== 'undefined') {
+                    dropoffResolveToken.cancelled = true;
+                }
+                var requestToken = {cancelled: false};
+                dropoffResolveToken = requestToken;
+                geocoder.geocode({location: latLng}, function (results, status) {
+                    if (requestToken.cancelled) {
+                        return;
+                    }
+                    dropoffResolveToken = null;
+                    if (status === 'OK' && results && results.length) {
+                        var best = results[0];
+                        var payload = sanitiseDropoffPayload({
+                            address: best.formatted_address || '',
+                            name: best.name || best.formatted_address || '',
+                            lat: typeof latLng.lat === 'function' ? latLng.lat() : latLng.lat,
+                            lng: typeof latLng.lng === 'function' ? latLng.lng() : latLng.lng,
+                            place_id: best.place_id || ''
+                        });
+                        if (payload) {
+                            setDropoffPayload(payload);
+                            return;
+                        }
+                    }
+                    var fallbackPayload = sanitiseDropoffPayload({
+                        address: dropoffDisplay.length ? $.trim(dropoffDisplay.val()) : '',
+                        name: dropoffDisplay.length ? $.trim(dropoffDisplay.val()) : '',
+                        lat: typeof latLng.lat === 'function' ? latLng.lat() : latLng.lat,
+                        lng: typeof latLng.lng === 'function' ? latLng.lng() : latLng.lng,
+                        place_id: ''
+                    });
+                    setDropoffPayload(fallbackPayload, {preserveDisplay: true});
+                });
+            }
+
+            function ensureDropoffMap() {
+                if (!dropoffMapContainer.length) {
+                    return;
+                }
+                if (dropoffMap) {
+                    return;
+                }
+                if (typeof google === 'undefined' || !google.maps) {
+                    schedule(ensureDropoffMap, 400);
+                    return;
+                }
+                var initialPayload = sanitiseDropoffPayload(getDropoffPayload());
+                var center = null;
+                var zoom = 11;
+                if (initialPayload && hasValidDropoffPayload(initialPayload)) {
+                    center = {lat: parseFloat(initialPayload.lat), lng: parseFloat(initialPayload.lng)};
+                    zoom = 13;
+                }
+                if (!center) {
+                    var pickupPayload = parseJsonValue(pickupJsonInput.val(), {onError: handleJsonParseError});
+                    var pickupLat = pickupPayload && pickupPayload.lat ? parseFloat(pickupPayload.lat) : null;
+                    var pickupLng = pickupPayload && pickupPayload.lng ? parseFloat(pickupPayload.lng) : null;
+                    if (!isNaN(pickupLat) && !isNaN(pickupLng)) {
+                        center = {lat: pickupLat, lng: pickupLng};
+                        if (pickupPayload && pickupPayload.map_zoom) {
+                            var pickupZoom = parseInt(pickupPayload.map_zoom, 10);
+                            if (!isNaN(pickupZoom) && pickupZoom > 0) {
+                                zoom = pickupZoom;
+                            }
+                        }
+                    }
+                }
+                if (!center) {
+                    center = {lat: 41.7151, lng: 44.8271};
+                }
+                dropoffMap = new google.maps.Map(dropoffMapContainer[0], {
+                    center: center,
+                    zoom: zoom
+                });
+                dropoffMarker = new google.maps.Marker({
+                    map: dropoffMap,
+                    draggable: true,
+                    visible: false
+                });
+                google.maps.event.addListener(dropoffMap, 'click', function (event) {
+                    if (!event || !event.latLng) {
+                        return;
+                    }
+                    updateDropoffMarker({lat: event.latLng.lat(), lng: event.latLng.lng()}, {preserveCenter: true});
+                    resolveDropoffLatLng(event.latLng);
+                });
+                google.maps.event.addListener(dropoffMarker, 'dragend', function (event) {
+                    if (!event || !event.latLng) {
+                        return;
+                    }
+                    resolveDropoffLatLng(event.latLng);
+                });
+                updateDropoffMarker(initialPayload, {preserveCenter: true});
+                if (window.BravoTransferRoute && typeof window.BravoTransferRoute.attachToMap === 'function') {
+                    window.BravoTransferRoute.attachToMap({map: dropoffMap});
+                }
             }
 
             function updateDropoffMarker(payload, options) {
@@ -1314,6 +1444,114 @@
                     } catch (e) {}
                 }
                 return null;
+            }
+
+            function updateDropoffMarker(payload, options) {
+                options = options || {};
+                if (!dropoffMap) {
+                    return;
+                }
+                var hasCoords = payload && typeof payload === 'object' && !isNaN(parseFloat(payload.lat)) && !isNaN(parseFloat(payload.lng));
+                if (!dropoffMarker) {
+                    dropoffMarker = new google.maps.Marker({
+                        map: dropoffMap,
+                        draggable: true,
+                        visible: false
+                    });
+                    google.maps.event.addListener(dropoffMarker, 'dragend', function (event) {
+                        if (!event || !event.latLng) {
+                            return;
+                        }
+                        var dragPayload = sanitiseDropoffPayload({
+                            lat: event.latLng.lat(),
+                            lng: event.latLng.lng(),
+                            place_id: dropoffPlaceId.length ? dropoffPlaceId.val() : '',
+                            address: dropoffAddress.length ? dropoffAddress.val() : '',
+                            name: dropoffName.length ? dropoffName.val() : ''
+                        });
+                        setDropoffPayload(dragPayload, {preserveDisplay: true});
+                        resolveDropoffByLatLng(event.latLng);
+                    });
+                }
+                if (!hasCoords) {
+                    dropoffMarker.setVisible(false);
+                    return;
+                }
+                var position = new google.maps.LatLng(parseFloat(payload.lat), parseFloat(payload.lng));
+                dropoffMarker.setPosition(position);
+                dropoffMarker.setVisible(true);
+                if (!options.preserveCenter) {
+                    dropoffMap.setCenter(position);
+                }
+            }
+
+            function resolveDropoffByLatLng(latLng) {
+                var geocoder = getGeocoder();
+                if (!geocoder || !latLng) {
+                    return;
+                }
+                geocoder.geocode({location: latLng}, function (results, status) {
+                    if (status === 'OK' && results && results.length) {
+                        var first = results[0];
+                        var payload = sanitiseDropoffPayload({
+                            address: first.formatted_address || dropoffDisplay.val(),
+                            name: first.name || first.formatted_address || dropoffDisplay.val(),
+                            place_id: first.place_id || '',
+                            lat: latLng.lat(),
+                            lng: latLng.lng()
+                        });
+                        setDropoffPayload(payload, {preserveDisplay: false});
+                    }
+                });
+            }
+
+            function ensureDropoffMap() {
+                if (!dropoffMapContainer.length) {
+                    return;
+                }
+                if (dropoffMap) {
+                    return;
+                }
+                if (typeof google === 'undefined' || !google.maps) {
+                    schedule(ensureDropoffMap, 400);
+                    return;
+                }
+                var initialPayload = sanitiseDropoffPayload(getDropoffPayload());
+                var center = null;
+                if (initialPayload && !isNaN(parseFloat(initialPayload.lat)) && !isNaN(parseFloat(initialPayload.lng))) {
+                    center = {lat: parseFloat(initialPayload.lat), lng: parseFloat(initialPayload.lng)};
+                } else if (!isNaN(parseFloat(dropoffLat.val())) && !isNaN(parseFloat(dropoffLng.val()))) {
+                    center = {lat: parseFloat(dropoffLat.val()), lng: parseFloat(dropoffLng.val())};
+                } else {
+                    var parsedPickup = parseJsonValue(pickupJsonInput.val(), {onError: handleJsonParseError}) || {};
+                    var parsedPickupLat = parseFloat(parsedPickup.lat);
+                    var parsedPickupLng = parseFloat(parsedPickup.lng);
+                    if (!isNaN(parsedPickupLat) && !isNaN(parsedPickupLng)) {
+                        center = {lat: parsedPickupLat, lng: parsedPickupLng};
+                    }
+                }
+                if (!center) {
+                    center = {lat: 41.7151, lng: 44.8271};
+                }
+                dropoffMap = new google.maps.Map(dropoffMapContainer[0], {
+                    center: center,
+                    zoom: 12
+                });
+                google.maps.event.addListener(dropoffMap, 'click', function (event) {
+                    if (!event || !event.latLng) {
+                        return;
+                    }
+                    var payload = sanitiseDropoffPayload({
+                        lat: event.latLng.lat(),
+                        lng: event.latLng.lng(),
+                        place_id: '',
+                        address: dropoffAddress.length ? dropoffAddress.val() : dropoffDisplay.val(),
+                        name: dropoffName.length ? dropoffName.val() : dropoffDisplay.val()
+                    });
+                    setDropoffPayload(payload, {preserveDisplay: true});
+                    resolveDropoffByLatLng(event.latLng);
+                });
+                updateDropoffMarker(initialPayload, {preserveCenter: true});
             }
 
             pickupSelect.on('change', function () {
@@ -1543,6 +1781,7 @@
             }
 
             setupDropoffAutocomplete();
+            ensureDropoffMap();
             fetchPickupLocations();
             ensurePickupSelection();
             bindUserPickupLocator();

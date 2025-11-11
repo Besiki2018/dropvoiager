@@ -57,6 +57,11 @@ class ModuleProvider extends ModuleServiceProvider
                         'title'      => __('Attributes'),
                         'permission' => 'car_manage_attributes',
                     ],
+                    'pickup_locations'=>[
+                        'url'        => route('car.admin.pickup-locations.index'),
+                        'title'      => __('Pickup locations'),
+                        'permission' => 'car_manage_attributes',
+                    ],
                     'availability'=>[
                         'url'        => route('car.admin.availability.index'),
                         'title'      => __('Availability'),
@@ -66,6 +71,16 @@ class ModuleProvider extends ModuleServiceProvider
                         'url'        => route('car.admin.recovery'),
                         'title'      => __('Recovery'),
                         'permission' => 'car_view',
+                    ],
+                    'transfer_locations'=>[
+                        'url'        => route('car.admin.transfer-locations.index'),
+                        'title'      => __('transfers.admin.locations.title'),
+                        'permission' => 'car_manage_attributes',
+                    ],
+                    'transfer_service_centers'=>[
+                        'url'        => route('car.admin.transfer-service-centers.index'),
+                        'title'      => __('transfers.admin.service_centers.title'),
+                        'permission' => 'car_manage_attributes',
                     ],
                 ]
             ]
@@ -127,6 +142,16 @@ class ModuleProvider extends ModuleServiceProvider
                         'url'   => route('car.vendor.recovery'),
                         'title'      => __("Recovery"),
                         'permission' => 'car_create',
+                    ],
+                    [
+                        'url'   => route('car.vendor.transfer-locations.index'),
+                        'title'      => __('transfers.admin.locations.title'),
+                        'permission' => 'car_view',
+                    ],
+                    [
+                        'url'   => route('car.vendor.transfer-service-centers.index'),
+                        'title'      => __('transfers.admin.service_centers.title'),
+                        'permission' => 'car_view',
                     ],
                 ]
             ];

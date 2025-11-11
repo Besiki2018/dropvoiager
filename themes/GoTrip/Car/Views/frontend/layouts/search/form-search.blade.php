@@ -84,7 +84,7 @@
                         <div class="text-15 text-light-1 ls-2 lh-16">
                             <select name="pickup_location_id"
                                     class="form-control js-transfer-pickup"
-                                    data-fetch-url="{{ route('car.pickup_locations') }}"
+                                    data-fetch-url="{{ route('car.transfer_locations') }}"
                                     data-default-label="{{ __('transfers.form.select_pickup_option') }}"
                                     @if($pickupLocations->isEmpty()) disabled @endif>
                                 <option value="">{{ __('transfers.form.select_pickup_option') }}</option>
@@ -92,9 +92,6 @@
                                     @php
                                         $payload = $location->toFrontendArray();
                                         $label = $payload['display_name'] ?? $location->display_name ?? $location->name ?? $location->address ?? '';
-                                        if (!empty($location->car?->title)) {
-                                            $label .= ' — ' . $location->car->title;
-                                        }
                                     @endphp
                                     <option value="{{ $location->id }}" data-source="backend" data-payload='@json($payload)' @if($location->id == $selectedPickupLocationId) selected @endif>{{ $label }}</option>
                                 @endforeach
@@ -206,8 +203,8 @@
         </button>
     </div>
 </form>
-@push('js')
-    @once('transfer-form-script')
+@once
+    @push('js')
         @include('Car::frontend.layouts.partials.transfer-form-script')
-    @endonce
-@endpush
+    @endpush
+@endonce
