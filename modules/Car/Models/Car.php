@@ -640,7 +640,18 @@ class Car extends Bookable
             {
                 if(empty($allDates[date('Y-m-d',strtotime($date->start_date))])) continue;
                 if(!$date->active) return false;
-                if(!$date->number) return false;
+
+                $rawCapacity = $date->number;
+                if($rawCapacity === null || $rawCapacity === ''){
+                    $rawCapacity = $this->number;
+                }
+                $capacity = is_numeric($rawCapacity) ? (int)$rawCapacity : null;
+                if($capacity === null){
+                    $capacity = (int)($this->number ?? 0);
+                }
+                if($capacity <= 0){
+                    return false;
+                }
 
                 $priceForDate = static::toFloat($date->price);
                 if ($priceForDate === null) {
@@ -648,7 +659,7 @@ class Car extends Bookable
                 }
 
                 $allDates[date('Y-m-d',strtotime($date->start_date))] = [
-                    'number'=>$date->number,
+                    'number'=>$capacity,
                     'price'=>$priceForDate,
                     'status'=>true
                 ];
