@@ -97,6 +97,7 @@ class Car extends Bookable
         'dropoff' => null,
         'pickup_location_id' => null,
         'transfer_datetime' => null,
+        'transfer_date' => null,
         'pricing_mode' => null,
         'unit_price' => null,
         'base_fee' => null,
@@ -1389,10 +1390,25 @@ class Car extends Bookable
             'unit_price' => $unitPrice,
             'base_fee' => $baseFee,
             'passengers' => $passengerCount,
+            'transfer_date' => $transferDate,
         ]);
 
         if ($transferDate) {
-            if (!$this->isAvailableInRanges($transferDate, $transferDate, 1)) {
+            try {
+                $transferDay = Carbon::parse($transferDate, 'Asia/Tbilisi')->setTimezone('Asia/Tbilisi');
+            } catch (\Exception $exception) {
+                $this->clearTransferContext();
+                return false;
+            }
+
+            $startOfDay = $transferDay->copy()->startOfDay();
+            $endOfDay = $transferDay->copy()->endOfDay();
+
+            if (!$this->isAvailableInRanges(
+                $startOfDay->format('Y-m-d H:i:s'),
+                $endOfDay->format('Y-m-d H:i:s'),
+                $passengerCount
+            )) {
                 $this->clearTransferContext();
                 return false;
             }
@@ -1492,6 +1508,7 @@ class Car extends Bookable
             'dropoff' => null,
             'pickup_location_id' => null,
             'transfer_datetime' => null,
+            'transfer_date' => null,
             'pricing_mode' => null,
             'unit_price' => null,
             'base_fee' => null,

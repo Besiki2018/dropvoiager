@@ -11,6 +11,8 @@ use Modules\Core\Models\Attributes;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Arr;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Modules\Booking\Models\Booking;
 
 class CarController extends Controller
 {
@@ -237,6 +239,473 @@ class CarController extends Controller
             ->values();
 
         return $this->sendSuccess(['data' => $locations]);
+    }
+
+    public function availability(Request $request, Car $car)
+    {
+        if ($car->status !== 'publish') {
+            return $this->sendError(__('transfers.booking.price_details_unavailable'), [], 404);
+        }
+
+        $dateParam = $request->query('date');
+        $startParam = $request->query('start', $dateParam);
+        $endParam = $request->query('end', $dateParam);
+
+        try {
+            $startDate = $startParam
+                ? Carbon::parse($startParam, 'Asia/Tbilisi')->startOfDay()
+                : Carbon::now('Asia/Tbilisi')->startOfDay();
+        } catch (\Exception $exception) {
+            return $this->sendError(__('transfers.booking.availability_invalid_date'), [], 422);
+        }
+
+        try {
+            $endDate = $endParam
+                ? Carbon::parse($endParam, 'Asia/Tbilisi')->endOfDay()
+                : $startDate->copy()->endOfDay();
+        } catch (\Exception $exception) {
+            $endDate = $startDate->copy()->endOfDay();
+        }
+
+        if ($endDate->lt($startDate)) {
+            $endDate = $startDate->copy()->endOfDay();
+        }
+
+        $maxRangeDays = 60;
+        if ($endDate->diffInDays($startDate) > $maxRangeDays) {
+            $endDate = $startDate->copy()->addDays($maxRangeDays)->endOfDay();
+        }
+
+        $passengers = (int) $request->query('passengers', 1);
+        if ($passengers < 1) {
+            $passengers = 1;
+        }
+        $maxPassengers = (int) ($car->number ?? 0);
+        if ($maxPassengers > 0 && $passengers > $maxPassengers) {
+            $passengers = $maxPassengers;
+        }
+
+        $pickupPayload = $request->query('pickup');
+        if (is_string($pickupPayload)) {
+            $decodedPickup = json_decode($pickupPayload, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $pickupPayload = $decodedPickup;
+            }
+        }
+        if (!is_array($pickupPayload)) {
+            $pickupPayload = [];
+        }
+
+        $pickupLatParam = $request->query('pickup_lat');
+        if ($pickupLatParam !== null) {
+            $lat = $this->coerceFloat($pickupLatParam);
+            if ($lat !== null) {
+                $pickupPayload['lat'] = $lat;
+            }
+        }
+
+        $pickupLngParam = $request->query('pickup_lng');
+        if ($pickupLngParam !== null) {
+            $lng = $this->coerceFloat($pickupLngParam);
+            if ($lng !== null) {
+                $pickupPayload['lng'] = $lng;
+            }
+        }
+
+        $pickupLocationId = $request->query('pickup_location_id') ?? Arr::get($pickupPayload, 'id');
+        $pickupLocation = null;
+        if ($pickupLocationId) {
+            $pickupLocation = $car->pickupLocations()
+                ->where('id', $pickupLocationId)
+                ->where('is_active', true)
+                ->first();
+            if ($pickupLocation) {
+                $pickupPayload = array_merge($pickupLocation->toFrontendArray(), $pickupPayload);
+                $pickupPayload['source'] = Arr::get($pickupPayload, 'source', 'backend');
+            }
+        }
+
+        $dropoff = $request->query('dropoff');
+        if (is_string($dropoff)) {
+            $decodedDropoff = json_decode($dropoff, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $dropoff = $decodedDropoff;
+            }
+        }
+        if (!is_array($dropoff)) {
+            $dropoff = [];
+        }
+
+        $dropoffLatParam = $request->query('dropoff_lat');
+        if ($dropoffLatParam !== null) {
+            $lat = $this->coerceFloat($dropoffLatParam);
+            if ($lat !== null) {
+                $dropoff['lat'] = $lat;
+            }
+        }
+
+        $dropoffLngParam = $request->query('dropoff_lng');
+        if ($dropoffLngParam !== null) {
+            $lng = $this->coerceFloat($dropoffLngParam);
+            if ($lng !== null) {
+                $dropoff['lng'] = $lng;
+            }
+        }
+
+        $dropoffPlaceId = $request->query('dropoff_place_id') ?? Arr::get($dropoff, 'place_id');
+        if ($dropoffPlaceId) {
+            $dropoff['place_id'] = (string) $dropoffPlaceId;
+        }
+
+        $pickupPayload = $this->normaliseTransferPoint($pickupPayload);
+        $dropoff = $this->normaliseTransferPoint($dropoff);
+
+        $dates = [];
+        $cursor = $startDate->copy();
+        while ($cursor->lte($endDate)) {
+            $dates[] = $this->buildAvailabilityForDate(
+                $car,
+                $cursor->copy(),
+                $passengers,
+                $pickupLocation,
+                $pickupPayload,
+                $dropoff
+            );
+            $cursor->addDay()->startOfDay();
+        }
+
+        return $this->sendSuccess([
+            'dates' => $dates,
+        ]);
+    }
+
+    protected function buildAvailabilityForDate(
+        Car $car,
+        Carbon $date,
+        int $passengers,
+        ?CarPickupLocation $pickupLocation = null,
+        array $pickupPayload = [],
+        array $dropoff = []
+    ): array
+    {
+        $start = $date->copy()->startOfDay();
+        $end = $date->copy()->endOfDay();
+
+        $rangeCheckCar = clone $car;
+        $isRangeAvailable = $rangeCheckCar->isAvailableInRanges(
+            $start->format('Y-m-d H:i:s'),
+            $end->format('Y-m-d H:i:s'),
+            $passengers
+        );
+
+        if (!$isRangeAvailable) {
+            return [
+                'date' => $date->toDateString(),
+                'available' => false,
+                'time_slots' => [],
+                'note' => __('transfers.booking.availability_unavailable'),
+            ];
+        }
+
+        $availabilityCar = clone $car;
+        $applied = $availabilityCar->applyTransferContext(
+            $pickupLocation,
+            array_merge([], $pickupPayload),
+            array_merge([], $dropoff),
+            null,
+            null,
+            $date->toDateString(),
+            null,
+            $passengers
+        );
+
+        if (!$applied) {
+            return [
+                'date' => $date->toDateString(),
+                'available' => false,
+                'time_slots' => [],
+                'note' => __('transfers.booking.price_details_unavailable'),
+            ];
+        }
+
+        $note = null;
+        $slots = [];
+        $slots = $this->resolveTransferTimeSlots($availabilityCar, $date, $passengers);
+        if (empty($slots)) {
+            $note = __('transfers.booking.availability_no_slots');
+        }
+
+        return [
+            'date' => $date->toDateString(),
+            'available' => true,
+            'time_slots' => $slots,
+            'note' => $note,
+        ];
+    }
+
+    protected function resolveTransferTimeSlots(Car $car, Carbon $date, int $passengers): array
+    {
+        $baseSlots = $this->generateTimeSlotsFromAvailability($car, $date, $passengers);
+        if (empty($baseSlots)) {
+            $baseSlots = $this->generateBaseTimeSlots($date);
+        }
+        if (empty($baseSlots)) {
+            return [];
+        }
+
+        $takenTimes = $this->getTakenTransferTimes($car, $date);
+        if (empty($takenTimes)) {
+            return $baseSlots;
+        }
+
+        $takenLookup = array_flip($takenTimes);
+        $availableSlots = [];
+        foreach ($baseSlots as $slot) {
+            if (!isset($takenLookup[$slot['value']])) {
+                $availableSlots[] = $slot;
+            }
+        }
+
+        return $availableSlots;
+    }
+
+    protected function generateTimeSlotsFromAvailability(Car $car, Carbon $date, int $passengers): array
+    {
+        $windows = $this->getAvailabilityWindows($car, $date, $passengers);
+        if (empty($windows)) {
+            return [];
+        }
+
+        $step = (int) setting_item('car_transfer_time_step', 30);
+        if ($step <= 0) {
+            $step = 30;
+        }
+
+        $values = [];
+        $maxIterations = (int) ceil((24 * 60) / max($step, 1)) + 2;
+        foreach ($windows as $window) {
+            $start = $window['start']->copy()->second(0);
+            $end = $window['end']->copy()->second(0);
+            if ($end->lt($start)) {
+                continue;
+            }
+
+            $cursor = $start->copy();
+            $iteration = 0;
+            while ($cursor->lte($end) && $iteration <= $maxIterations) {
+                $value = $cursor->format('H:i');
+                if (!in_array($value, $values, true)) {
+                    $values[] = $value;
+                }
+                $cursor->addMinutes($step);
+                $iteration++;
+            }
+        }
+
+        sort($values);
+
+        return array_map(function ($value) {
+            return [
+                'value' => $value,
+                'label' => $value,
+                'disabled' => false,
+            ];
+        }, $values);
+    }
+
+    protected function getAvailabilityWindows(Car $car, Carbon $date, int $passengers): array
+    {
+        $start = $date->copy()->startOfDay();
+        $end = $date->copy()->endOfDay();
+        $ranges = $car->getDatesInRange(
+            $start->format('Y-m-d H:i:s'),
+            $end->format('Y-m-d H:i:s')
+        );
+
+        if ($ranges instanceof \Illuminate\Support\Collection) {
+            if ($ranges->isEmpty()) {
+                return [];
+            }
+        } elseif (empty($ranges)) {
+            return [];
+        }
+
+        $windows = [];
+        foreach ($ranges as $range) {
+            if (!$range->active) {
+                continue;
+            }
+
+            $capacity = is_numeric($range->number) ? (int) $range->number : null;
+            if ($capacity !== null) {
+                if ($capacity <= 0) {
+                    continue;
+                }
+                if ($capacity < $passengers) {
+                    continue;
+                }
+            }
+
+            if (empty($range->start_date) || empty($range->end_date)) {
+                continue;
+            }
+
+            try {
+                $startTime = Carbon::parse($range->start_date)->setTimezone('Asia/Tbilisi');
+                $endTime = Carbon::parse($range->end_date)->setTimezone('Asia/Tbilisi');
+            } catch (\Exception $exception) {
+                continue;
+            }
+
+            if ($endTime->lt($startTime)) {
+                continue;
+            }
+
+            $windows[] = [
+                'start' => $startTime,
+                'end' => $endTime,
+            ];
+        }
+
+        return $windows;
+    }
+
+    protected function generateBaseTimeSlots(Carbon $date): array
+    {
+        $step = (int) setting_item('car_transfer_time_step', 30);
+        if ($step <= 0) {
+            $step = 30;
+        }
+
+        $startSetting = setting_item('car_transfer_time_start', '00:00');
+        $endSetting = setting_item('car_transfer_time_end', '23:30');
+
+        try {
+            $startTime = Carbon::parse($startSetting, 'Asia/Tbilisi');
+        } catch (\Exception $exception) {
+            $startTime = Carbon::createFromTime(0, 0, 0, 'Asia/Tbilisi');
+        }
+
+        try {
+            $endTime = Carbon::parse($endSetting, 'Asia/Tbilisi');
+        } catch (\Exception $exception) {
+            $endTime = Carbon::createFromTime(23, 30, 0, 'Asia/Tbilisi');
+        }
+
+        $start = $date->copy()->setTime($startTime->hour, $startTime->minute, 0);
+        $end = $date->copy()->setTime($endTime->hour, $endTime->minute, 0);
+        if ($end->lt($start)) {
+            $end = $start->copy()->endOfDay();
+        }
+
+        $values = [];
+        $cursor = $start->copy();
+        $maxIterations = (int) ceil((24 * 60) / max($step, 1)) + 2;
+        $iteration = 0;
+        while ($cursor->lte($end) && $iteration <= $maxIterations) {
+            $value = $cursor->format('H:i');
+            if (!in_array($value, $values, true)) {
+                $values[] = $value;
+            }
+            $cursor->addMinutes($step);
+            $iteration++;
+        }
+
+        return array_map(function ($value) {
+            return [
+                'value' => $value,
+                'label' => $value,
+                'disabled' => false,
+            ];
+        }, $values);
+    }
+
+    protected function getTakenTransferTimes(Car $car, Carbon $date): array
+    {
+        $bookingIds = Booking::query()
+            ->where('object_id', $car->id)
+            ->where('object_model', 'car')
+            ->whereNotIn('status', Booking::$notAcceptedStatus)
+            ->whereDate('start_date', $date->toDateString())
+            ->pluck('id');
+
+        if ($bookingIds->isEmpty()) {
+            return [];
+        }
+
+        $metaValues = DB::table('bravo_booking_meta')
+            ->whereIn('booking_id', $bookingIds->all())
+            ->where('name', 'transfer_datetime')
+            ->pluck('val');
+
+        $times = [];
+        foreach ($metaValues as $value) {
+            if (!$value) {
+                continue;
+            }
+            try {
+                $parsed = Carbon::parse($value, 'Asia/Tbilisi')->setTimezone('Asia/Tbilisi');
+                $times[] = $parsed->format('H:i');
+            } catch (\Exception $exception) {
+                continue;
+            }
+        }
+
+        return array_values(array_unique($times));
+    }
+
+    protected function normaliseTransferPoint(array $payload): array
+    {
+        if (array_key_exists('lat', $payload)) {
+            $lat = $this->coerceFloat($payload['lat']);
+            if ($lat === null) {
+                unset($payload['lat']);
+            } else {
+                $payload['lat'] = $lat;
+            }
+        }
+
+        if (array_key_exists('lng', $payload)) {
+            $lng = $this->coerceFloat($payload['lng']);
+            if ($lng === null) {
+                unset($payload['lng']);
+            } else {
+                $payload['lng'] = $lng;
+            }
+        }
+
+        if (array_key_exists('place_id', $payload)) {
+            $payload['place_id'] = $payload['place_id'] ? (string) $payload['place_id'] : null;
+            if (!$payload['place_id']) {
+                unset($payload['place_id']);
+            }
+        }
+
+        return $payload;
+    }
+
+    protected function coerceFloat($value): ?float
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        if ($value === '') {
+            return null;
+        }
+
+        if (is_numeric($value)) {
+            return (float) $value;
+        }
+
+        if (is_string($value)) {
+            $filtered = filter_var($value, FILTER_VALIDATE_FLOAT);
+            if ($filtered !== false && $filtered !== null) {
+                return (float) $filtered;
+            }
+        }
+
+        return null;
     }
 
     public function quote(Request $request, Car $car)
