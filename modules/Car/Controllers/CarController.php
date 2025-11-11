@@ -350,7 +350,9 @@ class CarController extends Controller
         }
 
         return $this->sendSuccess([
-            'dates' => $dates,
+            'data' => [
+                'dates' => $dates,
+            ],
         ]);
     }
 
@@ -932,7 +934,9 @@ class CarController extends Controller
         ];
 
         return $this->sendSuccess([
-            'quote' => $quote,
+            'data' => [
+                'quote' => $quote,
+            ],
         ]);
     }
 
