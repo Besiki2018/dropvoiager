@@ -124,6 +124,7 @@
             </div>
             <div class="form-book" :class="{'d-none':enquiry_type!='book'}">
                 <div class="form-content js-transfer-form"
+                     data-enable-live-location="true"
                      data-restore-error="{{ __('transfers.booking.state_restore_failed') }}">
                     <div class="row y-gap-20 pt-20">
                         <div class="col-12">
@@ -186,15 +187,17 @@
                                        value="{{ $userPickupData['formatted_address'] ?? $userPickupData['address'] ?? '' }}"
                                        placeholder="{{ __('transfers.form.exact_pickup_placeholder') }}"
                                        autocomplete="off">
-                                <button type="button"
-                                        class="btn btn-sm btn-outline-primary mt-10 js-transfer-user-pickup-locate"
-                                        data-loading-text="{{ __('transfers.form.locating') }}">
-                                    <i class="fa fa-location-arrow me-5"></i>{{ __('transfers.form.use_my_location') }}
-                                </button>
                                 <div class="mt-15">
                                     <div class="transfer-user-map rounded-4 overflow-hidden" style="height: 260px;">
                                         <div class="w-100 h-100 js-transfer-user-pickup-map"></div>
                                     </div>
+                                </div>
+                                <div class="mt-15 d-flex flex-wrap gap-10 align-items-center">
+                                    <button type="button"
+                                            class="button -outline-blue-1 text-blue-1 px-20 py-10 rounded-4 js-transfer-user-pickup-locate">
+                                        {{ __('transfers.form.use_my_location') }}
+                                    </button>
+                                    <div class="text-13 text-red-1 js-transfer-user-pickup-locate-error d-none" role="alert"></div>
                                 </div>
                                 <input type="hidden" class="js-transfer-user-pickup-json" value='@json($userPickupData)'>
                                 <input type="hidden" class="js-transfer-user-pickup-formatted" name="user_pickup[formatted_address]" value="{{ $userPickupData['formatted_address'] ?? $userPickupData['address'] ?? '' }}">
@@ -325,7 +328,10 @@
 </div>
 @include("Booking::frontend.global.enquiry-form",['service_type'=>'car'])
 @push('js')
-    @once
+    @once('transfer-map-engine')
+        {!! App\Helpers\MapEngine::scripts() !!}
+    @endonce
+    @once('transfer-form-script')
         @include('Car::frontend.layouts.partials.transfer-form-script')
     @endpush
 @endonce

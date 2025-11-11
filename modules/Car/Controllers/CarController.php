@@ -1125,6 +1125,26 @@ class CarController extends Controller
             $userRouteMetrics = $car::resolveRouteMetrics($normalizedUserPickup, $normalizedDropoff);
         }
 
+        $normalizedUserPickup = null;
+        if (is_numeric($userPickupLat) && is_numeric($userPickupLng)) {
+            $normalizedUserPickup = array_merge($userPickup, [
+                'lat' => (float) $userPickupLat,
+                'lng' => (float) $userPickupLng,
+            ]);
+        }
+
+        $pricingMode = $car->pricing_mode ?: 'per_km';
+        if ($pricingMode !== 'fixed') {
+            if (!$normalizedUserPickup || empty($userPickupPlaceId)) {
+                return $this->sendError(__('transfers.form.pickup_coordinates_required'), [], 422);
+            }
+        }
+
+        $userRouteMetrics = null;
+        if ($normalizedUserPickup) {
+            $userRouteMetrics = $car::resolveRouteMetrics($normalizedUserPickup, $normalizedDropoff);
+        }
+
         $car->clearTransferContext();
 
         $applied = $car->applyTransferContext(

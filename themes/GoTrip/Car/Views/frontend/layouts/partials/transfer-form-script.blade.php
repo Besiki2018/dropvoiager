@@ -2,6 +2,8 @@
     (function (window, $) {
         var timezoneOffset = '{{ \Carbon\Carbon::now('Asia/Tbilisi')->format('P') }}';
         var dropoffRequiredMessage = '{{ __('transfers.form.dropoff_coordinates_required') }}';
+        var googleMapsDefaultKey = @json(setting_item('map_gmap_key'));
+        var googleMapsDefaultLocale = @json(str_replace('_', '-', app()->getLocale()));
 
         var googlePlacesDetailsServiceInstance = null;
         var googlePlacesAutocompleteInstance = null;
@@ -173,6 +175,9 @@
                     return String(bookingCore.locale_default);
                 }
             }
+            if (googleMapsDefaultLocale) {
+                return String(googleMapsDefaultLocale);
+            }
             return '';
         }
 
@@ -192,8 +197,14 @@
                 return;
             }
             var apiKey = window.bookingCore && bookingCore.map_gmap_key ? bookingCore.map_gmap_key : '';
+            if (!apiKey && googleMapsDefaultKey) {
+                apiKey = googleMapsDefaultKey;
+            }
             var params = ['libraries=places'];
             var language = getPlacesLanguage();
+            if (!language && googleMapsDefaultLocale) {
+                language = googleMapsDefaultLocale;
+            }
             if (language) {
                 params.push('language=' + encodeURIComponent(language));
             }
@@ -207,6 +218,9 @@
             script.onload = function () {
                 googleMapsScriptLoading = false;
                 resetPlacesSessionToken();
+                if (window.BravoTransferForm && typeof window.BravoTransferForm.initAll === 'function') {
+                    window.BravoTransferForm.initAll(document);
+                }
                 if (window.BravoTransferRoute && typeof window.BravoTransferRoute.refresh === 'function') {
                     window.BravoTransferRoute.refresh();
                 }
@@ -432,7 +446,20 @@
             var userPickupLngInput = $form.find('.js-transfer-user-pickup-lng').first();
             var userPickupPlaceIdInput = $form.find('.js-transfer-user-pickup-place-id').first();
             var userPickupMapContainer = $form.find('.js-transfer-user-pickup-map').first();
-            var userPickupLocateButtons = $form.find('.js-transfer-user-pickup-locate');
+            var userPickupLocateButton = $form.find('.js-transfer-user-pickup-locate').first();
+            var userPickupLocateError = $form.find('.js-transfer-user-pickup-locate-error').first();
+            var allowLiveLocation = true;
+            if ($form.data('enable-live-location') !== undefined) {
+                allowLiveLocation = !!$form.data('enable-live-location');
+            } else {
+                var rawLiveLocationAttr = $form.attr('data-enable-live-location');
+                if (typeof rawLiveLocationAttr === 'string') {
+                    var normalisedAttr = $.trim(rawLiveLocationAttr).toLowerCase();
+                    if (normalisedAttr === 'false' || normalisedAttr === '0' || normalisedAttr === 'no') {
+                        allowLiveLocation = false;
+                    }
+                }
+            }
             var dateInput = $form.find('.js-transfer-date').first();
             var dateDisplay = $form.find('.js-transfer-date-display').first();
             var dateFieldWrapper = $form.find('.js-transfer-date-field').first();
@@ -459,6 +486,106 @@
 
             function emitFormError(message) {
                 $form.trigger('transfer:form-error', message || '');
+            }
+
+            function setLocateButtonLoading(isLoading) {
+                if (!allowLiveLocation || !userPickupLocateButton.length) {
+                    return;
+                }
+                var loading = !!isLoading;
+                userPickupLocateButton.prop('disabled', loading);
+                if (loading) {
+                    userPickupLocateButton.addClass('is-loading').attr('aria-busy', 'true');
+                } else {
+                    userPickupLocateButton.removeClass('is-loading').removeAttr('aria-busy');
+                }
+            }
+
+            function reportLocateError(message) {
+                if (!allowLiveLocation || !userPickupLocateError.length) {
+                    return;
+                }
+                var text = message ? String(message) : '';
+                if (text) {
+                    userPickupLocateError.removeClass('d-none').text(text);
+                } else {
+                    userPickupLocateError.addClass('d-none').text('');
+                }
+            }
+
+            function handleGeolocationError(error) {
+                var defaultMessage = '{{ __('transfers.form.geolocation_failed') }}';
+                if (!error || typeof error.code === 'undefined') {
+                    reportLocateError(defaultMessage);
+                    return;
+                }
+                var permissionDeniedCode = 1;
+                var positionUnavailableCode = 2;
+                if (error.code === permissionDeniedCode) {
+                    reportLocateError('{{ __('transfers.form.geolocation_permission_denied') }}');
+                    return;
+                }
+                if (error.code === positionUnavailableCode) {
+                    reportLocateError('{{ __('transfers.form.geolocation_failed') }}');
+                    return;
+                }
+                reportLocateError(defaultMessage);
+            }
+
+            function requestLiveLocation() {
+                if (!allowLiveLocation) {
+                    return;
+                }
+                reportLocateError('');
+                if (!navigator.geolocation) {
+                    reportLocateError('{{ __('transfers.form.geolocation_not_supported') }}');
+                    return;
+                }
+                setLocateButtonLoading(true);
+                navigator.geolocation.getCurrentPosition(function (position) {
+                    setLocateButtonLoading(false);
+                    if (!position || !position.coords) {
+                        reportLocateError('{{ __('transfers.form.geolocation_failed') }}');
+                        return;
+                    }
+                    var coords = position.coords;
+                    var latitude = typeof coords.latitude === 'number' ? coords.latitude : parseFloat(coords.latitude);
+                    var longitude = typeof coords.longitude === 'number' ? coords.longitude : parseFloat(coords.longitude);
+                    if (isNaN(latitude) || isNaN(longitude)) {
+                        reportLocateError('{{ __('transfers.form.geolocation_failed') }}');
+                        return;
+                    }
+                    var payload = sanitiseUserPickupPayload({
+                        formatted_address: userPickupDisplay.length ? userPickupDisplay.val() : '',
+                        address: userPickupDisplay.length ? userPickupDisplay.val() : '',
+                        place_id: '',
+                        lat: latitude,
+                        lng: longitude
+                    });
+                    setUserPickupPayload(payload, {preserveDisplay: true, skipMarker: true});
+                    ensureUserPickupMap();
+                    updateUserPickupMarker(payload);
+                    if (typeof google !== 'undefined' && google.maps) {
+                        var latLng = new google.maps.LatLng(payload.lat, payload.lng);
+                        resolveUserPickupByLatLng(latLng);
+                        if (userPickupMap && typeof userPickupMap.panTo === 'function') {
+                            userPickupMap.panTo(latLng);
+                        }
+                        if (userPickupMap && typeof userPickupMap.getZoom === 'function' && userPickupMap.getZoom() < 15 && typeof userPickupMap.setZoom === 'function') {
+                            userPickupMap.setZoom(15);
+                        }
+                    } else {
+                        ensureGoogleMapsScript();
+                    }
+                    emitTransferUpdate();
+                }, function (error) {
+                    setLocateButtonLoading(false);
+                    handleGeolocationError(error);
+                }, {
+                    enableHighAccuracy: true,
+                    maximumAge: 0,
+                    timeout: 15000
+                });
             }
 
             function handleJsonParseError() {
@@ -542,6 +669,7 @@
                 if (!options.skipMarker) {
                     updateUserPickupMarker(sanitized, {preserveCenter: options.preserveCenter});
                 }
+                reportLocateError('');
                 if (!options.silent) {
                     emitTransferUpdate();
                     $form.trigger('transfer:user-pickup-updated', sanitized);
@@ -574,45 +702,11 @@
                 if (!options.skipMarker) {
                     updateUserPickupMarker(null);
                 }
+                reportLocateError('');
                 if (!options.silent) {
                     emitTransferUpdate();
                     $form.trigger('transfer:user-pickup-cleared');
                 }
-            }
-
-            function setLocateButtonState($button, isLoading) {
-                if (!$button || !$button.length) {
-                    return;
-                }
-                if (typeof isLoading === 'undefined') {
-                    isLoading = false;
-                }
-                if (isLoading) {
-                    if (!$button.data('original-html')) {
-                        $button.data('original-html', $button.html());
-                    }
-                    var loadingText = $button.data('loading-text') || $button.data('loadingText') || '';
-                    var spinnerHtml = '<i class="fa fa-spinner fa-spin me-5"></i>';
-                    $button.html(spinnerHtml + (loadingText || $button.data('original-html') || ''));
-                } else if ($button.data('original-html')) {
-                    $button.html($button.data('original-html'));
-                }
-                $button.toggleClass('is-loading', !!isLoading);
-                $button.prop('disabled', !!isLoading);
-            }
-
-            function attemptResolveUserPickup(lat, lng, attempt) {
-                attempt = attempt || 0;
-                if (typeof google !== 'undefined' && google.maps && typeof google.maps.LatLng === 'function') {
-                    resolveUserPickupByLatLng(new google.maps.LatLng(lat, lng));
-                    return;
-                }
-                if (attempt >= 10) {
-                    return;
-                }
-                schedule(function () {
-                    attemptResolveUserPickup(lat, lng, attempt + 1);
-                }, 400);
             }
 
             function resolveUserPickupByLatLng(latLng) {
@@ -675,6 +769,12 @@
                     center: center,
                     zoom: 12
                 });
+                if (typeof google !== 'undefined' && google.maps && typeof google.maps.event !== 'undefined') {
+                    google.maps.event.trigger(userPickupMap, 'resize');
+                }
+                if (center && typeof userPickupMap.setCenter === 'function') {
+                    userPickupMap.setCenter(center);
+                }
                 userPickupMarker = new google.maps.Marker({
                     map: userPickupMap,
                     draggable: true,
@@ -831,6 +931,17 @@
                         }
                     }
                 });
+                if (allowLiveLocation && userPickupLocateButton.length) {
+                    userPickupLocateButton.on('click', function (event) {
+                        event.preventDefault();
+                        requestLiveLocation();
+                    });
+                } else if (userPickupLocateButton.length) {
+                    userPickupLocateButton.remove();
+                    if (userPickupLocateError.length) {
+                        userPickupLocateError.remove();
+                    }
+                }
                 if (!userPickupMapContainer.length) {
                     return;
                 }
@@ -841,59 +952,6 @@
                         return;
                     }
                     geocodeUserPickupAddress(text);
-                });
-            }
-
-            function bindUserPickupLocator() {
-                if (!userPickupLocateButtons.length) {
-                    return;
-                }
-                if (typeof navigator === 'undefined' || !navigator.geolocation) {
-                    userPickupLocateButtons.prop('disabled', true).addClass('disabled');
-                    return;
-                }
-                userPickupLocateButtons.each(function () {
-                    var $button = $(this);
-                    if ($button.data('geolocate-bound')) {
-                        return;
-                    }
-                    $button.data('geolocate-bound', true);
-                    $button.on('click', function (event) {
-                        event.preventDefault();
-                        ensureGoogleMapsScript();
-                        setLocateButtonState($button, true);
-                        navigator.geolocation.getCurrentPosition(function (position) {
-                            setLocateButtonState($button, false);
-                            if (!position || !position.coords) {
-                                return;
-                            }
-                            var coords = {
-                                lat: parseFloat(position.coords.latitude),
-                                lng: parseFloat(position.coords.longitude)
-                            };
-                            if (isNaN(coords.lat) || isNaN(coords.lng)) {
-                                return;
-                            }
-                            var payload = sanitiseUserPickupPayload({
-                                formatted_address: userPickupDisplay.length ? userPickupDisplay.val() : '',
-                                address: userPickupDisplay.length ? userPickupDisplay.val() : '',
-                                name: userPickupDisplay.length ? userPickupDisplay.val() : '',
-                                place_id: '',
-                                lat: coords.lat,
-                                lng: coords.lng
-                            });
-                            setUserPickupPayload(payload, {preserveDisplay: true, skipMarker: true, silent: true});
-                            updateUserPickupMarker(payload, {preserveCenter: true});
-                            emitTransferUpdate();
-                            attemptResolveUserPickup(coords.lat, coords.lng, 0);
-                        }, function () {
-                            setLocateButtonState($button, false);
-                        }, {
-                            enableHighAccuracy: true,
-                            timeout: 15000,
-                            maximumAge: 0
-                        });
-                    });
                 });
             }
 
@@ -1405,6 +1463,140 @@
                     center: center,
                     zoom: zoom
                 });
+                dropoffMarker = new google.maps.Marker({
+                    map: dropoffMap,
+                    draggable: true,
+                    visible: false
+                });
+                google.maps.event.addListener(dropoffMap, 'click', function (event) {
+                    if (!event || !event.latLng) {
+                        return;
+                    }
+                    updateDropoffMarker({lat: event.latLng.lat(), lng: event.latLng.lng()}, {preserveCenter: true});
+                    resolveDropoffLatLng(event.latLng);
+                });
+                google.maps.event.addListener(dropoffMarker, 'dragend', function (event) {
+                    if (!event || !event.latLng) {
+                        return;
+                    }
+                    resolveDropoffLatLng(event.latLng);
+                });
+                updateDropoffMarker(initialPayload, {preserveCenter: true});
+                if (window.BravoTransferRoute && typeof window.BravoTransferRoute.attachToMap === 'function') {
+                    window.BravoTransferRoute.attachToMap({map: dropoffMap});
+                }
+            }
+
+            function updateDropoffMarker(payload, options) {
+                if (!dropoffMapContainer.length) {
+                    return;
+                }
+                options = options || {};
+                ensureDropoffMap();
+                if (!dropoffMap || !dropoffMarker || typeof google === 'undefined' || !google.maps) {
+                    return;
+                }
+                var lat = payload && payload.lat !== undefined ? parseFloat(payload.lat) : NaN;
+                var lng = payload && payload.lng !== undefined ? parseFloat(payload.lng) : NaN;
+                var hasCoords = !isNaN(lat) && !isNaN(lng);
+                if (!hasCoords) {
+                    dropoffMarker.setVisible(false);
+                    return;
+                }
+                var position = new google.maps.LatLng(lat, lng);
+                dropoffMarker.setPosition(position);
+                dropoffMarker.setVisible(true);
+                if (!options.preserveCenter) {
+                    dropoffMap.setCenter(position);
+                }
+            }
+
+            function resolveDropoffLatLng(latLng) {
+                ensureGoogleMapsScript();
+                var geocoder = getGeocoder();
+                if (!geocoder || !latLng) {
+                    return;
+                }
+                if (dropoffResolveToken && typeof dropoffResolveToken.cancelled !== 'undefined') {
+                    dropoffResolveToken.cancelled = true;
+                }
+                var requestToken = {cancelled: false};
+                dropoffResolveToken = requestToken;
+                geocoder.geocode({location: latLng}, function (results, status) {
+                    if (requestToken.cancelled) {
+                        return;
+                    }
+                    dropoffResolveToken = null;
+                    if (status === 'OK' && results && results.length) {
+                        var best = results[0];
+                        var payload = sanitiseDropoffPayload({
+                            address: best.formatted_address || '',
+                            name: best.name || best.formatted_address || '',
+                            lat: typeof latLng.lat === 'function' ? latLng.lat() : latLng.lat,
+                            lng: typeof latLng.lng === 'function' ? latLng.lng() : latLng.lng,
+                            place_id: best.place_id || ''
+                        });
+                        if (payload) {
+                            setDropoffPayload(payload);
+                            return;
+                        }
+                    }
+                    var fallbackPayload = sanitiseDropoffPayload({
+                        address: dropoffDisplay.length ? $.trim(dropoffDisplay.val()) : '',
+                        name: dropoffDisplay.length ? $.trim(dropoffDisplay.val()) : '',
+                        lat: typeof latLng.lat === 'function' ? latLng.lat() : latLng.lat,
+                        lng: typeof latLng.lng === 'function' ? latLng.lng() : latLng.lng,
+                        place_id: ''
+                    });
+                    setDropoffPayload(fallbackPayload, {preserveDisplay: true});
+                });
+            }
+
+            function ensureDropoffMap() {
+                if (!dropoffMapContainer.length) {
+                    return;
+                }
+                if (dropoffMap) {
+                    return;
+                }
+                if (typeof google === 'undefined' || !google.maps) {
+                    schedule(ensureDropoffMap, 400);
+                    return;
+                }
+                var initialPayload = sanitiseDropoffPayload(getDropoffPayload());
+                var center = null;
+                var zoom = 11;
+                if (initialPayload && hasValidDropoffPayload(initialPayload)) {
+                    center = {lat: parseFloat(initialPayload.lat), lng: parseFloat(initialPayload.lng)};
+                    zoom = 13;
+                }
+                if (!center) {
+                    var pickupPayload = parseJsonValue(pickupJsonInput.val(), {onError: handleJsonParseError});
+                    var pickupLat = pickupPayload && pickupPayload.lat ? parseFloat(pickupPayload.lat) : null;
+                    var pickupLng = pickupPayload && pickupPayload.lng ? parseFloat(pickupPayload.lng) : null;
+                    if (!isNaN(pickupLat) && !isNaN(pickupLng)) {
+                        center = {lat: pickupLat, lng: pickupLng};
+                        if (pickupPayload && pickupPayload.map_zoom) {
+                            var pickupZoom = parseInt(pickupPayload.map_zoom, 10);
+                            if (!isNaN(pickupZoom) && pickupZoom > 0) {
+                                zoom = pickupZoom;
+                            }
+                        }
+                    }
+                }
+                if (!center) {
+                    center = {lat: 41.7151, lng: 44.8271};
+                }
+                dropoffMap = new google.maps.Map(dropoffMapContainer[0], {
+                    center: center,
+                    zoom: zoom
+                });
+                if (typeof google !== 'undefined' && google.maps && typeof google.maps.event !== 'undefined') {
+                    google.maps.event.trigger(dropoffMap, 'resize');
+                }
+                if (center && typeof dropoffMap.setCenter === 'function') {
+                    dropoffMap.setCenter(center);
+                }
                 dropoffMarker = new google.maps.Marker({
                     map: dropoffMap,
                     draggable: true,

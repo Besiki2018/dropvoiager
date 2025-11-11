@@ -62,7 +62,7 @@
     }
 @endphp
 
-<form action="{{ route("car.search") }}" class="gotrip_form_search bravo_form_search bravo_form form-search-all-service form js-transfer-form {{$classes }}" method="get">
+<form action="{{ route("car.search") }}" class="gotrip_form_search bravo_form_search bravo_form form-search-all-service form js-transfer-form {{$classes }}" method="get" data-enable-live-location="false">
     @if( !empty(Request::query('_layout')) )
         <input type="hidden" name="_layout" value="{{Request::query('_layout')}}">
     @endif
@@ -105,19 +105,12 @@
                     <div>
                         <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('transfers.form.exact_pickup_label') }}</h4>
                         <div class="text-15 text-light-1 ls-2 lh-16">
-                            <div class="d-flex gap-10 flex-wrap">
-                                <input type="text"
-                                       class="form-control js-transfer-user-pickup-display flex-grow-1"
-                                       name="user_pickup[address]"
-                                       value="{{ $userPickupPayload['formatted_address'] ?? $userPickupPayload['address'] ?? '' }}"
-                                       placeholder="{{ __('transfers.form.exact_pickup_placeholder') }}"
-                                       autocomplete="off">
-                                <button type="button"
-                                        class="btn btn-sm btn-outline-primary js-transfer-user-pickup-locate"
-                                        data-loading-text="{{ __('transfers.form.locating') }}">
-                                    <i class="fa fa-location-arrow me-5"></i>{{ __('transfers.form.use_my_location') }}
-                                </button>
-                            </div>
+                            <input type="text"
+                                   class="form-control js-transfer-user-pickup-display"
+                                   name="user_pickup[address]"
+                                   value="{{ $userPickupPayload['formatted_address'] ?? $userPickupPayload['address'] ?? '' }}"
+                                   placeholder="{{ __('transfers.form.exact_pickup_placeholder') }}"
+                                   autocomplete="off">
                         </div>
                     </div>
                 </div>

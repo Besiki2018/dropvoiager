@@ -15,8 +15,10 @@ return [
         'date_invalid' => 'Invalid date selected. Please choose a valid date from the calendar.',
         'exact_pickup_label' => 'Exact pickup address (Google Maps)',
         'exact_pickup_placeholder' => 'Search for an exact pickup address',
-        'use_my_location' => 'Use my location',
-        'locating' => 'Locating…',
+        'use_my_location' => 'Use my current location',
+        'geolocation_not_supported' => 'Your browser does not support live location.',
+        'geolocation_failed' => 'We could not determine your current location. Please enter the address manually.',
+        'geolocation_permission_denied' => 'Location access was denied. Please allow location access or enter the address manually.',
     ],
     'search' => [
         'route_summary' => 'Route: :from → :to',
