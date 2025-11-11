@@ -1,0 +1,15 @@
+9999999999s:246:".layout-pt-lg {
+    padding-top: 50px !important;
+}
+
+
+.masthead.-type-1 {
+    position: relative !important;
+    padding-top: 180px !important;
+    padding-bottom: 110px !important;
+}
+
+
+.header .header-logo img {
+    width: 180px;
+}";
