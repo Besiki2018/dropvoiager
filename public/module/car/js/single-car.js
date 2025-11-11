@@ -680,6 +680,12 @@
                 }
                 return true;
             },
+            shouldRequestAvailability:function () {
+                if (!this.transfer_date) {
+                    return false;
+                }
+                return this.shouldRequestQuote();
+            },
             queueQuoteRefresh:function (delay) {
                 var me = this;
                 var wait = typeof delay === 'number' ? delay : 200;
