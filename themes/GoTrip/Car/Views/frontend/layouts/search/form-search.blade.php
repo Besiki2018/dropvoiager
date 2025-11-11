@@ -167,7 +167,14 @@
                     </div>
                 </div>
             </div>
-            <input type="hidden" name="transfer_time" class="js-transfer-time" value="{{ $transferTime }}">
+            <div class="col-lg-3 align-self-center px-30 lg:py-20 lg:px-0">
+                <div class="searchMenu-date item">
+                    <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('transfers.form.time_label') }}</h4>
+                    <div class="text-15 text-light-1 ls-2 lh-16">
+                        <input type="time" name="transfer_time" class="form-control js-transfer-time" value="{{ $transferTime }}">
+                    </div>
+                </div>
+            </div>
             <input type="hidden" name="transfer_datetime" class="js-transfer-datetime" value="{{ $transferDatetime }}">
             @if(!empty($car_search_fields))
                 @foreach($car_search_fields as $field)
