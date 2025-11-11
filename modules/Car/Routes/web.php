@@ -3,6 +3,7 @@ use \Illuminate\Support\Facades\Route;
 
 Route::group(['prefix'=>config('car.car_route_prefix')],function(){
     Route::get('/pickup-locations','CarController@pickupLocations')->name('car.pickup_locations');
+    Route::get('/transfer-availability/{car}','CarController@availability')->name('car.transfer.availability');
     Route::post('/transfer-quote/{car}','CarController@quote')->name('car.transfer.quote');
     Route::get('/','CarController@index')->name('car.search'); // Search
     Route::get('/{slug}','CarController@detail')->name('car.detail');// Detail

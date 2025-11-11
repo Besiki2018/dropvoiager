@@ -1,6 +1,7 @@
 <?php
 namespace Modules\Car\Controllers;
 
+use Carbon\Carbon;
 use ICal\ICal;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -105,6 +106,9 @@ class AvailabilityController extends FrontendController{
         $rows =  $query->take(100)->get();
         $allDates = [];
         $period = periodDate($request->query('start'),$request->query('end'));
+        $defaultStart = $car->transfer_time_start ?: setting_item('car_transfer_time_start', '00:00');
+        $defaultEnd = $car->transfer_time_end ?: setting_item('car_transfer_time_end', '23:30');
+
         foreach ($period as $dt){
                 $i = $dt->getTimestamp();
             $date = [
@@ -113,7 +117,9 @@ class AvailabilityController extends FrontendController{
                 'price'=>(!empty($car->sale_price) and $car->sale_price > 0 and $car->sale_price < $car->price) ? $car->sale_price : $car->price,
                 'is_instant'=>$car->is_instant,
                 'is_default'=>true,
-                'textColor'=>'#2791fe'
+                'textColor'=>'#2791fe',
+                'available_start' => $defaultStart,
+                'available_end' => $defaultEnd,
             ];
             $date['price_html'] = format_money($date['price']).' x '.$car->number;
             if(!$is_single) {
@@ -163,7 +169,14 @@ class AvailabilityController extends FrontendController{
                         $row->title = '<i class="fa fa-bolt"></i> '.$row->title;
                     }
                 }
-                $allDates[date('Y-m-d',strtotime($row->start_date))] = $row->toArray();
+                $rowArray = $row->toArray();
+                if (empty($rowArray['available_start'])) {
+                    $rowArray['available_start'] = $defaultStart;
+                }
+                if (empty($rowArray['available_end'])) {
+                    $rowArray['available_end'] = $defaultEnd;
+                }
+                $allDates[date('Y-m-d',strtotime($row->start_date))] = $rowArray;
             }
         }
         $model_car = new $this->carClass;
@@ -226,9 +239,11 @@ class AvailabilityController extends FrontendController{
     public function store(Request $request){
 
         $request->validate([
-            'target_id'=>'required',
-            'start_date'=>'required',
-            'end_date'=>'required'
+            'target_id' => 'required',
+            'start_date' => 'required',
+            'end_date' => 'required',
+            'available_start' => 'nullable|date_format:H:i',
+            'available_end' => 'nullable|date_format:H:i',
         ]);
 
         $car = $this->carClass::find($request->input('target_id'));
@@ -244,6 +259,29 @@ class AvailabilityController extends FrontendController{
             }
         }
 
+        $businessTz = 'Asia/Tbilisi';
+        $storageTz = config('app.timezone', 'UTC');
+
+        $availableStart = $request->input('available_start');
+        $availableEnd = $request->input('available_end');
+
+        $defaultStart = $car->transfer_time_start ?: setting_item('car_transfer_time_start', '00:00');
+        $defaultEnd = $car->transfer_time_end ?: setting_item('car_transfer_time_end', '23:30');
+
+        if (empty($availableStart)) {
+            $availableStart = $defaultStart;
+        }
+        if (empty($availableEnd)) {
+            $availableEnd = $defaultEnd;
+        }
+
+        $startTime = $availableStart ? Carbon::createFromFormat('H:i', $availableStart, $businessTz) : null;
+        $endTime = $availableEnd ? Carbon::createFromFormat('H:i', $availableEnd, $businessTz) : null;
+
+        if ($startTime && $endTime && $endTime->lt($startTime)) {
+            return $this->sendError(__('transfers.admin.pricing.time_range_invalid'));
+        }
+
         $postData = $request->input();
         $period = periodDate($request->input('start_date'),$request->input('end_date'));
         foreach ($period as $dt){
@@ -253,12 +291,20 @@ class AvailabilityController extends FrontendController{
                 $date = new $this->carDateClass();
                 $date->target_id = $target_id;
             }
-            $postData['start_date'] = $dt->format('Y-m-d H:i:s');
-            $postData['end_date'] = $dt->format('Y-m-d H:i:s');
+            $day = $dt->format('Y-m-d');
+            $startDateTime = Carbon::createFromFormat('Y-m-d H:i', $day . ' ' . $availableStart, $businessTz)->setTimezone($storageTz);
+            $endDateTime = Carbon::createFromFormat('Y-m-d H:i', $day . ' ' . $availableEnd, $businessTz)->setTimezone($storageTz);
+
+            if ($endDateTime->lt($startDateTime)) {
+                $endDateTime = $startDateTime->copy();
+            }
+
+            $postData['start_date'] = $startDateTime->format('Y-m-d H:i:s');
+            $postData['end_date'] = $endDateTime->format('Y-m-d H:i:s');
 
 
             $date->fillByAttr([
-                'start_date','end_date','price','number',
+                'start_date','end_date','number',
                 'is_instant','active',
             ],$postData);
 
