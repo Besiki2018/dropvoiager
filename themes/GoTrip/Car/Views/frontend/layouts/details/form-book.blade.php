@@ -45,6 +45,14 @@
             'dropoff_label' => $detailDropoffLabel,
         ];
     }
+    $availabilityMessages = [
+        'fetch_failed' => __('transfers.booking.availability_fetch_failed'),
+        'no_slots' => __('transfers.booking.availability_no_slots'),
+        'unavailable' => __('transfers.booking.availability_unavailable'),
+        'invalid_date' => __('transfers.booking.availability_invalid_date'),
+        'time_required' => __('transfers.booking.availability_time_required'),
+        'loading' => __('transfers.booking.availability_loading'),
+    ];
     if (!empty($transfer_datetime_display)) {
         $transferDateValue = $transfer_datetime_display->toDateString();
         $transferTimeValue = $transfer_datetime_display->format('H:i');
@@ -73,6 +81,9 @@
              class="px-30 py-30 rounded-4 border-light shadow-4 bg-white w-360 lg:w-full"
              data-datetime-required="{{ __('transfers.form.datetime_required') }}"
              data-date-invalid="{{ __('transfers.form.date_invalid') }}"
+             data-timezone-offset="{{ \Carbon\Carbon::now('Asia/Tbilisi')->format('P') }}"
+             data-availability-url="{{ route('car.transfer.availability', $row->id) }}"
+             data-availability-messages='@json($availabilityMessages)'
              data-quote-url="{{ route('car.transfer.quote', $row->id) }}"
              data-pricing-meta='@json($pricingMeta)'
              data-initial-quote='@json($initialQuote)'>
@@ -114,7 +125,8 @@
                 </div>
             </div>
             <div class="form-book" :class="{'d-none':enquiry_type!='book'}">
-                <div class="form-content js-transfer-form">
+                <div class="form-content js-transfer-form"
+                     data-restore-error="{{ __('transfers.booking.state_restore_failed') }}">
                     <div class="row y-gap-20 pt-20">
                         <div class="col-12">
                             <div class="form-group px-20 py-10 border-light rounded-4">
@@ -124,7 +136,6 @@
                                         name="pickup_location_id"
                                         data-default-label="{{ __('transfers.form.select_pickup_option') }}">
                                     <option value="">{{ __('transfers.form.select_pickup_option') }}</option>
-                                    <option value="__mylocation__" data-source="mylocation">{{ __('transfers.form.use_my_location') }}</option>
                                     @foreach($pickupLocations as $location)
                                         @php
                                             $payload = $location->toFrontendArray();
@@ -160,12 +171,6 @@
                                 <div class="text-13 text-red-1 mt-10" v-if="fieldErrors.dropoff" v-text="fieldErrors.dropoff"></div>
                             </div>
                         </div>
-                        <div class="col-12" v-if="transfer_quote_loading">
-                            <div class="px-20 py-10 border-light rounded-4 bg-light text-13 text-muted">{{ __('transfers.booking.price_details_loading') }}</div>
-                        </div>
-                        <div class="col-12" v-if="transfer_quote_error">
-                            <div class="px-20 py-10 border-light rounded-4 bg-light text-13 text-red-1">@{{ transfer_quote_error }}</div>
-                        </div>
                         <div class="col-md-6">
                             <div class="form-group px-20 py-10 border-light rounded-4 js-transfer-date-field" tabindex="0" data-display-format="{{ get_moment_date_format() }}">
                                 <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('transfers.form.date_label') }}</h4>
@@ -188,18 +193,33 @@
                                 <div class="text-13 text-red-1 mt-5" v-if="fieldErrors.datetime" v-text="fieldErrors.datetime"></div>
                             </div>
                         </div>
-                        <div class="col-12" v-if="transfer_quote_error">
-                            <div class="px-20 py-10 border-light rounded-4 bg-light text-13 text-red-1">@{{ transfer_quote_error }}</div>
-                        </div>
                         <div class="col-md-6">
                             <div class="form-group px-20 py-10 border-light rounded-4">
                                 <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('transfers.form.time_label') }}</h4>
-                                <input type="time"
-                                       class="form-control js-transfer-time"
-                                       :class="{'is-invalid': fieldErrors.datetime}"
-                                       v-model="transfer_time"
-                                       step="60"
-                                       value="{{ $transferTimeValue }}">
+                                <template v-if="hasTimeSlots">
+                                    <select class="form-control js-transfer-time"
+                                            :class="{'is-invalid': fieldErrors.datetime}"
+                                            v-model="transfer_time">
+                                        <option value="">{{ __('transfers.form.time_label') }}</option>
+                                        <option v-for="slot in transfer_time_slots"
+                                                :key="'slot-' + slot.value"
+                                                :value="slot.value"
+                                                :disabled="slot.disabled">
+                                            @{{ slot.label }}
+                                        </option>
+                                    </select>
+                                </template>
+                                <template v-else>
+                                    <input type="time"
+                                           class="form-control js-transfer-time"
+                                           :class="{'is-invalid': fieldErrors.datetime}"
+                                           v-model="transfer_time"
+                                           step="60"
+                                           value="{{ $transferTimeValue }}">
+                                </template>
+                                <div class="text-13 text-muted mt-10" v-if="transfer_availability_loading" v-text="getAvailabilityMessage('loading')"></div>
+                                <div class="text-13 text-red-1 mt-10" v-if="transfer_availability_error" v-text="transfer_availability_error"></div>
+                                <div class="text-13 text-dark-1 mt-10" v-if="!transfer_availability_error && transfer_availability_note" v-text="transfer_availability_note"></div>
                             </div>
                         </div>
                         <input type="hidden" class="js-transfer-datetime" value="{{ $transferDatetimeValue }}">
@@ -234,7 +254,7 @@
                                 <div class="text-13 text-red-1 mt-10" v-if="fieldErrors.passengers" v-text="fieldErrors.passengers"></div>
                             </div>
                         </div>
-                        <div class="col-12" v-if="extra_price.length">
+                        <div class="col-12" v-if="extra_price.length && !priceSummary">
                             <div class="form-section-group px-20 py-10 border-light rounded-4">
                                 <h4 class="form-section-title text-15 fw-500 ls-2 lh-16">{{__('Extra prices:')}}</h4>
                                 <div class="form-group " v-for="(type,index) in extra_price">
@@ -256,7 +276,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12" v-if="buyer_fees.length">
+                        <div class="col-12" v-if="buyer_fees.length && !priceSummary">
                             <div class="form-section-group form-group-padding px-20 py-10 border-light rounded-4">
                                 <div class="extra-price-wrap d-flex justify-content-between" v-for="(type,index) in buyer_fees">
                                     <div class="flex-grow-1">
@@ -276,7 +296,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12" v-if="total_price > 0">
+                        <div class="col-12" v-if="total_price > 0 && !priceSummary">
                             <ul class="form-section-total list-unstyled px-20 py-10 border-light rounded-4">
                                 <li class="d-flex justify-content-between">
                                     <label class="text-15 fw-500">{{__("Total")}}</label>
@@ -288,11 +308,11 @@
                                 </li>
                             </ul>
                         </div>
-                        <div class="col-12" v-if="html">
-                            <div v-html="html"></div>
-                        </div>
-                        <div class="col-12" v-if="transfer_quote_loading || transfer_quote_error || priceSummary">
+                        <div class="col-12" v-if="transfer_quote_loading || transfer_quote_error || priceSummary || form_error_message">
                             <div class="px-20 py-15 border-light rounded-4 bg-light">
+                                <template v-if="form_error_message">
+                                    <div class="text-13 text-red-1" role="alert" v-text="form_error_message"></div>
+                                </template>
                                 <template v-if="transfer_quote_loading">
                                     <div class="text-13 text-muted">{{ __('transfers.booking.price_details_loading') }}</div>
                                 </template>
@@ -304,6 +324,9 @@
                                     <div class="text-22 text-dark-1 fw-600" v-if="priceSummary.total" v-html="priceSummary.total"></div>
                                 </template>
                             </div>
+                        </div>
+                        <div class="col-12" v-if="html">
+                            <div v-html="html"></div>
                         </div>
                         <div class="col-12">
                             <div class="submit-group">

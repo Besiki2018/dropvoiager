@@ -3,13 +3,17 @@
         var timezoneOffset = '{{ \Carbon\Carbon::now('Asia/Tbilisi')->format('P') }}';
         var dropoffRequiredMessage = '{{ __('transfers.form.dropoff_coordinates_required') }}';
 
-        function parseJsonValue(value) {
+        function parseJsonValue(value, options) {
             if (!value) {
                 return null;
             }
+            options = options || {};
             try {
                 return JSON.parse(value);
             } catch (e) {
+                if (typeof options.onError === 'function') {
+                    options.onError(e);
+                }
                 return null;
             }
         }
@@ -55,6 +59,20 @@
             var pickupFetchLoaded = false;
             var suppressDropoffInput = false;
             var suppressDateSync = false;
+            var restoreErrorMessage = $form.data('restore-error') || '';
+            var restoreErrorReported = false;
+
+            function emitFormError(message) {
+                $form.trigger('transfer:form-error', message || '');
+            }
+
+            function handleJsonParseError() {
+                if (restoreErrorReported || !restoreErrorMessage) {
+                    return;
+                }
+                restoreErrorReported = true;
+                emitFormError(restoreErrorMessage);
+            }
 
             function setDateError(message) {
                 if (dateError.length) {
@@ -66,8 +84,8 @@
 
             function emitTransferUpdate() {
                 var context = {
-                    pickup: parseJsonValue(pickupJsonInput.val()),
-                    dropoff: parseJsonValue(dropoffJsonInput.val())
+                    pickup: parseJsonValue(pickupJsonInput.val(), {onError: handleJsonParseError}),
+                    dropoff: parseJsonValue(dropoffJsonInput.val(), {onError: handleJsonParseError})
                 };
                 $form.trigger('transfer:context-changed', context);
             }
@@ -332,7 +350,7 @@
             });
 
             function ensurePickupSelection() {
-                var payload = parseJsonValue(pickupJsonInput.val());
+                var payload = parseJsonValue(pickupJsonInput.val(), {onError: handleJsonParseError});
                 if (payload && payload.id) {
                     pickupSelect.val(String(payload.id));
                     setPickupPayload(payload, {silent: true});
@@ -509,7 +527,7 @@
                 $form.on('submit', function (event) {
                     updateDatetimeValue();
 
-                    var dropoffPayload = parseJsonValue(dropoffJsonInput.val());
+                    var dropoffPayload = parseJsonValue(dropoffJsonInput.val(), {onError: handleJsonParseError});
                     if (!dropoffPayload || !dropoffPayload.lat || !dropoffPayload.lng || !dropoffPayload.place_id) {
                         if (dropoffDisplay.length) {
                             dropoffDisplay[0].setCustomValidity(dropoffRequiredMessage);
@@ -530,7 +548,7 @@
             fetchPickupLocations();
             ensurePickupSelection();
 
-            var initialDropoff = parseJsonValue(dropoffJsonInput.val());
+            var initialDropoff = parseJsonValue(dropoffJsonInput.val(), {onError: handleJsonParseError});
             if (initialDropoff) {
                 setDropoffPayload(initialDropoff, {preserveDisplay: false});
             }
