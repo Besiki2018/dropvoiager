@@ -139,19 +139,48 @@ jQuery(function ($) {
         return payload;
     }
 
-    function updatePickupSelection($select) {
-        var $form = $select.closest('form');
-        var payload = parsePickupPayload($select.find('option:selected'));
-        if (payload) {
-            $form.find('.js-transfer-pickup-payload').val(JSON.stringify(payload));
+    function setPickupValues($form, address, name, lat, lng) {
+        address = address || '';
+        name = name || '';
+        lat = lat || '';
+        lng = lng || '';
+        $form.find('.js-transfer-pickup-address').val(address);
+        $form.find('.js-transfer-pickup-name').val(name);
+        $form.find('.js-transfer-pickup-lat').val(lat);
+        $form.find('.js-transfer-pickup-lng').val(lng);
+        if (address || name || lat || lng) {
+            $form.find('.js-transfer-pickup-payload').val(JSON.stringify({
+                address: address,
+                name: name,
+                lat: lat,
+                lng: lng
+            }));
         } else {
             $form.find('.js-transfer-pickup-payload').val('');
         }
+    }
+
+    function clearPickupValues($form) {
+        setPickupValues($form, '', '', '', '');
+    }
+
+    function resetDropoff($form) {
         $form.find('.js-transfer-dropoff-address').val('');
         $form.find('.js-transfer-dropoff-name').val('');
         $form.find('.js-transfer-dropoff-lat').val('');
         $form.find('.js-transfer-dropoff-lng').val('');
         $form.find('.js-transfer-dropoff-display').val('').trigger('input');
+    }
+
+    function updatePickupSelection($select) {
+        var $form = $select.closest('form');
+        var payload = parsePickupPayload($select.find('option:selected'));
+        if (payload) {
+            setPickupValues($form, payload.address, payload.name, payload.lat, payload.lng);
+        } else {
+            clearPickupValues($form);
+        }
+        resetDropoff($form);
     }
 
     function initPickupSelectors() {
@@ -160,6 +189,65 @@ jQuery(function ($) {
         });
         $(document).on('change', '.js-transfer-pickup', function () {
             updatePickupSelection($(this));
+        });
+    }
+
+    function attachPickupAutocomplete($input) {
+        var $form = $input.closest('form');
+        var fallback = function (value) {
+            if (!value) {
+                clearPickupValues($form);
+                resetDropoff($form);
+                return;
+            }
+            setPickupValues($form, value, value, '', '');
+            resetDropoff($form);
+        };
+
+        if (typeof bookingCore === 'undefined' || bookingCore.map_provider !== 'gmap' || typeof google === 'undefined' || !google.maps || !google.maps.places) {
+            $input.on('change', function () {
+                fallback($(this).val());
+            });
+            return;
+        }
+
+        var autocomplete = new google.maps.places.Autocomplete($input.get(0), {
+            fields: ['formatted_address', 'geometry', 'name']
+        });
+
+        autocomplete.addListener('place_changed', function () {
+            var place = autocomplete.getPlace();
+            var address = place.formatted_address || $input.val();
+            var name = place.name || address;
+            var lat = '';
+            var lng = '';
+
+            if (place.geometry && place.geometry.location) {
+                lat = place.geometry.location.lat();
+                lng = place.geometry.location.lng();
+            }
+
+            setPickupValues($form, address, name, lat, lng);
+            resetDropoff($form);
+        });
+
+        $input.on('change', function () {
+            var value = $(this).val();
+            if (!value) {
+                clearPickupValues($form);
+                resetDropoff($form);
+            }
+        });
+    }
+
+    function initPickupInputs() {
+        $('.js-transfer-pickup-display').each(function () {
+            attachPickupAutocomplete($(this));
+        });
+        $(document).on('input', '.js-transfer-pickup-display', function () {
+            if (!$(this).val()) {
+                clearPickupValues($(this).closest('form'));
+            }
         });
     }
 
@@ -215,6 +303,7 @@ jQuery(function ($) {
     }
 
     initPickupSelectors();
+    initPickupInputs();
     initDropoffInputs();
     $('.bravo_form_search').on('submit', function () {
         var $form = $(this);

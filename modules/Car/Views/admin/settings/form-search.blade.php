@@ -21,6 +21,8 @@
                             $types = [
                                 'service_name'=>__("Service name"),
                                 'location'=>__("Location"),
+                                'pickup'=>__("Pickup Location"),
+                                'dropoff'=>__("Drop-off Location"),
                                 'date'=>__("Date"),
                                 'attr'=>__("Attribute"),
                             ];
