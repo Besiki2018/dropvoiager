@@ -8,6 +8,7 @@
             pickup_location_id:'',
             pickup_location:null,
             dropoff:{},
+            user_pickup:{},
             transfer_datetime:'',
             transfer_date:'',
             transfer_time:'',
@@ -35,6 +36,7 @@
             fieldErrors:{
                 pickup:'',
                 dropoff:'',
+                user_pickup:'',
                 datetime:'',
                 passengers:''
             },
@@ -139,6 +141,13 @@
                     this.handleAvailabilityFieldChange();
                 },
                 deep:true
+            },
+            user_pickup:{
+                handler:function () {
+                    this.setFieldError('user_pickup', '');
+                    this.handleTransferFieldChange();
+                },
+                deep:true
             }
         },
         computed:{
@@ -148,7 +157,6 @@
             priceSummary:function () {
                 var quote = this.transfer_quote || null;
                 var meta = this.pricing_meta || {};
-                var messages = this.availability_messages || {};
                 var passengerCount = this.getPassengerCount();
                 var totalNumeric = null;
                 var totalDisplay = null;
@@ -200,10 +208,7 @@
 
                 return {
                     total: totalDisplay,
-                    distance: distanceDisplay,
-                    mode_display: modeDisplay,
-                    unit_price_display: unitPriceLabel,
-                    service_radius_display: serviceRadiusLabel
+                    distance: distanceDisplay
                 };
             },
             availableHoursMessage:function () {
@@ -410,6 +415,9 @@
                 if (context.dropoff) {
                     me.dropoff = context.dropoff;
                 }
+                if (context.userPickup) {
+                    me.user_pickup = context.userPickup;
+                }
                 me.handleTransferFieldChange();
             });
             $root.on('transfer:date-changed', function (event, isoDate) {
@@ -434,6 +442,15 @@
                     var parsedDropoff = JSON.parse(initialDropoffPayload);
                     if (parsedDropoff) {
                         me.dropoff = parsedDropoff;
+                    }
+                } catch (err) {}
+            }
+            var initialUserPickupPayload = $root.find('.js-transfer-user-pickup-json').val();
+            if (initialUserPickupPayload) {
+                try {
+                    var parsedUserPickup = JSON.parse(initialUserPickupPayload);
+                    if (parsedUserPickup) {
+                        me.user_pickup = parsedUserPickup;
                     }
                 } catch (err) {}
             }
@@ -530,11 +547,29 @@
                     address: dropoff.address || ''
                 };
             },
+            buildRouteUserPickup:function () {
+                var pickup = this.user_pickup || null;
+                if (!pickup || typeof pickup !== 'object') {
+                    return null;
+                }
+                var lat = this.toNumeric(pickup.lat);
+                var lng = this.toNumeric(pickup.lng);
+                if (lat === null || lng === null) {
+                    return null;
+                }
+                return {
+                    lat: lat,
+                    lng: lng,
+                    display_name: pickup.formatted_address || pickup.address || pickup.name || '',
+                    name: pickup.name || pickup.formatted_address || pickup.address || '',
+                    address: pickup.address || pickup.formatted_address || ''
+                };
+            },
             updateRouteContext:function () {
                 if (!window.BravoTransferRoute || typeof window.BravoTransferRoute.setContext !== 'function') {
                     return;
                 }
-                window.BravoTransferRoute.setContext(this.buildRoutePickup(), this.buildRouteDropoff());
+                window.BravoTransferRoute.setContext(this.buildRoutePickup(), this.buildRouteDropoff(), this.buildRouteUserPickup());
             },
             handleTransferFieldChange:function () {
                 this.updateRouteContext();
@@ -587,6 +622,20 @@
                 return count;
             },
             handleTotalPrice:function() {
+            },
+            handlePassengerInput:function () {
+                var normalized = parseInt(this.number, 10);
+                if (isNaN(normalized) || normalized < 1) {
+                    normalized = 1;
+                }
+                var max = parseInt(this.max_number, 10);
+                if (!isNaN(max) && max > 0 && normalized > max) {
+                    normalized = max;
+                }
+                if (normalized !== parseInt(this.number, 10)) {
+                    this.suppressPassengerWatch = true;
+                    this.number = normalized;
+                }
             },
             syncTransferDateState:function () {
                 var date = this.transfer_date || '';
@@ -668,10 +717,14 @@
             shouldRequestQuote:function () {
                 var pickup = this.pickup_location || {};
                 var dropoff = this.dropoff || {};
+                var userPickup = this.user_pickup || {};
+                var meta = this.pricing_meta || {};
                 var pickupLat = parseFloat(pickup.lat);
                 var pickupLng = parseFloat(pickup.lng);
                 var dropLat = parseFloat(dropoff.lat);
                 var dropLng = parseFloat(dropoff.lng);
+                var userLat = parseFloat(userPickup.lat);
+                var userLng = parseFloat(userPickup.lng);
                 if (isNaN(pickupLat) || isNaN(pickupLng)) {
                     return false;
                 }
@@ -785,6 +838,21 @@
                 }
                 if (hasDropCoords && dropoff.place_id) {
                     requestData.dropoff_place_id = dropoff.place_id;
+                }
+                var userPickup = this.user_pickup || {};
+                var userLat = parseFloat(userPickup.lat);
+                var userLng = parseFloat(userPickup.lng);
+                if (!isNaN(userLat)) {
+                    requestData.user_pickup_lat = userLat;
+                }
+                if (!isNaN(userLng)) {
+                    requestData.user_pickup_lng = userLng;
+                }
+                if (userPickup.place_id) {
+                    requestData.user_pickup_place_id = userPickup.place_id;
+                }
+                if (userPickup.formatted_address || userPickup.address || userPickup.place_id) {
+                    requestData.user_pickup = JSON.stringify(userPickup);
                 }
                 var me = this;
                 this.availability_xhr = $.ajax({
@@ -1046,6 +1114,9 @@
                 var pickupLng = parseFloat(pickup.lng);
                 var dropLat = parseFloat(dropoff.lat);
                 var dropLng = parseFloat(dropoff.lng);
+                var userPickup = this.user_pickup || {};
+                var userLat = parseFloat(userPickup.lat);
+                var userLng = parseFloat(userPickup.lng);
 
                 var passengerCount = this.getPassengerCount();
 
@@ -1073,6 +1144,14 @@
                         lat: dropLat,
                         lng: dropLng,
                         place_id: dropoff.place_id
+                    }),
+                    user_pickup: JSON.stringify({
+                        formatted_address: userPickup.formatted_address || userPickup.address || '',
+                        address: userPickup.address || userPickup.formatted_address || '',
+                        name: userPickup.name || userPickup.formatted_address || '',
+                        lat: !isNaN(userLat) ? userLat : null,
+                        lng: !isNaN(userLng) ? userLng : null,
+                        place_id: userPickup.place_id || ''
                     }),
                     pickup_location_id: this.pickup_location_id || '',
                     transfer_datetime: transferDatetime,
@@ -1262,6 +1341,14 @@
                     lng: $root.find('.js-transfer-dropoff-lng').val(),
                     place_id: $root.find('.js-transfer-dropoff-place-id').val(),
                 };
+                this.user_pickup = {
+                    formatted_address: $root.find('.js-transfer-user-pickup-formatted').val(),
+                    address: $root.find('.js-transfer-user-pickup-address').val(),
+                    lat: $root.find('.js-transfer-user-pickup-lat').val(),
+                    lng: $root.find('.js-transfer-user-pickup-lng').val(),
+                    place_id: $root.find('.js-transfer-user-pickup-place-id').val(),
+                    name: $root.find('.js-transfer-user-pickup-address').val()
+                };
                 var transferDate = $root.find('.js-transfer-date').val();
                 var transferTime = $root.find('.js-transfer-time').val();
                 var transferDatetimeField = $root.find('.js-transfer-datetime');
@@ -1293,6 +1380,7 @@
                         pickup_location_id:this.pickup_location_id,
                         pickup:this.pickup_location ? JSON.stringify(this.pickup_location) : '',
                         dropoff:this.dropoff,
+                        user_pickup:this.user_pickup ? JSON.stringify(this.user_pickup) : '',
                         transfer_datetime:this.transfer_datetime,
                         transfer_date:this.transfer_date,
                         transfer_time:this.transfer_time,
