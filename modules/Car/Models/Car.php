@@ -24,6 +24,7 @@ use Modules\Review\Models\Review;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\Car\Models\CarTranslation;
 use Modules\Car\Models\CarPickupLocation;
+use Modules\Car\Models\TransferLocation;
 use Modules\User\Models\UserWishList;
 use Modules\Location\Models\Location;
 
@@ -451,7 +452,7 @@ class Car extends Bookable
                 ]);
             }
             if ($pickupLocation = $request->attributes->get('transfer_pickup_location')) {
-                /** @var CarPickupLocation $pickupLocation */
+                /** @var CarPickupLocation|TransferLocation $pickupLocation */
                 $booking->addMeta('transfer_pickup_location_id', $pickupLocation->id);
             }
 

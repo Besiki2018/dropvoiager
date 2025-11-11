@@ -4,6 +4,7 @@ namespace Modules\Car\Controllers;
 use App\Http\Controllers\Controller;
 use Modules\Car\Models\Car;
 use Modules\Car\Models\CarPickupLocation;
+use Modules\Car\Models\TransferLocation;
 use Illuminate\Http\Request;
 use Modules\Location\Models\Location;
 use Modules\Review\Models\Review;
@@ -63,7 +64,7 @@ class CarController extends Controller
         $pickupLocationId = Arr::get($pickupPayload, 'id') ?? $request->input('pickup_location_id');
         $selectedPickupLocation = null;
         if ($pickupLocationId) {
-            $selectedPickupLocation = CarPickupLocation::with('car')->find($pickupLocationId);
+            $selectedPickupLocation = TransferLocation::find($pickupLocationId);
             if ($selectedPickupLocation && $selectedPickupLocation->is_active) {
                 $pickupPayload = array_merge($selectedPickupLocation->toFrontendArray(), $pickupPayload);
                 $pickupPayload['source'] = Arr::get($pickupPayload, 'source', 'backend');
@@ -153,10 +154,11 @@ class CarController extends Controller
             $rows = $query->get();
             $filtered = $rows->filter(function ($car) use ($selectedPickupLocation, $pickupLocationId, $pickupPayload, $dropoff, $transferDistanceKm, $transferDurationMin, $transferDate, $transferDatetime, $passengers, $userPickupNormalized, $userRouteMetrics) {
                 $pickupLocation = null;
-                if ($selectedPickupLocation && $selectedPickupLocation->car_id === $car->id) {
-                    $pickupLocation = $selectedPickupLocation;
-                } elseif ($pickupLocationId) {
-                    $pickupLocation = $car->pickupLocations->firstWhere('id', (int) $pickupLocationId);
+
+                $userPayload = $userPickupNormalized;
+                if ($car->pricing_mode !== 'fixed' && !$userPayload) {
+                    $car->clearTransferContext();
+                    return true;
                 }
 
                 $userPayload = $userPickupNormalized;
@@ -384,6 +386,8 @@ class CarController extends Controller
             if ($pickupLocation) {
                 $pickupPayload = $pickupLocation->toFrontendArray();
                 $pickupPayload['source'] = Arr::get($pickupPayload, 'source', 'backend');
+            } else {
+                $pickupLocation = null;
             }
         }
 
@@ -1066,12 +1070,60 @@ class CarController extends Controller
             'lng' => (float) $dropoffLng,
         ]);
 
-        $metricsPickup = $normalizedPickup;
-        if ($pickupLocation) {
-            $metricsPickup = array_merge($pickupLocation->toFrontendArray(), $metricsPickup);
+        $routeMetrics = $car::resolveRouteMetrics($normalizedPickup, $normalizedDropoff);
+
+        $normalizedUserPickup = null;
+        if (is_numeric($userPickupLat) && is_numeric($userPickupLng)) {
+            $normalizedUserPickup = array_merge($userPickup, [
+                'lat' => (float) $userPickupLat,
+                'lng' => (float) $userPickupLng,
+            ]);
         }
 
-        $routeMetrics = $car::resolveRouteMetrics($metricsPickup, $normalizedDropoff);
+        $userRouteMetrics = null;
+        if ($normalizedUserPickup) {
+            $userRouteMetrics = $car::resolveRouteMetrics($normalizedUserPickup, $normalizedDropoff);
+        }
+
+        $normalizedUserPickup = null;
+        if (is_numeric($userPickupLat) && is_numeric($userPickupLng)) {
+            $normalizedUserPickup = array_merge($userPickup, [
+                'lat' => (float) $userPickupLat,
+                'lng' => (float) $userPickupLng,
+            ]);
+        }
+
+        $pricingMode = $car->pricing_mode ?: 'per_km';
+        if ($pricingMode !== 'fixed') {
+            if (!$normalizedUserPickup || empty($userPickupPlaceId)) {
+                return $this->sendError(__('transfers.form.pickup_coordinates_required'), [], 422);
+            }
+        }
+
+        $userRouteMetrics = null;
+        if ($normalizedUserPickup) {
+            $userRouteMetrics = $car::resolveRouteMetrics($normalizedUserPickup, $normalizedDropoff);
+        }
+
+        $normalizedUserPickup = null;
+        if (is_numeric($userPickupLat) && is_numeric($userPickupLng)) {
+            $normalizedUserPickup = array_merge($userPickup, [
+                'lat' => (float) $userPickupLat,
+                'lng' => (float) $userPickupLng,
+            ]);
+        }
+
+        $pricingMode = $car->pricing_mode ?: 'per_km';
+        if ($pricingMode !== 'fixed') {
+            if (!$normalizedUserPickup || empty($userPickupPlaceId)) {
+                return $this->sendError(__('transfers.form.pickup_coordinates_required'), [], 422);
+            }
+        }
+
+        $userRouteMetrics = null;
+        if ($normalizedUserPickup) {
+            $userRouteMetrics = $car::resolveRouteMetrics($normalizedUserPickup, $normalizedDropoff);
+        }
 
         $normalizedUserPickup = null;
         if (is_numeric($userPickupLat) && is_numeric($userPickupLng)) {
@@ -1187,6 +1239,8 @@ class CarController extends Controller
             if ($selectedPickupLocation) {
                 $pickupPayload = array_merge($selectedPickupLocation->toFrontendArray(), $pickupPayload);
                 $pickupPayload['source'] = Arr::get($pickupPayload, 'source', 'backend');
+            } else {
+                $selectedPickupLocation = null;
             }
         }
 
