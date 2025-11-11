@@ -778,13 +778,12 @@
                 var dropoff = this.dropoff || {};
                 var dropLat = parseFloat(dropoff.lat);
                 var dropLng = parseFloat(dropoff.lng);
-                if (!isNaN(dropLat)) {
+                var hasDropCoords = !isNaN(dropLat) && !isNaN(dropLng);
+                if (hasDropCoords) {
                     requestData.dropoff_lat = dropLat;
-                }
-                if (!isNaN(dropLng)) {
                     requestData.dropoff_lng = dropLng;
                 }
-                if (dropoff.place_id) {
+                if (hasDropCoords && dropoff.place_id) {
                     requestData.dropoff_place_id = dropoff.place_id;
                 }
                 var me = this;
@@ -862,8 +861,17 @@
                 }
                 this.transfer_availability_note = note;
                 this.transfer_time_slots = slots;
-                if (this.transfer_time && (!this.isTimeSlotValid(this.transfer_time) || this.transfer_availability_blocked)) {
-                    this.transfer_time = '';
+                var currentTime = this.transfer_time;
+                if (currentTime && (!this.isTimeSlotValid(currentTime) || this.transfer_availability_blocked)) {
+                    currentTime = '';
+                }
+                if (!this.transfer_availability_blocked && (!currentTime || !this.isTimeSlotValid(currentTime))) {
+                    if (slots.length) {
+                        currentTime = slots[0].value;
+                    }
+                }
+                if (currentTime !== this.transfer_time) {
+                    this.transfer_time = currentTime;
                 }
             },
             normalizeTimeSlot:function (slot) {

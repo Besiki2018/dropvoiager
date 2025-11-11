@@ -3,6 +3,10 @@
         var timezoneOffset = '{{ \Carbon\Carbon::now('Asia/Tbilisi')->format('P') }}';
         var dropoffRequiredMessage = '{{ __('transfers.form.dropoff_coordinates_required') }}';
 
+        var googlePlacesDetailsServiceInstance = null;
+        var googlePlacesAutocompleteInstance = null;
+        var googlePlacesServiceNode = null;
+
         function parseJsonValue(value, options) {
             if (!value) {
                 return null;
@@ -24,6 +28,82 @@
 
         function schedule(fn, delay) {
             return window.setTimeout(fn, delay || 0);
+        }
+
+        function getPlacesDetailsService() {
+            if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
+                return null;
+            }
+            if (!googlePlacesServiceNode) {
+                googlePlacesServiceNode = document.createElement('div');
+            }
+            if (!googlePlacesDetailsServiceInstance) {
+                googlePlacesDetailsServiceInstance = new google.maps.places.PlacesService(googlePlacesServiceNode);
+            }
+            return googlePlacesDetailsServiceInstance;
+        }
+
+        function getAutocompleteService() {
+            if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
+                return null;
+            }
+            if (!googlePlacesAutocompleteInstance) {
+                googlePlacesAutocompleteInstance = new google.maps.places.AutocompleteService();
+            }
+            return googlePlacesAutocompleteInstance;
+        }
+
+        function sanitiseDropoffPayload(payload) {
+            if (!payload || typeof payload !== 'object') {
+                return null;
+            }
+            var address = payload.address ? String(payload.address).trim() : '';
+            var name = payload.name ? String(payload.name).trim() : '';
+            var placeId = payload.place_id ? String(payload.place_id).trim() : '';
+            var lat = parseFloat(payload.lat);
+            var lng = parseFloat(payload.lng);
+
+            var hasLat = !isNaN(lat);
+            var hasLng = !isNaN(lng);
+
+            return {
+                address: address || name || '',
+                name: name || address || '',
+                place_id: placeId,
+                lat: hasLat ? parseFloat(lat.toFixed(6)) : null,
+                lng: hasLng ? parseFloat(lng.toFixed(6)) : null
+            };
+        }
+
+        function hasValidDropoffPayload(payload) {
+            if (!payload || typeof payload !== 'object') {
+                return false;
+            }
+            var placeId = payload.place_id ? String(payload.place_id).trim() : '';
+            var lat = parseFloat(payload.lat);
+            var lng = parseFloat(payload.lng);
+            return !!placeId && !isNaN(lat) && !isNaN(lng);
+        }
+
+        function buildDropoffPayloadFromPlace(place, fallbackLabel) {
+            if (!place) {
+                return null;
+            }
+            var geometry = place.geometry || {};
+            var location = geometry.location || null;
+            var lat = null;
+            var lng = null;
+            if (location && typeof location.lat === 'function' && typeof location.lng === 'function') {
+                lat = location.lat();
+                lng = location.lng();
+            }
+            return sanitiseDropoffPayload({
+                address: place.formatted_address || place.name || fallbackLabel || '',
+                name: place.name || place.formatted_address || fallbackLabel || '',
+                lat: lat,
+                lng: lng,
+                place_id: place.place_id || ''
+            });
         }
 
         function initTransferForm($form) {
@@ -53,6 +133,8 @@
             var timeInput = $form.find('.js-transfer-time').first();
             var datetimeInput = $form.find('.js-transfer-datetime').first();
             var suppressManualDateCheck = false;
+            var dropoffResolveToken = null;
+            var lastResolvedDropoffValue = '';
 
             var fetchUrl = pickupSelect.data('fetch-url');
             var defaultOptionLabel = pickupSelect.data('default-label') || pickupSelect.find('option').first().text() || '';
@@ -285,36 +367,68 @@
 
             function setDropoffPayload(payload, options) {
                 options = options || {};
-                var serialised = serialisePayload(payload);
+                var sanitised = sanitiseDropoffPayload(payload);
+                if (!sanitised) {
+                    if (dropoffJsonInput.length) {
+                        dropoffJsonInput.val('');
+                    }
+                    if (dropoffAddress.length) {
+                        dropoffAddress.val('');
+                    }
+                    if (dropoffName.length) {
+                        dropoffName.val('');
+                    }
+                    if (dropoffLat.length) {
+                        dropoffLat.val('');
+                    }
+                    if (dropoffLng.length) {
+                        dropoffLng.val('');
+                    }
+                    if (dropoffPlaceId.length) {
+                        dropoffPlaceId.val('');
+                    }
+                    if (!options.preserveDisplay) {
+                        setDropoffDisplayValue('');
+                    }
+                    dropoffDisplay.each(function () {
+                        this.setCustomValidity('');
+                    });
+                    lastResolvedDropoffValue = '';
+                    emitTransferUpdate();
+                    return;
+                }
+                var serialised = serialisePayload(sanitised);
                 if (dropoffJsonInput.length) {
                     dropoffJsonInput.val(serialised);
                 }
                 if (dropoffAddress.length) {
-                    dropoffAddress.val(payload && (payload.address || payload.name) ? (payload.address || payload.name) : '');
+                    dropoffAddress.val(sanitised.address || sanitised.name || '');
                 }
                 if (dropoffName.length) {
-                    dropoffName.val(payload && payload.name ? payload.name : '');
+                    dropoffName.val(sanitised.name || '');
                 }
                 if (dropoffLat.length) {
-                    dropoffLat.val(payload && payload.lat ? payload.lat : '');
+                    dropoffLat.val(hasValidDropoffPayload(sanitised) ? sanitised.lat : '');
                 }
                 if (dropoffLng.length) {
-                    dropoffLng.val(payload && payload.lng ? payload.lng : '');
+                    dropoffLng.val(hasValidDropoffPayload(sanitised) ? sanitised.lng : '');
                 }
                 if (dropoffPlaceId.length) {
-                    dropoffPlaceId.val(payload && payload.place_id ? payload.place_id : '');
+                    dropoffPlaceId.val(sanitised.place_id || '');
                 }
                 if (!options.preserveDisplay) {
-                    var displayValue = payload && (payload.address || payload.name) ? (payload.address || payload.name) : '';
+                    var displayValue = sanitised.address || sanitised.name || '';
                     setDropoffDisplayValue(displayValue);
                 }
                 dropoffDisplay.each(function () {
                     this.setCustomValidity('');
                 });
+                lastResolvedDropoffValue = (sanitised.address || sanitised.name || '').toLowerCase();
                 emitTransferUpdate();
             }
 
             function clearDropoffPayload() {
+                lastResolvedDropoffValue = '';
                 setDropoffPayload(null, {preserveDisplay: true});
             }
 
@@ -504,13 +618,10 @@
                     if (!place || !place.geometry || !place.geometry.location) {
                         return;
                     }
-                    setDropoffPayload({
-                        address: place.formatted_address || place.name || '',
-                        name: place.name || place.formatted_address || '',
-                        lat: place.geometry.location.lat(),
-                        lng: place.geometry.location.lng(),
-                        place_id: place.place_id || ''
-                    });
+                    var payload = buildDropoffPayloadFromPlace(place);
+                    if (payload) {
+                        setDropoffPayload(payload);
+                    }
                 });
             }
 
@@ -520,6 +631,19 @@
                         return;
                     }
                     clearDropoffPayload();
+                    lastResolvedDropoffValue = '';
+                });
+                dropoffDisplay.on('focus', function () {
+                    this.setCustomValidity('');
+                });
+                dropoffDisplay.on('keydown', function (event) {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        ensureDropoffFromInput({force: true});
+                    }
+                });
+                dropoffDisplay.on('blur', function () {
+                    ensureDropoffFromInput();
                 });
             }
 
@@ -552,12 +676,107 @@
             if (initialDropoff) {
                 setDropoffPayload(initialDropoff, {preserveDisplay: false});
             }
+            if (!hasValidDropoffPayload(initialDropoff) && dropoffDisplay.length && dropoffDisplay.val()) {
+                schedule(function () {
+                    ensureDropoffFromInput({force: true, silent: true});
+                }, 800);
+            }
 
             if (dateDisplay.length) {
                 dateDisplay.on('input change blur', handleManualDateInput);
             }
 
             emitTransferUpdate();
+
+            function ensureDropoffFromInput(options) {
+                options = options || {};
+                var textValue = dropoffDisplay.length ? $.trim(dropoffDisplay.val()) : '';
+                if (!textValue || textValue.length < 3) {
+                    return;
+                }
+                var currentPayload = parseJsonValue(dropoffJsonInput.val(), {onError: handleJsonParseError});
+                if (!options.force && hasValidDropoffPayload(currentPayload)) {
+                    var currentLabel = (currentPayload.address || currentPayload.name || '').toLowerCase();
+                    if (currentLabel === textValue.toLowerCase()) {
+                        return;
+                    }
+                }
+                if (!options.force && textValue.toLowerCase() === lastResolvedDropoffValue) {
+                    return;
+                }
+                if (dropoffResolveToken && typeof dropoffResolveToken.cancelled !== 'undefined') {
+                    dropoffResolveToken.cancelled = true;
+                }
+                var autocompleteService = getAutocompleteService();
+                var detailsService = getPlacesDetailsService();
+                if (!autocompleteService || !detailsService) {
+                    if (!options.silent) {
+                        schedule(function () {
+                            ensureDropoffFromInput($.extend({}, options, {silent: true}));
+                        }, 600);
+                    }
+                    return;
+                }
+                var requestToken = {cancelled: false};
+                dropoffResolveToken = requestToken;
+                autocompleteService.getPlacePredictions({
+                    input: textValue,
+                    componentRestrictions: {country: ['GE']}
+                }, function (predictions, status) {
+                    if (requestToken.cancelled) {
+                        if (dropoffResolveToken === requestToken) {
+                            dropoffResolveToken = null;
+                        }
+                        return;
+                    }
+                    if (status !== google.maps.places.PlacesServiceStatus.OK || !predictions || !predictions.length) {
+                        if (dropoffResolveToken === requestToken) {
+                            dropoffResolveToken = null;
+                        }
+                        if (typeof options.onError === 'function') {
+                            options.onError('no_results');
+                        } else if (!options.silent && dropoffDisplay.length) {
+                            dropoffDisplay[0].setCustomValidity(dropoffRequiredMessage);
+                            dropoffDisplay[0].reportValidity();
+                        }
+                        return;
+                    }
+                    var prediction = predictions[0];
+                    detailsService.getDetails({
+                        placeId: prediction.place_id,
+                        fields: ['formatted_address', 'geometry', 'name', 'place_id']
+                    }, function (place, detailStatus) {
+                        if (requestToken.cancelled) {
+                            if (dropoffResolveToken === requestToken) {
+                                dropoffResolveToken = null;
+                            }
+                            return;
+                        }
+                        if (detailStatus !== google.maps.places.PlacesServiceStatus.OK || !place || !place.geometry || !place.geometry.location) {
+                            if (dropoffResolveToken === requestToken) {
+                                dropoffResolveToken = null;
+                            }
+                            if (typeof options.onError === 'function') {
+                                options.onError('details_failed');
+                            } else if (!options.silent && dropoffDisplay.length) {
+                                dropoffDisplay[0].setCustomValidity(dropoffRequiredMessage);
+                                dropoffDisplay[0].reportValidity();
+                            }
+                            return;
+                        }
+                        var resolvedPayload = buildDropoffPayloadFromPlace(place, textValue);
+                        if (dropoffResolveToken === requestToken) {
+                            dropoffResolveToken = null;
+                        }
+                        if (resolvedPayload) {
+                            setDropoffPayload(resolvedPayload);
+                            if (typeof options.onSuccess === 'function') {
+                                options.onSuccess(resolvedPayload);
+                            }
+                        }
+                    });
+                });
+            }
         }
 
         function initAll(context) {
