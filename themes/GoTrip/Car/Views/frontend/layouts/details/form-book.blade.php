@@ -5,6 +5,7 @@
     $selectedPickupId = $selectedPickup->id ?? ($booking_data['pickup_location_id'] ?? '');
     $dropoffData = $dropoff ?? ($booking_data['dropoff'] ?? []);
     $selectedPickupPayload = $pickup_payload ?? ($selectedPickup ? $selectedPickup->toFrontendArray() : null);
+    $userPickupData = $user_pickup_payload ?? ($booking_data['user_pickup'] ?? []);
     $transferDatetimeValue = $transfer_datetime_value ?? ($booking_data['transfer_datetime'] ?? '');
     $transferDateValue = '';
     $transferTimeValue = '';
@@ -131,6 +132,7 @@
                                 <select class="form-control js-transfer-pickup"
                                         :class="{'is-invalid': fieldErrors.pickup}"
                                         name="pickup_location_id"
+                                        data-fetch-url="{{ route('car.pickup_locations', ['car_id' => $row->id]) }}"
                                         data-default-label="{{ __('transfers.form.select_pickup_option') }}">
                                     <option value="">{{ __('transfers.form.select_pickup_option') }}</option>
                                     @foreach($pickupLocations as $location)
@@ -157,6 +159,11 @@
                                        placeholder="{{ __('transfers.form.to_placeholder') }}"
                                        minlength="3"
                                        autocomplete="off">
+                                <div class="mt-15">
+                                    <div class="transfer-dropoff-map rounded-4 overflow-hidden" style="height: 260px;">
+                                        <div class="w-100 h-100 js-transfer-dropoff-map"></div>
+                                    </div>
+                                </div>
                                 <input type="hidden" class="js-transfer-dropoff-address" value="{{ $dropoffData['address'] ?? $dropoffData['name'] ?? '' }}">
                                 <input type="hidden" class="js-transfer-dropoff-name" value="{{ $dropoffData['name'] ?? $dropoffData['address'] ?? '' }}">
                                 <input type="hidden" class="js-transfer-dropoff-lat" value="{{ $dropoffData['lat'] ?? '' }}">
@@ -166,6 +173,34 @@
                                 <input type="hidden" class="js-transfer-pickup-json" value='@json($selectedPickupPayload)'>
                                 <input type="hidden" class="js-transfer-dropoff-json" value='@json($dropoffData)'>
                                 <div class="text-13 text-red-1 mt-10" v-if="fieldErrors.dropoff" v-text="fieldErrors.dropoff"></div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-group px-20 py-10 border-light rounded-4">
+                                <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('transfers.form.exact_pickup_label') }}</h4>
+                                <input type="text"
+                                       class="form-control js-transfer-user-pickup-display"
+                                       :class="{'is-invalid': fieldErrors.user_pickup}"
+                                       value="{{ $userPickupData['formatted_address'] ?? $userPickupData['address'] ?? '' }}"
+                                       placeholder="{{ __('transfers.form.exact_pickup_placeholder') }}"
+                                       autocomplete="off">
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-primary mt-10 js-transfer-user-pickup-locate"
+                                        data-loading-text="{{ __('transfers.form.locating') }}">
+                                    <i class="fa fa-location-arrow me-5"></i>{{ __('transfers.form.use_my_location') }}
+                                </button>
+                                <div class="mt-15">
+                                    <div class="transfer-user-map rounded-4 overflow-hidden" style="height: 260px;">
+                                        <div class="w-100 h-100 js-transfer-user-pickup-map"></div>
+                                    </div>
+                                </div>
+                                <input type="hidden" class="js-transfer-user-pickup-json" value='@json($userPickupData)'>
+                                <input type="hidden" class="js-transfer-user-pickup-formatted" name="user_pickup[formatted_address]" value="{{ $userPickupData['formatted_address'] ?? $userPickupData['address'] ?? '' }}">
+                                <input type="hidden" class="js-transfer-user-pickup-address" name="user_pickup[address]" value="{{ $userPickupData['address'] ?? $userPickupData['formatted_address'] ?? '' }}">
+                                <input type="hidden" class="js-transfer-user-pickup-place-id" name="user_pickup[place_id]" value="{{ $userPickupData['place_id'] ?? '' }}">
+                                <input type="hidden" class="js-transfer-user-pickup-lat" name="user_pickup[lat]" value="{{ $userPickupData['lat'] ?? '' }}">
+                                <input type="hidden" class="js-transfer-user-pickup-lng" name="user_pickup[lng]" value="{{ $userPickupData['lng'] ?? '' }}">
+                                <div class="text-13 text-red-1 mt-10" v-if="fieldErrors.user_pickup" v-text="fieldErrors.user_pickup"></div>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -213,32 +248,26 @@
                         </div>
                         <input type="hidden" class="js-transfer-datetime" value="{{ $transferDatetimeValue }}">
                         <div class="col-12">
-                            <div class="searchMenu-guests px-20 py-10 border-light rounded-4 js-form-dd">
-                                <div data-x-dd-click="searchMenu-guests">
-                                    <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('Select Number') }}</h4>
-                                    <div class="text-15 text-light-1 ls-2 lh-16">
-                                        <span class="js-count-adult">@{{ number }}</span>
-                                    </div>
-                                </div>
-                                <div class="searchMenu-guests__field shadow-2" data-x-dd="searchMenu-guests" data-x-dd-toggle="-is-active">
-                                    <div class="bg-white px-30 py-30 rounded-4">
-                                        <div class="row y-gap-10 justify-between items-center form-guest-search">
-                                            <div class="col-auto">
-                                                <div class="text-15 fw-500">{{ __('Number') }}</div>
-                                            </div>
-                                            <div class="col-auto">
-                                                <div class="d-flex items-center js-counter" data-value-change=".js-count-adult">
-                                                    <button class="button -outline-blue-1 text-blue-1 size-38 rounded-4 js-down" @click="minusNumberType()">
-                                                        <i class="icon-minus text-12"></i>
-                                                    </button>
-                                                    <span class="input"><input type="number" v-model="number" min="0" :class="{'is-invalid': fieldErrors.passengers}"/></span>
-                                                    <button class="button -outline-blue-1 text-blue-1 size-38 rounded-4 js-up" @click="addNumberType()">
-                                                        <i class="icon-plus text-12"></i>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                            <div class="form-group px-20 py-10 border-light rounded-4">
+                                <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('Select Number') }}</h4>
+                                <div class="d-flex align-items-center gap-10">
+                                    <button class="button -outline-blue-1 text-blue-1 size-38 rounded-4"
+                                            type="button"
+                                            @click="minusNumberType()">
+                                        <i class="icon-minus text-12"></i>
+                                    </button>
+                                    <input type="number"
+                                           class="form-control text-center w-auto"
+                                           v-model="number"
+                                           min="1"
+                                           :class="{'is-invalid': fieldErrors.passengers}"
+                                           @change="handlePassengerInput"
+                                           @blur="handlePassengerInput">
+                                    <button class="button -outline-blue-1 text-blue-1 size-38 rounded-4"
+                                            type="button"
+                                            @click="addNumberType()">
+                                        <i class="icon-plus text-12"></i>
+                                    </button>
                                 </div>
                                 <div class="text-13 text-red-1 mt-10" v-if="fieldErrors.passengers" v-text="fieldErrors.passengers"></div>
                             </div>
@@ -259,8 +288,13 @@
                         </div>
                         <div class="col-12" v-if="priceSummary">
                             <div class="px-20 py-15 border-light rounded-4 bg-light">
-                                <div class="text-13 text-dark-1 mb-5" v-if="priceSummary.distance" v-text="priceSummary.distance"></div>
-                                <div class="text-22 text-dark-1 fw-600" v-if="priceSummary.total" v-html="priceSummary.total"></div>
+                                <div class="text-22 text-dark-1 fw-600" v-if="priceSummary.total">
+                                    {{ __('transfers.booking.total_price_label') }}:
+                                    <span v-html="priceSummary.total"></span>
+                                </div>
+                                <div class="text-13 text-dark-1 mt-10" v-if="priceSummary.distance">
+                                    {{ __('transfers.booking.distance_label') }}: @{{ priceSummary.distance }}
+                                </div>
                             </div>
                         </div>
                         <div class="col-12" v-if="html">
@@ -289,7 +323,7 @@
 </div>
 @include("Booking::frontend.global.enquiry-form",['service_type'=>'car'])
 @push('js')
-    @once('transfer-form-script')
+    @once
         @include('Car::frontend.layouts.partials.transfer-form-script')
     @endonce
 @endpush

@@ -29,3 +29,4 @@ Route::group(['prefix'=>'availability'],function(){
     Route::post('/settings/{car}','AvailabilityController@updateSettings')->name('car.admin.availability.updateSettings');
 });
 
+
