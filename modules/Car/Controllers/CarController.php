@@ -332,7 +332,7 @@ class CarController extends Controller
         $dates = [];
         $cursor = $startDate->copy();
         while ($cursor->lte($endDate)) {
-            $dates[] = $this->buildAvailabilityForDate(
+            $dailyAvailability = $this->buildAvailabilityForDate(
                 $car,
                 $cursor->copy(),
                 $passengers,
@@ -341,6 +341,11 @@ class CarController extends Controller
                 $dropoffPayload,
                 $routeMetrics
             );
+            if (empty($dailyAvailability)) {
+                $cursor->addDay()->startOfDay();
+                continue;
+            }
+            $dates[] = $dailyAvailability;
             $cursor->addDay()->startOfDay();
         }
 
@@ -752,20 +757,31 @@ class CarController extends Controller
             }
         }
 
+        $normalizedPickup = array_merge($pickupPayload, [
+            'lat' => (float) $pickupLat,
+            'lng' => (float) $pickupLng,
+        ]);
+
+        $normalizedDropoff = array_merge($dropoff, [
+            'lat' => (float) $dropoffLat,
+            'lng' => (float) $dropoffLng,
+        ]);
+
+        $metricsPickup = $normalizedPickup;
+        if ($pickupLocation) {
+            $metricsPickup = array_merge($pickupLocation->toFrontendArray(), $metricsPickup);
+        }
+
+        $routeMetrics = $car::resolveRouteMetrics($metricsPickup, $normalizedDropoff);
+
         $car->clearTransferContext();
 
         $applied = $car->applyTransferContext(
             $pickupLocation,
-            array_merge($pickupPayload, [
-                'lat' => (float) $pickupLat,
-                'lng' => (float) $pickupLng,
-            ]),
-            array_merge($dropoff, [
-                'lat' => (float) $dropoffLat,
-                'lng' => (float) $dropoffLng,
-            ]),
-            null,
-            null,
+            $normalizedPickup,
+            $normalizedDropoff,
+            $routeMetrics['distance_km'] ?? null,
+            $routeMetrics['duration_min'] ?? null,
             $transferDate,
             $transferDatetime,
             $passengers

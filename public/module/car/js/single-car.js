@@ -794,6 +794,15 @@
                     dataType: 'json',
                     data: requestData
                 }).done(function (response) {
+                    if (!response || !response.status) {
+                        var fallbackMessage = me.getAvailabilityMessage('fetch_failed');
+                        var responseMessage = response && response.message ? response.message : '';
+                        me.transfer_availability_error = responseMessage || fallbackMessage;
+                        me.transfer_availability_note = '';
+                        me.transfer_availability_blocked = true;
+                        me.transfer_time_slots = [];
+                        return;
+                    }
                     me.applyAvailabilityResult(response);
                 }).fail(function (xhr) {
                     if (xhr && xhr.statusText === 'abort') {
