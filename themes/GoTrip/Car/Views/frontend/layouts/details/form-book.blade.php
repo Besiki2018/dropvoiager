@@ -258,60 +258,6 @@
                                 <div class="text-13 text-red-1 mt-10" v-if="fieldErrors.passengers" v-text="fieldErrors.passengers"></div>
                             </div>
                         </div>
-                        <div class="col-12" v-if="extra_price.length && !priceSummary">
-                            <div class="form-section-group px-20 py-10 border-light rounded-4">
-                                <h4 class="form-section-title text-15 fw-500 ls-2 lh-16">{{__('Extra prices:')}}</h4>
-                                <div class="form-group " v-for="(type,index) in extra_price">
-                                    <div class="extra-price-wrap d-flex justify-content-between">
-                                        <div class="flex-grow-1">
-                                            <label class="d-flex items-center">
-                                                <span class="form-checkbox ">
-                                                    <input type="checkbox" true-value="1" false-value="0" v-model="type.enable" style="display: none">
-                                                    <span class="form-checkbox__mark">
-                                                        <span class="form-checkbox__icon icon-check"></span>
-                                                    </span>
-                                                </span>
-                                                <span class="text-15 ml-10">@{{type.name}}</span>
-                                            </label>
-                                        </div>
-                                        <div class="flex-shrink-0">@{{type.price_html}}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12" v-if="buyer_fees.length && !priceSummary">
-                            <div class="form-section-group form-group-padding px-20 py-10 border-light rounded-4">
-                                <div class="extra-price-wrap d-flex justify-content-between" v-for="(type,index) in buyer_fees">
-                                    <div class="flex-grow-1">
-                                        <label class="text-15">@{{type.type_name}}
-                                            <i class="fa fa-info-circle" v-if="type.desc" data-bs-toggle="tooltip" data-placement="top" :title="type.type_desc"></i>
-                                        </label>
-                                        <div class="render" v-if="type.price_type">(@{{type.price_type}})</div>
-                                    </div>
-                                    <div class="flex-shrink-0">
-                                        <div class="unit" v-if='type.unit == "percent"'>
-                                            @{{ type.price }}%
-                                        </div>
-                                        <div class="unit" v-else >
-                                            @{{ formatMoney(type.price) }}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12" v-if="total_price > 0 && !priceSummary">
-                            <ul class="form-section-total list-unstyled px-20 py-10 border-light rounded-4">
-                                <li class="d-flex justify-content-between">
-                                    <label class="text-15 fw-500">{{__("Total")}}</label>
-                                    <span class="price">@{{total_price_html}}</span>
-                                </li>
-                                <li class="d-flex justify-content-between" v-if="is_deposit_ready">
-                                    <label for="">{{__("Pay now")}}</label>
-                                    <span class="price">@{{pay_now_price_html}}</span>
-                                </li>
-                            </ul>
-                        </div>
                         <div class="col-12" v-if="transfer_quote_loading">
                             <div class="px-20 py-15 border-light rounded-4 bg-light">
                                 <div class="text-13 text-muted">{{ __('transfers.booking.price_details_loading') }}</div>

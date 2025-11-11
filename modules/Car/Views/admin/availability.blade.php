@@ -140,10 +140,14 @@
                                 <label ><input true-value=1 false-value=0 type="checkbox" v-model="form.active"> {{__('Available for booking?')}}</label>
                             </div>
                         </div>
-                        <div class="col-md-6" v-show="form.active">
+                        <div class="col-md-12" v-show="form.active">
                             <div class="form-group">
-                                <label >{{__('Price')}}</label>
-                                <input type="number"  v-model="form.price" class="form-control">
+                                <label>{{ __('transfers.admin.pricing.time_range_label') }}</label>
+                                <div class="d-flex align-items-center">
+                                    <input type="time" class="form-control" v-model="form.available_start">
+                                    <span class="mx-2">–</span>
+                                    <input type="time" class="form-control" v-model="form.available_end">
+                                </div>
                             </div>
                         </div>
                         <div class="col-md-6" v-show="form.active">
@@ -207,6 +211,8 @@
         var fixedPriceGroup = settingsForm.find('.js-fixed-price-group');
         var settingsSubmit = settingsForm.find('button[type="submit"]');
         var currentSettingsLink = null;
+        var defaultDailyTimeStart = '';
+        var defaultDailyTimeEnd = '';
         var defaultSuccessMessage = '{{ addslashes(__('transfers.admin.pricing.settings_updated')) }}';
         var defaultErrorMessage = '{{ addslashes(__('transfers.admin.pricing.settings_save_failed')) }}';
 
@@ -264,6 +270,7 @@
             var actionUrl = '';
             if ($link && $link.length) {
                 currentSettingsLink = $link;
+                updateDefaultDailyTimeRangeFromLink($link);
                 actionUrl = $link.data('updateUrl') || '';
                 settingsForm.attr('data-action', actionUrl);
                 settingsForm.find('[name="car_id"]').val($link.data('id') || '');
@@ -281,10 +288,32 @@
                 setFormEnabled(!!actionUrl);
             } else {
                 currentSettingsLink = null;
+                defaultDailyTimeStart = '';
+                defaultDailyTimeEnd = '';
                 settingsForm.attr('data-action', '');
                 setFormEnabled(false);
             }
             setSettingsMessage('', 'info');
+        }
+
+        function updateDefaultDailyTimeRangeFromLink($link) {
+            if (!$link || !$link.length) {
+                return;
+            }
+            defaultDailyTimeStart = $link.data('timeStart') || '';
+            defaultDailyTimeEnd = $link.data('timeEnd') || '';
+        }
+
+        function getDefaultDailyTimeRange() {
+            var start = defaultDailyTimeStart || (settingsForm.find('[name="transfer_time_start"]').val() || '');
+            var end = defaultDailyTimeEnd || (settingsForm.find('[name="transfer_time_end"]').val() || '');
+            if (!start) {
+                start = '00:00';
+            }
+            if (!end) {
+                end = '23:30';
+            }
+            return {start: start, end: end};
         }
 
         if (pricingModeSelect.length) {
@@ -329,6 +358,7 @@
                     settingsForm.find('[name="fixed_price"]').val(response.car.fixed_price || '');
                     settingsForm.find('[name="transfer_time_start"]').val(response.car.transfer_time_start || '');
                     settingsForm.find('[name="transfer_time_end"]').val(response.car.transfer_time_end || '');
+                    updateDefaultDailyTimeRangeFromLink(currentSettingsLink);
                     setFormEnabled(true);
                 }
             }).fail(function (xhr) {
@@ -377,11 +407,14 @@
 					}
 				},
 				select: function(arg) {
+                    var defaults = getDefaultDailyTimeRange();
                     formModal.show({
                         start_date:moment(arg.start).format('YYYY-MM-DD'),
                         end_date:moment(arg.end).format('YYYY-MM-DD'),
+                        available_start: defaults.start,
+                        available_end: defaults.end,
                     });
-				},
+                                },
                 eventClick:function (info) {
 					var form = Object.assign({},info.event.extendedProps);
                     form.start_date = moment(info.event.start).format('YYYY-MM-DD');
@@ -407,7 +440,6 @@
                 },
                 form:{
                     id:'',
-                    price:'',
                     start_date:'',
                     end_date:'',
                     is_instant:'',
@@ -415,11 +447,12 @@
                     min_guests:0,
                     max_guests:0,
                     active:0,
-                    number:0
+                    number:0,
+                    available_start:'',
+                    available_end:''
                 },
                 formDefault:{
                     id:'',
-                    price:'',
                     start_date:'',
                     end_date:'',
                     is_instant:'',
@@ -427,7 +460,9 @@
                     min_guests:0,
                     max_guests:0,
                     active:0,
-                    number:0
+                    number:0,
+                    available_start:'',
+                    available_end:''
                 },
                 person_types:[
 
@@ -459,6 +494,13 @@
                             drp.setEndDate(moment(form.end_date).format(bookingCore.date_format));
 
                         }
+                    }
+                    var defaults = getDefaultDailyTimeRange();
+                    if (!this.form.available_start) {
+                        this.$set(this.form, 'available_start', defaults.start);
+                    }
+                    if (!this.form.available_end) {
+                        this.$set(this.form, 'available_end', defaults.end);
                     }
                 },
                 hide:function () {

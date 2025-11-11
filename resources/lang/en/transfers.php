@@ -116,6 +116,7 @@ return [
             'price_per_km_required' => 'Please enter a valid price per kilometer.',
             'fixed_price_required' => 'Please enter a valid fixed price.',
             'manage_in_availability' => 'Transfer pricing settings are managed from the availability page.',
+            'time_range_invalid' => 'Please select an end time that is after the start time.',
         ],
     ],
 ];
