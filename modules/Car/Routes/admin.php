@@ -26,5 +26,6 @@ Route::group(['prefix'=>'availability'],function(){
     Route::get('/','AvailabilityController@index')->name('car.admin.availability.index');
     Route::get('/loadDates','AvailabilityController@loadDates')->name('car.admin.availability.loadDates');
     Route::post('/store','AvailabilityController@store')->name('car.admin.availability.store');
+    Route::post('/settings/{car}','AvailabilityController@updateSettings')->name('car.admin.availability.updateSettings');
 });
 
