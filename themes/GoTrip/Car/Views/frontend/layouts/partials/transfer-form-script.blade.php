@@ -3,13 +3,17 @@
         var timezoneOffset = '{{ \Carbon\Carbon::now('Asia/Tbilisi')->format('P') }}';
         var dropoffRequiredMessage = '{{ __('transfers.form.dropoff_coordinates_required') }}';
 
-        function parseJsonValue(value) {
+        function parseJsonValue(value, options) {
             if (!value) {
                 return null;
             }
+            options = options || {};
             try {
                 return JSON.parse(value);
             } catch (e) {
+                if (typeof options.onError === 'function') {
+                    options.onError(e);
+                }
                 return null;
             }
         }
@@ -44,6 +48,7 @@
             var dropoffPlaceId = $form.find('.js-transfer-dropoff-place-id').first();
             var dateInput = $form.find('.js-transfer-date').first();
             var dateDisplay = $form.find('.js-transfer-date-display').first();
+            var dateFieldWrapper = $form.find('.js-transfer-date-field').first();
             var dateError = $form.find('.js-transfer-date-error').first();
             var timeInput = $form.find('.js-transfer-time').first();
             var datetimeInput = $form.find('.js-transfer-datetime').first();
@@ -54,6 +59,20 @@
             var pickupFetchLoaded = false;
             var suppressDropoffInput = false;
             var suppressDateSync = false;
+            var restoreErrorMessage = $form.data('restore-error') || '';
+            var restoreErrorReported = false;
+
+            function emitFormError(message) {
+                $form.trigger('transfer:form-error', message || '');
+            }
+
+            function handleJsonParseError() {
+                if (restoreErrorReported || !restoreErrorMessage) {
+                    return;
+                }
+                restoreErrorReported = true;
+                emitFormError(restoreErrorMessage);
+            }
 
             function setDateError(message) {
                 if (dateError.length) {
@@ -65,8 +84,8 @@
 
             function emitTransferUpdate() {
                 var context = {
-                    pickup: parseJsonValue(pickupJsonInput.val()),
-                    dropoff: parseJsonValue(dropoffJsonInput.val())
+                    pickup: parseJsonValue(pickupJsonInput.val(), {onError: handleJsonParseError}),
+                    dropoff: parseJsonValue(dropoffJsonInput.val(), {onError: handleJsonParseError})
                 };
                 $form.trigger('transfer:context-changed', context);
             }
@@ -138,7 +157,7 @@
                     singleDatePicker: true,
                     autoApply: true,
                     sameDate: true,
-                    showCalendar: false,
+                    showCalendar: true,
                     disabledPast: true,
                     enableLoading: true,
                     showEventTooltip: true,
@@ -178,11 +197,46 @@
                     if (drp) {
                         drp.updateCalendars();
                     }
+                    if (dateFieldWrapper.length) {
+                        dateFieldWrapper.attr('aria-expanded', 'true');
+                    }
+                }).on('hide.daterangepicker', function () {
+                    if (dateFieldWrapper.length) {
+                        dateFieldWrapper.attr('aria-expanded', 'false');
+                    }
                 });
                 dateDisplay.data('drp-bound', true);
                 dateDisplay.on('click', function () {
                     $(this).trigger('focus');
                 });
+                dateDisplay.on('focus', function () {
+                    var drp = dateDisplay.data('daterangepicker');
+                    if (drp && typeof drp.show === 'function' && !drp.isShowing) {
+                        drp.show();
+                    }
+                });
+                if (dateFieldWrapper.length) {
+                    if (!dateFieldWrapper.attr('tabindex')) {
+                        dateFieldWrapper.attr('tabindex', '0');
+                    }
+                    dateFieldWrapper.attr('role', 'button');
+                    dateFieldWrapper.attr('aria-haspopup', 'dialog');
+                    dateFieldWrapper.attr('aria-expanded', dateDisplay.val() ? 'true' : 'false');
+                    dateFieldWrapper.on('click', function (event) {
+                        if (event.target !== dateDisplay[0]) {
+                            event.preventDefault();
+                            dateDisplay.trigger('focus');
+                            dateDisplay.trigger('click');
+                        }
+                    });
+                    dateFieldWrapper.on('keydown', function (event) {
+                        if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
+                            event.preventDefault();
+                            dateDisplay.trigger('focus');
+                            dateDisplay.trigger('click');
+                        }
+                    });
+                }
                 var initialValue = dateInput.length ? dateInput.val() : '';
                 if (initialValue) {
                     setDateValue(initialValue, {silent: true, skipInput: true});
@@ -296,7 +350,7 @@
             });
 
             function ensurePickupSelection() {
-                var payload = parseJsonValue(pickupJsonInput.val());
+                var payload = parseJsonValue(pickupJsonInput.val(), {onError: handleJsonParseError});
                 if (payload && payload.id) {
                     pickupSelect.val(String(payload.id));
                     setPickupPayload(payload, {silent: true});
@@ -473,7 +527,7 @@
                 $form.on('submit', function (event) {
                     updateDatetimeValue();
 
-                    var dropoffPayload = parseJsonValue(dropoffJsonInput.val());
+                    var dropoffPayload = parseJsonValue(dropoffJsonInput.val(), {onError: handleJsonParseError});
                     if (!dropoffPayload || !dropoffPayload.lat || !dropoffPayload.lng || !dropoffPayload.place_id) {
                         if (dropoffDisplay.length) {
                             dropoffDisplay[0].setCustomValidity(dropoffRequiredMessage);
@@ -494,7 +548,7 @@
             fetchPickupLocations();
             ensurePickupSelection();
 
-            var initialDropoff = parseJsonValue(dropoffJsonInput.val());
+            var initialDropoff = parseJsonValue(dropoffJsonInput.val(), {onError: handleJsonParseError});
             if (initialDropoff) {
                 setDropoffPayload(initialDropoff, {preserveDisplay: false});
             }

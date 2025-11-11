@@ -33,12 +33,77 @@
                         <ul class="nav nav-tabs  flex-column vertical-nav" id="items_tab"  role="tablist">
                             @foreach($rows as $k=>$item)
                                 <li class="nav-item event-name ">
-                                    <a class="nav-link" data-id="{{$item->id}}" data-toggle="tab" href="#calendar-{{$item->id}}" title="{{$item->title}}" >#{{$item->id}} - {{$item->title}}</a>
+                                    <a class="nav-link"
+                                       data-id="{{$item->id}}"
+                                       data-toggle="tab"
+                                       href="#calendar-{{$item->id}}"
+                                       title="{{$item->title}}"
+                                       data-update-url="{{ route('car.admin.availability.updateSettings', $item->id) }}"
+                                       data-service-radius="{{ $item->service_radius_km }}"
+                                       data-pricing-mode="{{ $item->pricing_mode }}"
+                                       data-price-per-km="{{ $item->price_per_km }}"
+                                       data-fixed-price="{{ $item->fixed_price }}"
+                                       data-time-start="{{ $item->transfer_time_start }}"
+                                       data-time-end="{{ $item->transfer_time_end }}">
+                                        #{{$item->id}} - {{$item->title}}
+                                    </a>
                                 </li>
                             @endforeach
                         </ul>
                     </div>
                     <div class="col-md-9" style="background: white;padding: 15px;">
+                        <div class="car-availability-settings mb-3">
+                            <h5 class="mb-3">{{ __('transfers.admin.pricing.availability_settings_title') }}</h5>
+                            <form id="car-settings-form" class="car-settings-form">
+                                @csrf
+                                <input type="hidden" name="car_id" value="">
+                                <div class="alert alert-info d-none js-settings-alert" role="alert"></div>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label class="control-label">{{ __('transfers.admin.pricing.service_radius') }}</label>
+                                            <input type="number" step="0.1" min="0" name="service_radius_km" class="form-control" placeholder="{{ __('transfers.admin.pricing.service_radius_placeholder') }}">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label class="control-label">{{ __('transfers.admin.pricing.mode_label') }}</label>
+                                            <select name="pricing_mode" class="form-control">
+                                                <option value="per_km">{{ __('transfers.admin.pricing.mode_per_km') }}</option>
+                                                <option value="fixed">{{ __('transfers.admin.pricing.mode_fixed') }}</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 js-fixed-price-group">
+                                        <div class="form-group">
+                                            <label class="control-label">{{ __('transfers.admin.pricing.fixed_price') }}</label>
+                                            <input type="number" step="0.01" min="0" name="fixed_price" class="form-control" placeholder="{{ __('transfers.admin.pricing.fixed_price_placeholder') }}">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 js-price-per-km-group">
+                                        <div class="form-group">
+                                            <label class="control-label">{{ __('transfers.admin.pricing.price_per_km') }}</label>
+                                            <input type="number" step="0.01" min="0" name="price_per_km" class="form-control" placeholder="{{ __('transfers.admin.pricing.price_per_km_placeholder') }}">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label class="control-label">{{ __('transfers.admin.pricing.time_range_label') }}</label>
+                                            <div class="d-flex align-items-center time-range-fields">
+                                                <input type="time" name="transfer_time_start" class="form-control mr-2" placeholder="{{ __('transfers.admin.pricing.time_start') }}">
+                                                <span class="mx-2">–</span>
+                                                <input type="time" name="transfer_time_end" class="form-control" placeholder="{{ __('transfers.admin.pricing.time_end') }}">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    <button type="submit" class="btn btn-primary">
+                                        {{ __('transfers.admin.pricing.save_settings') }}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                         <div id="dates-calendar" class="dates-calendar"></div>
                     </div>
                 </div>
@@ -134,12 +199,156 @@
     <script src="{{asset('libs/fullcalendar-4.2.0/daygrid/main.js')}}"></script>
 
     <script>
-		var calendarEl,calendar,lastId,formModal;
+        var calendarEl, calendar, lastId, formModal;
+        var settingsForm = $('#car-settings-form');
+        var settingsAlert = settingsForm.find('.js-settings-alert');
+        var pricingModeSelect = settingsForm.find('[name="pricing_mode"]');
+        var pricePerKmGroup = settingsForm.find('.js-price-per-km-group');
+        var fixedPriceGroup = settingsForm.find('.js-fixed-price-group');
+        var settingsSubmit = settingsForm.find('button[type="submit"]');
+        var currentSettingsLink = null;
+        var defaultSuccessMessage = '{{ addslashes(__('transfers.admin.pricing.settings_updated')) }}';
+        var defaultErrorMessage = '{{ addslashes(__('transfers.admin.pricing.settings_save_failed')) }}';
+
+        function setSettingsMessage(message, type) {
+            if (!settingsAlert.length) {
+                return;
+            }
+            settingsAlert.removeClass('d-none alert-info alert-success alert-danger');
+            var variant = 'alert-info';
+            if (type === 'success') {
+                variant = 'alert-success';
+            } else if (type === 'error') {
+                variant = 'alert-danger';
+            }
+            settingsAlert.addClass(variant);
+            if (message) {
+                settingsAlert.text(message);
+            } else {
+                settingsAlert.text('');
+                settingsAlert.addClass('d-none');
+            }
+        }
+
+        function togglePricingModeFields(mode) {
+            if (!pricePerKmGroup.length || !fixedPriceGroup.length) {
+                return;
+            }
+            if (mode === 'fixed') {
+                fixedPriceGroup.removeClass('d-none');
+                pricePerKmGroup.addClass('d-none');
+            } else {
+                pricePerKmGroup.removeClass('d-none');
+                fixedPriceGroup.addClass('d-none');
+            }
+        }
+
+        function setFormEnabled(enabled) {
+            if (!settingsForm.length) {
+                return;
+            }
+            var inputs = settingsForm.find('input, select, button').not('[name="_token"]');
+            inputs.prop('disabled', !enabled);
+            if (settingsSubmit.length) {
+                settingsSubmit.prop('disabled', !enabled);
+            }
+        }
+
+        function populateSettingsForm($link) {
+            if (!settingsForm.length) {
+                return;
+            }
+            if (settingsForm.length && settingsForm[0]) {
+                settingsForm[0].reset();
+            }
+            var actionUrl = '';
+            if ($link && $link.length) {
+                currentSettingsLink = $link;
+                actionUrl = $link.data('updateUrl') || '';
+                settingsForm.attr('data-action', actionUrl);
+                settingsForm.find('[name="car_id"]').val($link.data('id') || '');
+                var radius = $link.data('serviceRadius');
+                settingsForm.find('[name="service_radius_km"]').val(radius !== undefined && radius !== null ? radius : '');
+                var pricingMode = $link.data('pricingMode') || 'per_km';
+                pricingModeSelect.val(pricingMode);
+                var pricePerKm = $link.data('pricePerKm');
+                settingsForm.find('[name="price_per_km"]').val(pricePerKm !== undefined && pricePerKm !== null ? pricePerKm : '');
+                var fixedPrice = $link.data('fixedPrice');
+                settingsForm.find('[name="fixed_price"]').val(fixedPrice !== undefined && fixedPrice !== null ? fixedPrice : '');
+                settingsForm.find('[name="transfer_time_start"]').val($link.data('timeStart') || '');
+                settingsForm.find('[name="transfer_time_end"]').val($link.data('timeEnd') || '');
+                togglePricingModeFields(pricingMode);
+                setFormEnabled(!!actionUrl);
+            } else {
+                currentSettingsLink = null;
+                settingsForm.attr('data-action', '');
+                setFormEnabled(false);
+            }
+            setSettingsMessage('', 'info');
+        }
+
+        if (pricingModeSelect.length) {
+            pricingModeSelect.on('change', function () {
+                togglePricingModeFields($(this).val());
+            });
+        }
+
+        if (settingsForm.length) {
+            setFormEnabled(false);
+        }
+
+        settingsForm.on('submit', function (event) {
+            if (!settingsForm.length) {
+                return;
+            }
+            event.preventDefault();
+            var actionUrl = settingsForm.attr('data-action');
+            if (!actionUrl || !settingsSubmit.length || settingsSubmit.prop('disabled')) {
+                return;
+            }
+            settingsSubmit.prop('disabled', true);
+            setSettingsMessage('', 'info');
+            $.ajax({
+                url: actionUrl,
+                method: 'POST',
+                data: settingsForm.serialize(),
+            }).done(function (response) {
+                var message = (response && response.message) ? response.message : defaultSuccessMessage;
+                setSettingsMessage(message, 'success');
+                if (response && response.car && currentSettingsLink) {
+                    currentSettingsLink.data('serviceRadius', response.car.service_radius_km || '');
+                    currentSettingsLink.data('pricingMode', response.car.pricing_mode || 'per_km');
+                    currentSettingsLink.data('pricePerKm', response.car.price_per_km);
+                    currentSettingsLink.data('fixedPrice', response.car.fixed_price);
+                    currentSettingsLink.data('timeStart', response.car.transfer_time_start || '');
+                    currentSettingsLink.data('timeEnd', response.car.transfer_time_end || '');
+                    settingsForm.find('[name="service_radius_km"]').val(response.car.service_radius_km || '');
+                    pricingModeSelect.val(response.car.pricing_mode || 'per_km');
+                    togglePricingModeFields(response.car.pricing_mode || 'per_km');
+                    settingsForm.find('[name="price_per_km"]').val(response.car.price_per_km || '');
+                    settingsForm.find('[name="fixed_price"]').val(response.car.fixed_price || '');
+                    settingsForm.find('[name="transfer_time_start"]').val(response.car.transfer_time_start || '');
+                    settingsForm.find('[name="transfer_time_end"]').val(response.car.transfer_time_end || '');
+                    setFormEnabled(true);
+                }
+            }).fail(function (xhr) {
+                var message = defaultErrorMessage;
+                if (xhr && xhr.responseJSON && xhr.responseJSON.message) {
+                    message = xhr.responseJSON.message;
+                }
+                setSettingsMessage(message, 'error');
+            }).always(function () {
+                settingsSubmit.prop('disabled', false);
+            });
+        });
+
         $('#items_tab').on('show.bs.tab',function (e) {
-			calendarEl = document.getElementById('dates-calendar');
-			lastId = $(e.target).data('id');
+                        var targetLink = $(e.target);
+                        populateSettingsForm(targetLink);
+                        calendarEl = document.getElementById('dates-calendar');
+                        lastId = $(e.target).data('id');
             if(calendar){
-				calendar.destroy();
+                                calendar.destroy();
             }
 			calendar = new FullCalendar.Calendar(calendarEl, {
                 buttonText:{
