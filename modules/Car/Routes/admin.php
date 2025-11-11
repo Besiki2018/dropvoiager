@@ -29,3 +29,11 @@ Route::group(['prefix'=>'availability'],function(){
     Route::post('/settings/{car}','AvailabilityController@updateSettings')->name('car.admin.availability.updateSettings');
 });
 
+Route::group(['prefix' => 'pickup-locations'], function () {
+    Route::get('/', 'PickupLocationController@index')->name('car.admin.pickup-locations.index');
+    Route::get('/create', 'PickupLocationController@create')->name('car.admin.pickup-locations.create');
+    Route::get('/edit/{id}', 'PickupLocationController@edit')->name('car.admin.pickup-locations.edit');
+    Route::post('/store/{id?}', 'PickupLocationController@store')->name('car.admin.pickup-locations.store');
+    Route::post('/bulk', 'PickupLocationController@bulkEdit')->name('car.admin.pickup-locations.bulk');
+});
+

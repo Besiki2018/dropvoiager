@@ -57,6 +57,11 @@ class ModuleProvider extends ModuleServiceProvider
                         'title'      => __('Attributes'),
                         'permission' => 'car_manage_attributes',
                     ],
+                    'pickup_locations'=>[
+                        'url'        => route('car.admin.pickup-locations.index'),
+                        'title'      => __('Pickup locations'),
+                        'permission' => 'car_manage_attributes',
+                    ],
                     'availability'=>[
                         'url'        => route('car.admin.availability.index'),
                         'title'      => __('Availability'),
@@ -112,6 +117,11 @@ class ModuleProvider extends ModuleServiceProvider
                         'url'   => route('car.vendor.create'),
                         'title'      => __("Add Car"),
                         'permission' => 'car_create',
+                    ],
+                    [
+                        'url'   => route('car.vendor.pickup-locations.index'),
+                        'title'      => __("Pickup locations"),
+                        'permission' => 'car_view',
                     ],
                     [
                         'url'        => route('car.vendor.availability.index'),

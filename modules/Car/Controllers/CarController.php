@@ -256,18 +256,61 @@ class CarController extends Controller
     {
         $query = CarPickupLocation::query()
             ->with(['car:id,title,status'])
-            ->whereHas('car', function ($builder) {
-                $builder->where('status', 'publish');
-            })
-            ->active();
+            ->active()
+            ->where(function ($builder) {
+                $builder->whereHas('car', function ($carQuery) {
+                    $carQuery->where('status', 'publish');
+                })->orWhere(function ($inner) {
+                    $inner->whereNull('car_id')->whereNull('vendor_id');
+                });
+            });
 
         if ($request->filled('car_id')) {
             $carIds = Arr::wrap($request->input('car_id'));
-            $query->whereIn('car_id', array_filter($carIds));
+            $carIds = array_values(array_filter(array_map(function ($value) {
+                return is_numeric($value) ? (int) $value : null;
+            }, $carIds)));
+
+            if (!empty($carIds)) {
+                $cars = Car::query()->select(['id', 'author_id', 'status'])->whereIn('id', $carIds)->get();
+                $vendorIds = $cars->pluck('author_id')->filter()->unique()->values()->all();
+
+                $query->where(function ($builder) use ($carIds, $vendorIds) {
+                    $builder->whereIn('car_id', $carIds)
+                        ->orWhere(function ($inner) use ($vendorIds) {
+                            $inner->whereNull('car_id');
+
+                            if (!empty($vendorIds)) {
+                                $inner->where(function ($vendorClause) use ($vendorIds) {
+                                    $vendorClause->whereNull('vendor_id')
+                                        ->orWhereIn('vendor_id', $vendorIds);
+                                });
+                            } else {
+                                $inner->whereNull('vendor_id');
+                            }
+                        });
+                });
+            }
+        }
+
+        if ($request->filled('vendor_id')) {
+            $query->where('vendor_id', $request->input('vendor_id'));
+        }
+
+        if ($search = $request->query('q', $request->query('s'))) {
+            $query->where(function ($builder) use ($search) {
+                $builder->where('name', 'LIKE', '%' . $search . '%')
+                    ->orWhere('address', 'LIKE', '%' . $search . '%')
+                    ->orWhere('service_center_name', 'LIKE', '%' . $search . '%');
+            });
         }
 
         $locations = $query
+            ->orderByRaw("CASE WHEN name IS NULL OR name = '' THEN 1 ELSE 0 END")
+            ->orderByRaw("CASE WHEN address IS NULL OR address = '' THEN 1 ELSE 0 END")
             ->orderBy('name')
+            ->orderBy('address')
+            ->orderBy('id')
             ->get()
             ->map(function (CarPickupLocation $location) {
                 $payload = $location->toFrontendArray();
@@ -275,6 +318,11 @@ class CarController extends Controller
                 $displayLabel = $payload['display_name'] ?? $payload['name'] ?? $payload['address'] ?? '';
                 $payload['label'] = $displayLabel . (!empty($payload['car_title']) ? ' — ' . $payload['car_title'] : '');
                 return $payload;
+            })
+            ->filter(function (array $payload) {
+                return isset($payload['lat'], $payload['lng'])
+                    && is_numeric($payload['lat'])
+                    && is_numeric($payload['lng']);
             })
             ->values();
 
@@ -329,9 +377,9 @@ class CarController extends Controller
         $pickupLocation = null;
         $pickupLocationId = $request->query('pickup_location_id');
         if ($pickupLocationId) {
-            $pickupLocation = $car->pickupLocations()
+            $pickupLocation = CarPickupLocation::query()
+                ->availableForCar($car)
                 ->where('id', $pickupLocationId)
-                ->where('is_active', true)
                 ->first();
             if ($pickupLocation) {
                 $pickupPayload = $pickupLocation->toFrontendArray();
@@ -939,9 +987,9 @@ class CarController extends Controller
         $pickupLocationId = $request->input('pickup_location_id') ?? Arr::get($pickupPayload, 'id');
         $pickupLocation = null;
         if ($pickupLocationId) {
-            $pickupLocation = $car->pickupLocations()
+            $pickupLocation = CarPickupLocation::query()
+                ->availableForCar($car)
                 ->where('id', $pickupLocationId)
-                ->where('is_active', true)
                 ->first();
             if ($pickupLocation) {
                 $pickupPayload = array_merge($pickupLocation->toFrontendArray(), $pickupPayload);
@@ -1111,6 +1159,16 @@ class CarController extends Controller
         }
         $review_list = $row->getReviewList();
 
+        $availablePickupLocations = CarPickupLocation::query()
+            ->with(['car:id,title'])
+            ->availableForCar($row)
+            ->orderByRaw("CASE WHEN name IS NULL OR name = '' THEN 1 ELSE 0 END")
+            ->orderByRaw("CASE WHEN address IS NULL OR address = '' THEN 1 ELSE 0 END")
+            ->orderBy('name')
+            ->orderBy('address')
+            ->orderBy('id')
+            ->get();
+
         $pickupPayload = $request->input('pickup');
         if (is_string($pickupPayload)) {
             $decodedPickup = json_decode($pickupPayload, true);
@@ -1125,7 +1183,7 @@ class CarController extends Controller
         $selectedPickupLocation = null;
         $pickupLocationId = Arr::get($pickupPayload, 'id') ?? $request->input('pickup_location_id');
         if ($pickupLocationId) {
-            $selectedPickupLocation = $row->pickupLocations()->where('id', $pickupLocationId)->where('is_active', true)->first();
+            $selectedPickupLocation = $availablePickupLocations->firstWhere('id', (int) $pickupLocationId);
             if ($selectedPickupLocation) {
                 $pickupPayload = array_merge($selectedPickupLocation->toFrontendArray(), $pickupPayload);
                 $pickupPayload['source'] = Arr::get($pickupPayload, 'source', 'backend');
@@ -1191,7 +1249,7 @@ class CarController extends Controller
             if ($userPickupPayload) {
                 $userRouteMetrics = $this->carClass::resolveRouteMetrics($userPickupPayload, $dropoff);
             }
-            $routePickupLocation = $selectedPickupLocation && $selectedPickupLocation->car_id === $row->id ? $selectedPickupLocation : null;
+            $routePickupLocation = $selectedPickupLocation;
             $pricingMode = $row->pricing_mode ?: 'per_km';
             $shouldApply = true;
             if ($pricingMode !== 'fixed' && !$userPickupPayload) {
@@ -1230,7 +1288,7 @@ class CarController extends Controller
             'transfer_datetime_value' => $transferDatetimeRaw,
             'transfer_datetime_display' => $transferDatetimeDisplay,
             'transfer_distance_km' => $row->transfer_distance_km,
-            'pickup_locations' => $row->pickupLocations,
+            'pickup_locations' => $availablePickupLocations,
             'breadcrumbs'       => [
                 [
                     'name'  => __('Car'),

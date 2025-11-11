@@ -19,6 +19,14 @@ Route::group(['prefix'=>'user/'.config('car.car_route_prefix'),'middleware' => [
     Route::get('/booking-report/bulkEdit/{id}','ManageCarController@bookingReportBulkEdit')->name("car.vendor.booking_report.bulk_edit");
     Route::get('/recovery','ManageCarController@recovery')->name('car.vendor.recovery');
     Route::get('/restore/{id}','ManageCarController@restore')->name('car.vendor.restore');
+
+    Route::group(['prefix' => 'pickup-locations'], function () {
+        Route::get('/', 'ManagePickupLocationController@index')->name('car.vendor.pickup-locations.index');
+        Route::get('/create', 'ManagePickupLocationController@create')->name('car.vendor.pickup-locations.create');
+        Route::get('/edit/{id}', 'ManagePickupLocationController@edit')->name('car.vendor.pickup-locations.edit');
+        Route::post('/store/{id?}', 'ManagePickupLocationController@store')->name('car.vendor.pickup-locations.store');
+        Route::post('/delete/{id}', 'ManagePickupLocationController@destroy')->name('car.vendor.pickup-locations.destroy');
+    });
 });
 
 Route::group(['prefix'=>'user/'.config('car.car_route_prefix')],function(){
