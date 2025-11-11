@@ -423,6 +423,15 @@ class CarController extends Controller
             $slots = $this->resolveTransferTimeSlots($car, $date, $passengers);
             if (empty($slots)) {
                 $note = __('transfers.booking.availability_no_slots');
+            } elseif (!$note) {
+                $firstSlot = reset($slots);
+                $lastSlot = end($slots);
+                if ($firstSlot && $lastSlot && isset($firstSlot['label'], $lastSlot['label'])) {
+                    $note = __('transfers.booking.available_hours_range', [
+                        'start' => $firstSlot['label'],
+                        'end' => $lastSlot['label'],
+                    ]);
+                }
             }
         }
 
@@ -436,7 +445,10 @@ class CarController extends Controller
 
     protected function resolveTransferTimeSlots(Car $car, Carbon $date, int $passengers): array
     {
-        $baseSlots = $this->generateTimeSlotsFromAvailability($car, $date, $passengers);
+        $explicitSlots = $this->getExplicitTimeSlots($car, $date, $passengers);
+        $baseSlots = !empty($explicitSlots)
+            ? $explicitSlots
+            : $this->generateTimeSlotsFromAvailability($car, $date, $passengers);
         if (empty($baseSlots)) {
             $baseSlots = $this->generateBaseTimeSlots($car, $date);
         }
@@ -458,6 +470,71 @@ class CarController extends Controller
         }
 
         return $availableSlots;
+    }
+
+    protected function getExplicitTimeSlots(Car $car, Carbon $date, int $passengers): array
+    {
+        $start = $date->copy()->startOfDay();
+        $end = $date->copy()->endOfDay();
+        $ranges = $car->getDatesInRange(
+            $start->format('Y-m-d H:i:s'),
+            $end->format('Y-m-d H:i:s')
+        );
+
+        if ($ranges instanceof \Illuminate\Support\Collection) {
+            if ($ranges->isEmpty()) {
+                return [];
+            }
+        } elseif (empty($ranges)) {
+            return [];
+        }
+
+        $slots = [];
+        foreach ($ranges as $range) {
+            if (!$range->active) {
+                continue;
+            }
+
+            $capacity = is_numeric($range->number) ? (int) $range->number : null;
+            if ($capacity !== null) {
+                if ($capacity <= 0) {
+                    continue;
+                }
+                if ($capacity < $passengers) {
+                    continue;
+                }
+            }
+
+            $hours = $this->normalizeAvailableHours($range->available_hours ?? null);
+            if (empty($hours)) {
+                continue;
+            }
+
+            $startBoundary = $range->available_start;
+            $endBoundary = $range->available_end;
+
+            foreach ($hours as $hour) {
+                if ($startBoundary && strcmp($hour, $startBoundary) < 0) {
+                    continue;
+                }
+                if ($endBoundary && strcmp($hour, $endBoundary) > 0) {
+                    continue;
+                }
+                $slots[$hour] = [
+                    'value' => $hour,
+                    'label' => $hour,
+                    'disabled' => false,
+                ];
+            }
+        }
+
+        if (empty($slots)) {
+            return [];
+        }
+
+        ksort($slots);
+
+        return array_values($slots);
     }
 
     protected function generateTimeSlotsFromAvailability(Car $car, Carbon $date, int $passengers): array
@@ -508,6 +585,8 @@ class CarController extends Controller
     {
         $start = $date->copy()->startOfDay();
         $end = $date->copy()->endOfDay();
+        $dailyStart = $this->parseTimeOfDay($car->transfer_time_start, $date);
+        $dailyEnd = $this->parseTimeOfDay($car->transfer_time_end, $date);
         $ranges = $car->getDatesInRange(
             $start->format('Y-m-d H:i:s'),
             $end->format('Y-m-d H:i:s')
@@ -672,6 +751,43 @@ class CarController extends Controller
         }
 
         return null;
+    }
+
+    protected function normalizeAvailableHours($hours): array
+    {
+        if (is_string($hours)) {
+            $decoded = json_decode($hours, true);
+            $hours = json_last_error() === JSON_ERROR_NONE ? $decoded : explode(',', $hours);
+        }
+
+        if (!is_array($hours)) {
+            return [];
+        }
+
+        $valid = [];
+        foreach ($hours as $hour) {
+            if (!is_string($hour) && !is_numeric($hour)) {
+                continue;
+            }
+            $hourString = trim((string) $hour);
+            if ($hourString === '') {
+                continue;
+            }
+            try {
+                $formatted = Carbon::createFromFormat('H:i', $hourString, 'Asia/Tbilisi')->format('H:i');
+                $valid[$formatted] = $formatted;
+            } catch (\Exception $exception) {
+                continue;
+            }
+        }
+
+        if (empty($valid)) {
+            return [];
+        }
+
+        ksort($valid);
+
+        return array_values($valid);
     }
 
     public function quote(Request $request, Car $car)

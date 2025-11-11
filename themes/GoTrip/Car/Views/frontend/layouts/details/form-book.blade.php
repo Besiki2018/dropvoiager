@@ -199,27 +199,18 @@
                         <div class="col-md-6">
                             <div class="form-group px-20 py-10 border-light rounded-4">
                                 <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('transfers.form.time_label') }}</h4>
-                                <template v-if="hasTimeSlots">
-                                    <select class="form-control js-transfer-time"
-                                            :class="{'is-invalid': fieldErrors.datetime}"
-                                            v-model="transfer_time">
-                                        <option value="">{{ __('transfers.form.time_label') }}</option>
-                                        <option v-for="slot in transfer_time_slots"
-                                                :key="'slot-' + slot.value"
-                                                :value="slot.value"
-                                                :disabled="slot.disabled">
-                                            @{{ slot.label }}
-                                        </option>
-                                    </select>
-                                </template>
-                                <template v-else>
-                                    <input type="time"
-                                           class="form-control js-transfer-time"
-                                           :class="{'is-invalid': fieldErrors.datetime}"
-                                           v-model="transfer_time"
-                                           step="60"
-                                           value="{{ $transferTimeValue }}">
-                                </template>
+                                <select class="form-control js-transfer-time"
+                                        :class="{'is-invalid': fieldErrors.datetime}"
+                                        v-model="transfer_time"
+                                        :disabled="!transfer_time_slots.length">
+                                    <option value="">{{ __('transfers.form.time_label') }}</option>
+                                    <option v-for="slot in transfer_time_slots"
+                                            :key="'slot-' + slot.value"
+                                            :value="slot.value"
+                                            :disabled="slot.disabled">
+                                        @{{ slot.label }}
+                                    </option>
+                                </select>
                                 <div class="text-13 text-muted mt-10" v-if="transfer_availability_loading" v-text="getAvailabilityMessage('loading')"></div>
                                 <div class="text-13 text-red-1 mt-10" v-if="transfer_availability_error" v-text="transfer_availability_error"></div>
                                 <div class="text-13 text-dark-1 mt-10" v-if="!transfer_availability_error && transfer_availability_note" v-text="transfer_availability_note"></div>

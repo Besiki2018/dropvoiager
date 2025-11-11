@@ -117,6 +117,10 @@ return [
             'fixed_price_required' => 'Please enter a valid fixed price.',
             'manage_in_availability' => 'Transfer pricing settings are managed from the availability page.',
             'time_range_invalid' => 'Please select an end time that is after the start time.',
+            'available_hours_label' => 'Available hours',
+            'available_hours_add' => 'Add time',
+            'available_hours_hint' => 'Specify each available pickup time in HH:MM format.',
+            'available_hours_empty' => 'No hours added yet — default hours will be used.',
         ],
     ],
 ];

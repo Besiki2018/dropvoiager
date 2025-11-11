@@ -98,7 +98,7 @@
                     this.setFieldError('datetime', '');
                 }
                 this.handleTransferFieldChange();
-                if (this.hasTimeSlots && this.transfer_time && !this.isTimeSlotValid(this.transfer_time)) {
+                if (this.transfer_time && !this.isTimeSlotValid(this.transfer_time)) {
                     this.transfer_time = '';
                 }
             },
@@ -887,9 +887,6 @@
                 if (!value) {
                     return false;
                 }
-                if (!this.hasTimeSlots) {
-                    return true;
-                }
                 for (var i = 0; i < this.transfer_time_slots.length; i++) {
                     var slot = this.transfer_time_slots[i];
                     if (slot && slot.value === value && !slot.disabled) {
@@ -1046,7 +1043,7 @@
                 } else if (!this.transfer_time) {
                     this.setFieldError('datetime', this.datetime_required_message || bravo_booking_i18n.no_date_select);
                     isValid = false;
-                } else if (this.hasTimeSlots && !this.isTimeSlotValid(this.transfer_time)) {
+                } else if (!this.isTimeSlotValid(this.transfer_time)) {
                     this.setFieldError('datetime', this.getAvailabilityMessage('time_required') || this.datetime_required_message || bravo_booking_i18n.no_date_select);
                     isValid = false;
                 }

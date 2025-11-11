@@ -150,6 +150,31 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="col-md-12" v-show="form.active">
+                            <div class="form-group">
+                                <label>{{ __('transfers.admin.pricing.available_hours_label') }}</label>
+                                <div class="available-hours-list">
+                                    <div class="d-flex align-items-center mb-2" v-for="(hour, index) in form.available_hours"
+                                         :key="'available-hour-' + index">
+                                        <input type="time" class="form-control" v-model="form.available_hours[index]">
+                                        <button type="button"
+                                                class="btn btn-outline-danger btn-sm ml-2"
+                                                @click="removeAvailableHour(index)">
+                                            &times;
+                                        </button>
+                                    </div>
+                                    <div class="text-muted" v-if="!form.available_hours || !form.available_hours.length">
+                                        {{ __('transfers.admin.pricing.available_hours_empty') }}
+                                    </div>
+                                    <button type="button"
+                                            class="btn btn-outline-primary btn-sm mt-2"
+                                            @click="addAvailableHour">
+                                        {{ __('transfers.admin.pricing.available_hours_add') }}
+                                    </button>
+                                </div>
+                                <small class="form-text text-muted">{{ __('transfers.admin.pricing.available_hours_hint') }}</small>
+                            </div>
+                        </div>
                         <div class="col-md-6" v-show="form.active">
                             <div class="form-group">
                                 <label >{{__('Number')}}</label>
@@ -215,6 +240,7 @@
         var defaultDailyTimeEnd = '';
         var defaultSuccessMessage = '{{ addslashes(__('transfers.admin.pricing.settings_updated')) }}';
         var defaultErrorMessage = '{{ addslashes(__('transfers.admin.pricing.settings_save_failed')) }}';
+        var defaultTimeStepMinutes = {{ (int) setting_item('car_transfer_time_step', 30) }};
 
         function setSettingsMessage(message, type) {
             if (!settingsAlert.length) {
@@ -314,6 +340,72 @@
                 end = '23:30';
             }
             return {start: start, end: end};
+        }
+
+        function normaliseHourValue(value) {
+            if (value === null || typeof value === 'undefined') {
+                return null;
+            }
+            var text = $.trim(String(value));
+            if (!text) {
+                return null;
+            }
+            if (typeof moment === 'undefined') {
+                return text;
+            }
+            var parsed = moment(text, 'HH:mm', true);
+            if (!parsed.isValid()) {
+                parsed = moment(text, 'H:mm', true);
+            }
+            if (!parsed.isValid()) {
+                return null;
+            }
+            return parsed.format('HH:mm');
+        }
+
+        function sanitiseHoursArray(hours) {
+            var results = {};
+            if (Array.isArray(hours)) {
+                for (var i = 0; i < hours.length; i++) {
+                    var normalised = normaliseHourValue(hours[i]);
+                    if (normalised) {
+                        results[normalised] = normalised;
+                    }
+                }
+            }
+            var values = Object.keys(results);
+            values.sort();
+            return values;
+        }
+
+        function buildDefaultHoursList(start, end) {
+            var startHour = normaliseHourValue(start);
+            var endHour = normaliseHourValue(end);
+            if (!startHour || !endHour || typeof moment === 'undefined') {
+                return [];
+            }
+            var step = parseInt(defaultTimeStepMinutes, 10);
+            if (isNaN(step) || step <= 0) {
+                step = 30;
+            }
+            var startMoment = moment(startHour, 'HH:mm');
+            var endMoment = moment(endHour, 'HH:mm');
+            if (!startMoment.isValid() || !endMoment.isValid()) {
+                return [];
+            }
+            if (endMoment.isBefore(startMoment)) {
+                endMoment = startMoment.clone();
+            }
+            var list = [];
+            var maxIterations = Math.ceil((24 * 60) / Math.max(step, 1)) + 2;
+            var iteration = 0;
+            var cursor = startMoment.clone();
+            while (cursor.isSameOrBefore(endMoment) && iteration <= maxIterations) {
+                list.push(cursor.format('HH:mm'));
+                cursor.add(step, 'minutes');
+                iteration++;
+            }
+            return list;
         }
 
         if (pricingModeSelect.length) {
@@ -449,7 +541,8 @@
                     active:0,
                     number:0,
                     available_start:'',
-                    available_end:''
+                    available_end:'',
+                    available_hours:[]
                 },
                 formDefault:{
                     id:'',
@@ -462,7 +555,8 @@
                     active:0,
                     number:0,
                     available_start:'',
-                    available_end:''
+                    available_end:'',
+                    available_hours:[]
                 },
                 person_types:[
 
@@ -502,6 +596,14 @@
                     if (!this.form.available_end) {
                         this.$set(this.form, 'available_end', defaults.end);
                     }
+                    var existingHours = Array.isArray(this.form.available_hours) ? this.form.available_hours.slice() : [];
+                    var normalisedHours = sanitiseHoursArray(existingHours);
+                    if (normalisedHours.length) {
+                        this.$set(this.form, 'available_hours', normalisedHours);
+                    } else {
+                        var generated = buildDefaultHoursList(this.form.available_start, this.form.available_end);
+                        this.$set(this.form, 'available_hours', generated);
+                    }
                 },
                 hide:function () {
                     $(this.$el).modal('hide');
@@ -518,6 +620,16 @@
 
                     this.onSubmit = true;
                     this.form.person_types = Object.assign({},this.person_types);
+                    var sanitizedHours = sanitiseHoursArray(this.form.available_hours);
+                    this.$set(this.form, 'available_hours', sanitizedHours);
+                    if (sanitizedHours.length) {
+                        if (!this.form.available_start) {
+                            this.$set(this.form, 'available_start', sanitizedHours[0]);
+                        }
+                        if (!this.form.available_end || this.form.available_end < sanitizedHours[0]) {
+                            this.$set(this.form, 'available_end', sanitizedHours[sanitizedHours.length - 1]);
+                        }
+                    }
                     $.ajax({
                         url:'{{route('car.admin.availability.store')}}',
                         data:this.form,
@@ -549,6 +661,18 @@
                 },
                 deleteItem:function (index) {
                     this.person_types.splice(index,1);
+                },
+                addAvailableHour:function () {
+                    if (!Array.isArray(this.form.available_hours)) {
+                        this.$set(this.form, 'available_hours', []);
+                    }
+                    this.form.available_hours.push('');
+                },
+                removeAvailableHour:function (index) {
+                    if (!Array.isArray(this.form.available_hours)) {
+                        return;
+                    }
+                    this.form.available_hours.splice(index, 1);
                 }
             },
             created:function () {

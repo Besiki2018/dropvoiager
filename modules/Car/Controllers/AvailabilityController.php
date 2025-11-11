@@ -120,6 +120,7 @@ class AvailabilityController extends FrontendController{
                 'textColor'=>'#2791fe',
                 'available_start' => $defaultStart,
                 'available_end' => $defaultEnd,
+                'available_hours' => [],
             ];
             $date['price_html'] = format_money($date['price']).' x '.$car->number;
             if(!$is_single) {
@@ -175,6 +176,9 @@ class AvailabilityController extends FrontendController{
                 }
                 if (empty($rowArray['available_end'])) {
                     $rowArray['available_end'] = $defaultEnd;
+                }
+                if (empty($rowArray['available_hours'])) {
+                    $rowArray['available_hours'] = [];
                 }
                 $allDates[date('Y-m-d',strtotime($row->start_date))] = $rowArray;
             }
@@ -244,6 +248,8 @@ class AvailabilityController extends FrontendController{
             'end_date' => 'required',
             'available_start' => 'nullable|date_format:H:i',
             'available_end' => 'nullable|date_format:H:i',
+            'available_hours' => 'nullable|array',
+            'available_hours.*' => 'nullable|date_format:H:i',
         ]);
 
         $car = $this->carClass::find($request->input('target_id'));
@@ -265,14 +271,40 @@ class AvailabilityController extends FrontendController{
         $availableStart = $request->input('available_start');
         $availableEnd = $request->input('available_end');
 
+        $availableHoursInput = $request->input('available_hours', []);
+        if (!is_array($availableHoursInput)) {
+            $availableHoursInput = [];
+        }
+
+        $availableHours = [];
+        foreach ($availableHoursInput as $hour) {
+            if (!is_string($hour) && !is_numeric($hour)) {
+                continue;
+            }
+            $hourString = trim((string) $hour);
+            if ($hourString === '') {
+                continue;
+            }
+            try {
+                $formatted = Carbon::createFromFormat('H:i', $hourString, $businessTz)->format('H:i');
+                $availableHours[$formatted] = $formatted;
+            } catch (\Exception $exception) {
+                continue;
+            }
+        }
+
+        if (!empty($availableHours)) {
+            ksort($availableHours);
+        }
+
         $defaultStart = $car->transfer_time_start ?: setting_item('car_transfer_time_start', '00:00');
         $defaultEnd = $car->transfer_time_end ?: setting_item('car_transfer_time_end', '23:30');
 
         if (empty($availableStart)) {
-            $availableStart = $defaultStart;
+            $availableStart = !empty($availableHours) ? reset($availableHours) : $defaultStart;
         }
         if (empty($availableEnd)) {
-            $availableEnd = $defaultEnd;
+            $availableEnd = !empty($availableHours) ? end($availableHours) : $defaultEnd;
         }
 
         $startTime = $availableStart ? Carbon::createFromFormat('H:i', $availableStart, $businessTz) : null;
@@ -283,6 +315,7 @@ class AvailabilityController extends FrontendController{
         }
 
         $postData = $request->input();
+        $postData['available_hours'] = !empty($availableHours) ? array_values($availableHours) : null;
         $period = periodDate($request->input('start_date'),$request->input('end_date'));
         foreach ($period as $dt){
             $date = $this->carDateClass::where('start_date',$dt->format('Y-m-d'))->where('target_id',$target_id)->first();
@@ -306,6 +339,7 @@ class AvailabilityController extends FrontendController{
             $date->fillByAttr([
                 'start_date','end_date','number',
                 'is_instant','active',
+                'available_hours',
             ],$postData);
 
             $date->save();
