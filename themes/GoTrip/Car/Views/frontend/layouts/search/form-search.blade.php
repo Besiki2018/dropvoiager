@@ -77,7 +77,6 @@
                                     data-default-label="{{ __('transfers.form.select_pickup_option') }}"
                                     @if($pickupLocations->isEmpty()) disabled @endif>
                                 <option value="">{{ __('transfers.form.select_pickup_option') }}</option>
-                                <option value="__mylocation__" data-source="mylocation">{{ __('transfers.form.use_my_location') }}</option>
                                 @foreach($pickupLocations as $location)
                                     @php
                                         $payload = $location->toFrontendArray();
