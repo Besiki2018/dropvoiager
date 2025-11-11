@@ -29,3 +29,11 @@ Route::group(['prefix'=>'availability'],function(){
     Route::post('/settings/{car}','AvailabilityController@updateSettings')->name('car.admin.availability.updateSettings');
 });
 
+Route::get('/pickup-locations', function () {
+    return redirect()->route('car.admin.index');
+})->name('car.admin.pickup-locations.index');
+
+Route::get('/transfer-locations', function () {
+    return redirect()->route('car.admin.index');
+})->name('car.admin.transfer-locations.index');
+
