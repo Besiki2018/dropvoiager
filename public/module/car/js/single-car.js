@@ -148,6 +148,7 @@
             priceSummary:function () {
                 var quote = this.transfer_quote || null;
                 var meta = this.pricing_meta || {};
+                var messages = this.availability_messages || {};
                 var passengerCount = this.getPassengerCount();
                 var totalNumeric = null;
                 var totalDisplay = null;
@@ -199,7 +200,10 @@
 
                 return {
                     total: totalDisplay,
-                    distance: distanceDisplay
+                    distance: distanceDisplay,
+                    mode_display: modeDisplay,
+                    unit_price_display: unitPriceLabel,
+                    service_radius_display: serviceRadiusLabel
                 };
             },
             availableHoursMessage:function () {
@@ -675,6 +679,12 @@
                     return false;
                 }
                 return true;
+            },
+            shouldRequestAvailability:function () {
+                if (!this.transfer_date) {
+                    return false;
+                }
+                return this.shouldRequestQuote();
             },
             queueQuoteRefresh:function (delay) {
                 var me = this;
