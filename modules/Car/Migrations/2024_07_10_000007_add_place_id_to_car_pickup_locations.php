@@ -8,13 +8,9 @@ return new class extends Migration
 {
     public function up(): void
     {
-        $afterColumn = Schema::hasColumn('car_pickup_locations', 'address')
-            ? 'address'
-            : 'name';
-
-        Schema::table('car_pickup_locations', function (Blueprint $table) use ($afterColumn) {
+        Schema::table('car_pickup_locations', function (Blueprint $table) {
             if (!Schema::hasColumn('car_pickup_locations', 'place_id')) {
-                $table->string('place_id')->nullable()->after($afterColumn);
+                $table->string('place_id')->nullable()->after('address');
             }
         });
     }
