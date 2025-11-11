@@ -63,6 +63,8 @@ class Car extends Bookable
         'service_radius_km' => 'float',
         'fixed_price' => 'float',
         'price_per_km' => 'float',
+        'transfer_time_start' => 'string',
+        'transfer_time_end' => 'string',
     ];
     /**
      * @var Booking
@@ -97,11 +99,79 @@ class Car extends Bookable
         'dropoff' => null,
         'pickup_location_id' => null,
         'transfer_datetime' => null,
+        'transfer_date' => null,
         'pricing_mode' => null,
         'unit_price' => null,
         'base_fee' => null,
         'passengers' => 1,
     ];
+
+    protected function normalizeTimeValue($value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if ($value instanceof Carbon) {
+            return $value->format('H:i:s');
+        }
+
+        $value = trim((string) $value);
+
+        $formats = ['H:i:s', 'H:i'];
+        foreach ($formats as $format) {
+            try {
+                return Carbon::createFromFormat($format, $value, 'Asia/Tbilisi')->format('H:i:s');
+            } catch (\Exception $exception) {
+                continue;
+            }
+        }
+
+        return null;
+    }
+
+    protected function formatTimeValue($value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if ($value instanceof Carbon) {
+            return $value->format('H:i');
+        }
+
+        $value = trim((string) $value);
+        $formats = ['H:i:s', 'H:i'];
+        foreach ($formats as $format) {
+            try {
+                return Carbon::createFromFormat($format, $value, 'Asia/Tbilisi')->format('H:i');
+            } catch (\Exception $exception) {
+                continue;
+            }
+        }
+
+        return null;
+    }
+
+    public function getTransferTimeStartAttribute($value): ?string
+    {
+        return $this->formatTimeValue($value);
+    }
+
+    public function getTransferTimeEndAttribute($value): ?string
+    {
+        return $this->formatTimeValue($value);
+    }
+
+    public function setTransferTimeStartAttribute($value): void
+    {
+        $this->attributes['transfer_time_start'] = $this->normalizeTimeValue($value);
+    }
+
+    public function setTransferTimeEndAttribute($value): void
+    {
+        $this->attributes['transfer_time_end'] = $this->normalizeTimeValue($value);
+    }
 
     public function __construct(array $attributes = [])
     {
@@ -569,11 +639,28 @@ class Car extends Bookable
             foreach ($datesData as $date)
             {
                 if(empty($allDates[date('Y-m-d',strtotime($date->start_date))])) continue;
-                if(!$date->active or !$date->number or !$date->price) return false;
+                if(!$date->active) return false;
+
+                $rawCapacity = $date->number;
+                if($rawCapacity === null || $rawCapacity === ''){
+                    $rawCapacity = $this->number;
+                }
+                $capacity = is_numeric($rawCapacity) ? (int)$rawCapacity : null;
+                if($capacity === null){
+                    $capacity = (int)($this->number ?? 0);
+                }
+                if($capacity <= 0){
+                    return false;
+                }
+
+                $priceForDate = static::toFloat($date->price);
+                if ($priceForDate === null) {
+                    $priceForDate = static::toFloat($this->price) ?? 0.0;
+                }
 
                 $allDates[date('Y-m-d',strtotime($date->start_date))] = [
-                    'number'=>$date->number,
-                    'price'=>$date->price,
+                    'number'=>$capacity,
+                    'price'=>$priceForDate,
                     'status'=>true
                 ];
             }
@@ -1389,10 +1476,25 @@ class Car extends Bookable
             'unit_price' => $unitPrice,
             'base_fee' => $baseFee,
             'passengers' => $passengerCount,
+            'transfer_date' => $transferDate,
         ]);
 
         if ($transferDate) {
-            if (!$this->isAvailableInRanges($transferDate, $transferDate, 1)) {
+            try {
+                $transferDay = Carbon::parse($transferDate, 'Asia/Tbilisi')->setTimezone('Asia/Tbilisi');
+            } catch (\Exception $exception) {
+                $this->clearTransferContext();
+                return false;
+            }
+
+            $startOfDay = $transferDay->copy()->startOfDay();
+            $endOfDay = $transferDay->copy()->endOfDay();
+
+            if (!$this->isAvailableInRanges(
+                $startOfDay->format('Y-m-d H:i:s'),
+                $endOfDay->format('Y-m-d H:i:s'),
+                $passengerCount
+            )) {
                 $this->clearTransferContext();
                 return false;
             }
@@ -1492,6 +1594,7 @@ class Car extends Bookable
             'dropoff' => null,
             'pickup_location_id' => null,
             'transfer_datetime' => null,
+            'transfer_date' => null,
             'pricing_mode' => null,
             'unit_price' => null,
             'base_fee' => null,
