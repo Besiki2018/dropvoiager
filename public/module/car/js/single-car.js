@@ -731,6 +731,11 @@
                 if (!dropoff.place_id || isNaN(dropLat) || isNaN(dropLng)) {
                     return false;
                 }
+                if ((meta.mode || '') !== 'fixed') {
+                    if (!userPickup.place_id || isNaN(userLat) || isNaN(userLng)) {
+                        return false;
+                    }
+                }
                 return true;
             },
             shouldRequestAvailability:function () {
@@ -1295,6 +1300,17 @@
                 if(!this.dropoff || isNaN(dropLat) || isNaN(dropLng) || !this.dropoff.place_id){
                     this.setFieldError('dropoff', bravo_booking_i18n.dropoff_required || 'Please choose a drop-off location.');
                     isValid = false;
+                }
+
+                var requiresUserPickup = !this.pricing_meta || (this.pricing_meta.mode !== 'fixed');
+                if (requiresUserPickup) {
+                    var userPickup = this.user_pickup || {};
+                    var uLat = parseFloat(userPickup.lat);
+                    var uLng = parseFloat(userPickup.lng);
+                    if (!userPickup.place_id || isNaN(uLat) || isNaN(uLng)) {
+                        this.setFieldError('user_pickup', bravo_booking_i18n.pickup_required || 'Please set an exact pickup location.');
+                        isValid = false;
+                    }
                 }
 
                 if (this.transfer_quote_error) {

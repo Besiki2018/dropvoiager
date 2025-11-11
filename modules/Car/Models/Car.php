@@ -562,12 +562,13 @@ class Car extends Bookable
         $pickupLocationId = $request->input('pickup_location_id') ?? Arr::get($pickupPayload, 'id');
         $pickupLocation = null;
         if ($pickupLocationId) {
-            $pickupLocation = $this->pickupLocations()->where('id', $pickupLocationId)->first();
+            $pickupLocation = CarPickupLocation::query()
+                ->availableForCar($this)
+                ->where('id', $pickupLocationId)
+                ->first();
+
             if (!$pickupLocation) {
                 return $this->sendError(__('transfers.booking.invalid_pickup_location'));
-            }
-            if ($pickupLocation->car_id !== $this->id || !$pickupLocation->is_active) {
-                return $this->sendError(__('transfers.booking.unavailable_pickup'));
             }
         }
 
@@ -793,7 +794,11 @@ class Car extends Bookable
         ];
         $pickupLocationId = request()->input('pickup_location_id');
         if ($pickupLocationId) {
-            $pickupLocation = $this->pickupLocations()->where('id', $pickupLocationId)->first();
+            $pickupLocation = CarPickupLocation::query()
+                ->availableForCar($this)
+                ->where('id', $pickupLocationId)
+                ->first();
+
             if ($pickupLocation) {
                 $booking_data['pickup_location_id'] = $pickupLocation->id;
                 $booking_data['pickup_location'] = $pickupLocation->toFrontendArray();
@@ -1250,9 +1255,18 @@ class Car extends Bookable
         }
 
         if ($pickupLocationId = $request['pickup_location_id'] ?? null) {
-            $query->whereHas('pickupLocations', function ($subQuery) use ($pickupLocationId) {
-                $subQuery->where('id', $pickupLocationId)->where('is_active', true);
-            });
+            $pickupLocation = CarPickupLocation::query()
+                ->active()
+                ->where('id', $pickupLocationId)
+                ->first();
+
+            if ($pickupLocation) {
+                if ($pickupLocation->car_id) {
+                    $query->where($query->qualifyColumn('id'), $pickupLocation->car_id);
+                } elseif ($pickupLocation->vendor_id) {
+                    $query->where($query->qualifyColumn('author_id'), $pickupLocation->vendor_id);
+                }
+            }
         }
 
         $pickupFilter = $request['pickup'] ?? null;
@@ -1404,6 +1418,8 @@ class Car extends Bookable
         return TransferLocation::query()
             ->active()
             ->orderBy('name')
+            ->orderBy('address')
+            ->orderBy('id')
             ->get();
     }
 

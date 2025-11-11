@@ -156,6 +156,11 @@
                                        placeholder="{{ __('transfers.form.to_placeholder') }}"
                                        minlength="3"
                                        autocomplete="off">
+                                <div class="mt-15">
+                                    <div class="transfer-dropoff-map rounded-4 overflow-hidden" style="height: 260px;">
+                                        <div class="w-100 h-100 js-transfer-dropoff-map"></div>
+                                    </div>
+                                </div>
                                 <input type="hidden" class="js-transfer-dropoff-address" value="{{ $dropoffData['address'] ?? $dropoffData['name'] ?? '' }}">
                                 <input type="hidden" class="js-transfer-dropoff-name" value="{{ $dropoffData['name'] ?? $dropoffData['address'] ?? '' }}">
                                 <input type="hidden" class="js-transfer-dropoff-lat" value="{{ $dropoffData['lat'] ?? '' }}">

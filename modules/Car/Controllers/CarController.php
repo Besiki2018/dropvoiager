@@ -284,10 +284,14 @@ class CarController extends Controller
 
         $legacyQuery = CarPickupLocation::query()
             ->with(['car:id,title,status'])
-            ->whereHas('car', function ($builder) {
-                $builder->where('status', 'publish');
-            })
-            ->active();
+            ->active()
+            ->where(function ($builder) {
+                $builder->whereHas('car', function ($carQuery) {
+                    $carQuery->where('status', 'publish');
+                })->orWhere(function ($inner) {
+                    $inner->whereNull('car_id')->whereNull('vendor_id');
+                });
+            });
 
         if ($request->filled('car_id')) {
             $carIds = Arr::wrap($request->input('car_id'));
@@ -296,6 +300,8 @@ class CarController extends Controller
 
         $legacyLocations = $legacyQuery
             ->orderBy('name')
+            ->orderBy('address')
+            ->orderBy('id')
             ->get()
             ->map(function (CarPickupLocation $location) {
                 $payload = $location->toFrontendArray();
@@ -303,6 +309,11 @@ class CarController extends Controller
                 $displayLabel = $payload['display_name'] ?? $payload['name'] ?? $payload['address'] ?? '';
                 $payload['label'] = $displayLabel . (!empty($payload['car_title']) ? ' — ' . $payload['car_title'] : '');
                 return $payload;
+            })
+            ->filter(function (array $payload) {
+                return isset($payload['lat'], $payload['lng'])
+                    && is_numeric($payload['lat'])
+                    && is_numeric($payload['lng']);
             })
             ->values();
 
@@ -1097,6 +1108,26 @@ class CarController extends Controller
             $userRouteMetrics = $car::resolveRouteMetrics($normalizedUserPickup, $normalizedDropoff);
         }
 
+        $normalizedUserPickup = null;
+        if (is_numeric($userPickupLat) && is_numeric($userPickupLng)) {
+            $normalizedUserPickup = array_merge($userPickup, [
+                'lat' => (float) $userPickupLat,
+                'lng' => (float) $userPickupLng,
+            ]);
+        }
+
+        $pricingMode = $car->pricing_mode ?: 'per_km';
+        if ($pricingMode !== 'fixed') {
+            if (!$normalizedUserPickup || empty($userPickupPlaceId)) {
+                return $this->sendError(__('transfers.form.pickup_coordinates_required'), [], 422);
+            }
+        }
+
+        $userRouteMetrics = null;
+        if ($normalizedUserPickup) {
+            $userRouteMetrics = $car::resolveRouteMetrics($normalizedUserPickup, $normalizedDropoff);
+        }
+
         $car->clearTransferContext();
 
         $applied = $car->applyTransferContext(
@@ -1162,6 +1193,16 @@ class CarController extends Controller
             $car_related = $this->carClass::where('location_id', $location_id)->where("status", "publish")->take($this->limitRelated ?? 4)->whereNotIn('id', [$row->id])->with(['location','translation','hasWishList'])->get();
         }
         $review_list = $row->getReviewList();
+
+        $availablePickupLocations = CarPickupLocation::query()
+            ->with(['car:id,title'])
+            ->availableForCar($row)
+            ->orderByRaw("CASE WHEN name IS NULL OR name = '' THEN 1 ELSE 0 END")
+            ->orderByRaw("CASE WHEN address IS NULL OR address = '' THEN 1 ELSE 0 END")
+            ->orderBy('name')
+            ->orderBy('address')
+            ->orderBy('id')
+            ->get();
 
         $pickupPayload = $request->input('pickup');
         if (is_string($pickupPayload)) {
