@@ -16,11 +16,22 @@
             transfer_quote:null,
             transfer_quote_loading:false,
             transfer_quote_error:'',
+            transfer_availability_loading:false,
+            transfer_availability_error:'',
+            transfer_availability_note:'',
+            transfer_availability_blocked:false,
+            transfer_time_slots:[],
+            availability_url:'',
+            availability_messages:{},
+            availability_timer:null,
+            availability_xhr:null,
             quote_xhr:null,
+            timezone_offset:'',
             is_initialising:true,
             datetime_required_message:'',
             pending_quote_refresh:false,
             quote_refresh_timer:null,
+            pending_availability_refresh:false,
             fieldErrors:{
                 pickup:'',
                 dropoff:'',
@@ -28,6 +39,7 @@
                 passengers:''
             },
             suppressPassengerWatch:false,
+            form_error_message:'',
             message:{
                 content:'',
                 type:false
@@ -78,6 +90,7 @@
                     }
                 }
                 this.handleTransferFieldChange();
+                this.handleAvailabilityFieldChange();
             },
             transfer_time:function () {
                 this.syncTransferDateState();
@@ -85,6 +98,9 @@
                     this.setFieldError('datetime', '');
                 }
                 this.handleTransferFieldChange();
+                if (this.hasTimeSlots && this.transfer_time && !this.isTimeSlotValid(this.transfer_time)) {
+                    this.transfer_time = '';
+                }
             },
             number:function (value) {
                 if (this.suppressPassengerWatch) {
@@ -106,11 +122,13 @@
                 }
                 this.setFieldError('passengers', '');
                 this.handleTransferFieldChange();
+                this.handleAvailabilityFieldChange();
             },
             pickup_location:{
                 handler:function () {
                     this.setFieldError('pickup', '');
                     this.handleTransferFieldChange();
+                    this.handleAvailabilityFieldChange();
                 },
                 deep:true
             },
@@ -118,11 +136,15 @@
                 handler:function () {
                     this.setFieldError('dropoff', '');
                     this.handleTransferFieldChange();
+                    this.handleAvailabilityFieldChange();
                 },
                 deep:true
             }
         },
         computed:{
+            hasTimeSlots:function () {
+                return Array.isArray(this.transfer_time_slots) && this.transfer_time_slots.length > 0;
+            },
             priceSummary:function () {
                 var quote = this.transfer_quote || null;
                 var meta = this.pricing_meta || {};
@@ -320,23 +342,47 @@
         mounted(){
             var me = this;
             var $root = $(this.$el);
-            var quoteUrl = $root.data('quoteUrl');
+            var quoteUrl = $root.data('quoteUrl') || $root.attr('data-quote-url') || '';
             if (quoteUrl) {
                 this.quote_url = quoteUrl;
             }
             var pricingMeta = $root.data('pricingMeta');
+            if (!pricingMeta || typeof pricingMeta !== 'object') {
+                pricingMeta = this.parseJsonAttribute($root.attr('data-pricing-meta'));
+            }
             if (pricingMeta) {
                 this.pricing_meta = pricingMeta;
             }
             var initialQuote = $root.data('initialQuote');
+            if (!initialQuote || typeof initialQuote !== 'object') {
+                initialQuote = this.parseJsonAttribute($root.attr('data-initial-quote'));
+            }
             if (initialQuote) {
                 this.transfer_quote = initialQuote;
             }
             if (window.BravoTransferForm && typeof window.BravoTransferForm.initAll === 'function') {
                 window.BravoTransferForm.initAll($root);
             }
+            var availabilityUrl = $root.data('availabilityUrl') || $root.attr('data-availability-url') || '';
+            if (availabilityUrl) {
+                this.availability_url = availabilityUrl;
+            }
+            var availabilityMessages = $root.data('availabilityMessages');
+            if (!availabilityMessages || typeof availabilityMessages !== 'object') {
+                availabilityMessages = this.parseJsonAttribute($root.attr('data-availability-messages')) || {};
+            }
+            if (availabilityMessages) {
+                this.availability_messages = availabilityMessages;
+            }
+            var timezoneOffset = $root.data('timezoneOffset') || $root.attr('data-timezone-offset') || '';
+            if (timezoneOffset) {
+                this.timezone_offset = timezoneOffset;
+            }
             $root.on('transfer:date-error', function (event, message) {
                 me.setFieldError('datetime', message || '');
+            });
+            $root.on('transfer:form-error', function (event, message) {
+                me.form_error_message = message || '';
             });
             $root.on('transfer:context-changed', function (event, context) {
                 context = context || {};
@@ -376,17 +422,31 @@
             }
             var dateField = $root.find('.js-transfer-date');
             if (dateField.length) {
-                this.transfer_date = dateField.val() || '';
+                var initialDateValue = dateField.val() || dateField.attr('value') || '';
+                this.transfer_date = initialDateValue;
+                dateField.val(initialDateValue);
             }
             var timeField = $root.find('.js-transfer-time');
             if (timeField.length) {
-                this.transfer_time = timeField.val() || '';
+                var initialTimeValue = timeField.val() || timeField.attr('value') || '';
+                if (initialTimeValue) {
+                    timeField.val(initialTimeValue);
+                }
+                this.transfer_time = initialTimeValue;
             }
             var datetimeMessage = $root.data('datetimeRequired');
             if (datetimeMessage) {
                 this.datetime_required_message = datetimeMessage;
             }
             this.syncTransferDateState();
+            if (this.pending_availability_refresh) {
+                this.pending_availability_refresh = false;
+                this.queueAvailabilityFetch(50);
+            } else if (this.transfer_date) {
+                this.queueAvailabilityFetch(50);
+            } else {
+                this.clearAvailabilityState();
+            }
             this.is_initialising = false;
             if (this.pending_quote_refresh) {
                 this.pending_quote_refresh = false;
@@ -397,8 +457,25 @@
         },
         beforeDestroy:function () {
             this.cancelQuoteRequest();
+            this.cancelAvailabilityRequest();
         },
         methods:{
+            parseJsonAttribute:function (value) {
+                if (!value) {
+                    return null;
+                }
+                if (typeof value === 'object') {
+                    return value;
+                }
+                if (typeof value !== 'string') {
+                    return null;
+                }
+                try {
+                    return JSON.parse(value);
+                } catch (err) {
+                    return null;
+                }
+            },
             handleTransferFieldChange:function () {
                 if (this.is_initialising) {
                     this.pending_quote_refresh = true;
@@ -406,6 +483,19 @@
                 }
                 this.pending_quote_refresh = false;
                 this.queueQuoteRefresh();
+            },
+            handleAvailabilityFieldChange:function () {
+                if (!this.transfer_date) {
+                    this.cancelAvailabilityRequest();
+                    this.clearAvailabilityState();
+                    return;
+                }
+                if (this.is_initialising) {
+                    this.pending_availability_refresh = true;
+                    return;
+                }
+                this.pending_availability_refresh = false;
+                this.queueAvailabilityFetch();
             },
             setFieldError:function (field, message) {
                 if (!this.fieldErrors || typeof field === 'undefined') {
@@ -548,6 +638,23 @@
                     me.refreshTransferQuote();
                 }, wait);
             },
+            queueAvailabilityFetch:function (delay) {
+                var me = this;
+                var wait = typeof delay === 'number' ? delay : 200;
+                if (!this.transfer_date) {
+                    this.cancelAvailabilityRequest();
+                    this.clearAvailabilityState();
+                    return;
+                }
+                if (this.availability_timer) {
+                    window.clearTimeout(this.availability_timer);
+                    this.availability_timer = null;
+                }
+                this.availability_timer = window.setTimeout(function () {
+                    me.availability_timer = null;
+                    me.fetchTransferAvailability();
+                }, wait);
+            },
             cancelQuoteRequest:function () {
                 if (this.quote_refresh_timer) {
                     window.clearTimeout(this.quote_refresh_timer);
@@ -557,6 +664,170 @@
                     this.quote_xhr.abort();
                     this.quote_xhr = null;
                 }
+            },
+            cancelAvailabilityRequest:function () {
+                if (this.availability_timer) {
+                    window.clearTimeout(this.availability_timer);
+                    this.availability_timer = null;
+                }
+                if (this.availability_xhr) {
+                    this.availability_xhr.abort();
+                    this.availability_xhr = null;
+                }
+            },
+            clearAvailabilityState:function () {
+                this.transfer_availability_loading = false;
+                this.transfer_availability_error = '';
+                this.transfer_availability_note = '';
+                this.transfer_availability_blocked = false;
+                this.transfer_time_slots = [];
+            },
+            fetchTransferAvailability:function () {
+                if (!this.availability_url || !this.transfer_date) {
+                    this.clearAvailabilityState();
+                    return;
+                }
+                this.cancelAvailabilityRequest();
+                this.transfer_availability_loading = true;
+                this.transfer_availability_error = '';
+                this.transfer_availability_blocked = false;
+                this.transfer_availability_note = '';
+                var requestData = {
+                    date: this.transfer_date,
+                    passengers: this.getPassengerCount()
+                };
+                if (this.pickup_location_id) {
+                    requestData.pickup_location_id = this.pickup_location_id;
+                }
+                var pickup = this.pickup_location || {};
+                var pickupLat = parseFloat(pickup.lat);
+                var pickupLng = parseFloat(pickup.lng);
+                if (!isNaN(pickupLat)) {
+                    requestData.pickup_lat = pickupLat;
+                }
+                if (!isNaN(pickupLng)) {
+                    requestData.pickup_lng = pickupLng;
+                }
+                var dropoff = this.dropoff || {};
+                var dropLat = parseFloat(dropoff.lat);
+                var dropLng = parseFloat(dropoff.lng);
+                if (!isNaN(dropLat)) {
+                    requestData.dropoff_lat = dropLat;
+                }
+                if (!isNaN(dropLng)) {
+                    requestData.dropoff_lng = dropLng;
+                }
+                if (dropoff.place_id) {
+                    requestData.dropoff_place_id = dropoff.place_id;
+                }
+                var me = this;
+                this.availability_xhr = $.ajax({
+                    url: this.availability_url,
+                    method: 'GET',
+                    dataType: 'json',
+                    data: requestData
+                }).done(function (response) {
+                    me.applyAvailabilityResult(response);
+                }).fail(function (xhr) {
+                    if (xhr && xhr.statusText === 'abort') {
+                        return;
+                    }
+                    var message = me.getAvailabilityMessage('fetch_failed');
+                    if (xhr && xhr.responseJSON && xhr.responseJSON.message) {
+                        message = xhr.responseJSON.message;
+                    }
+                    me.transfer_availability_error = message;
+                    me.transfer_availability_note = '';
+                    me.transfer_availability_blocked = true;
+                    me.transfer_time_slots = [];
+                }).always(function () {
+                    me.transfer_availability_loading = false;
+                    me.availability_xhr = null;
+                });
+            },
+            applyAvailabilityResult:function (response) {
+                var data = response && response.status && response.data ? response.data : null;
+                var dates = data && Array.isArray(data.dates) ? data.dates : [];
+                var match = null;
+                var targetDate = this.transfer_date;
+                for (var i = 0; i < dates.length; i++) {
+                    if (dates[i] && dates[i].date === targetDate) {
+                        match = dates[i];
+                        break;
+                    }
+                }
+                var note = '';
+                var slots = [];
+                this.transfer_availability_error = '';
+                this.transfer_availability_blocked = false;
+                if (match) {
+                    if (match.available) {
+                        if (Array.isArray(match.time_slots)) {
+                            for (var idx = 0; idx < match.time_slots.length; idx++) {
+                                var normalized = this.normalizeTimeSlot(match.time_slots[idx]);
+                                if (normalized) {
+                                    slots.push(normalized);
+                                }
+                            }
+                        }
+                        if (!slots.length) {
+                            note = match.note || this.getAvailabilityMessage('no_slots');
+                            this.transfer_availability_blocked = true;
+                        } else if (match.note) {
+                            note = match.note;
+                        }
+                    } else {
+                        note = match.note || this.getAvailabilityMessage('unavailable');
+                        this.transfer_availability_blocked = true;
+                    }
+                } else {
+                    note = this.getAvailabilityMessage('invalid_date');
+                    this.transfer_availability_blocked = true;
+                }
+                this.transfer_availability_note = note;
+                this.transfer_time_slots = slots;
+                if (this.transfer_time && (!this.isTimeSlotValid(this.transfer_time) || this.transfer_availability_blocked)) {
+                    this.transfer_time = '';
+                }
+            },
+            normalizeTimeSlot:function (slot) {
+                if (!slot && slot !== 0) {
+                    return null;
+                }
+                if (typeof slot === 'string' || typeof slot === 'number') {
+                    var value = String(slot);
+                    return {value: value, label: value, disabled: false};
+                }
+                if (typeof slot === 'object' && slot.value) {
+                    return {
+                        value: String(slot.value),
+                        label: slot.label || String(slot.value),
+                        disabled: !!slot.disabled
+                    };
+                }
+                return null;
+            },
+            isTimeSlotValid:function (value) {
+                if (!value) {
+                    return false;
+                }
+                if (!this.hasTimeSlots) {
+                    return true;
+                }
+                for (var i = 0; i < this.transfer_time_slots.length; i++) {
+                    var slot = this.transfer_time_slots[i];
+                    if (slot && slot.value === value && !slot.disabled) {
+                        return true;
+                    }
+                }
+                return false;
+            },
+            getAvailabilityMessage:function (key) {
+                if (!key || !this.availability_messages) {
+                    return '';
+                }
+                var message = this.availability_messages[key];
+                return message || '';
             },
             refreshTransferQuote:function () {
                 if (!this.quote_url) {
@@ -581,7 +852,7 @@
                 var datetimeField = $root.find('.js-transfer-datetime');
                 var transferDatetime = datetimeField.length ? datetimeField.val() : '';
                 if (!transferDatetime && this.transfer_date && this.transfer_time) {
-                    transferDatetime = this.transfer_date + 'T' + this.transfer_time + ':00+04:00';
+                    transferDatetime = this.buildTransferDatetime(this.transfer_date, this.transfer_time);
                 }
                 this.transfer_datetime = transferDatetime;
 
@@ -659,6 +930,33 @@
                 var parsed = parseFloat(value);
                 return isNaN(parsed) ? null : parsed;
             },
+            getTimezoneOffset:function () {
+                if (this.timezone_offset) {
+                    return this.timezone_offset;
+                }
+                if (window.bookingCore && window.bookingCore.timezone_offset) {
+                    this.timezone_offset = window.bookingCore.timezone_offset;
+                    return this.timezone_offset;
+                }
+                var now = new Date();
+                var offsetMinutes = now.getTimezoneOffset();
+                var sign = offsetMinutes <= 0 ? '+' : '-';
+                var absolute = Math.abs(offsetMinutes);
+                var hours = Math.floor(absolute / 60);
+                var minutes = absolute % 60;
+                var pad = function (value) {
+                    return value < 10 ? '0' + value : String(value);
+                };
+                this.timezone_offset = sign + pad(hours) + ':' + pad(minutes);
+                return this.timezone_offset;
+            },
+            buildTransferDatetime:function (date, time) {
+                if (!date || !time) {
+                    return '';
+                }
+                var offset = this.getTimezoneOffset() || '+00:00';
+                return date + 'T' + time + ':00' + offset;
+            },
             validate(){
                 this.syncTransferDateState();
                 this.message.status = false;
@@ -666,9 +964,22 @@
                 this.clearFieldErrors();
 
                 var isValid = true;
-                if(!this.transfer_date || !this.transfer_time)
-                {
+                if (!this.transfer_date) {
                     this.setFieldError('datetime', this.datetime_required_message || bravo_booking_i18n.no_date_select);
+                    isValid = false;
+                } else if (!this.transfer_time) {
+                    this.setFieldError('datetime', this.datetime_required_message || bravo_booking_i18n.no_date_select);
+                    isValid = false;
+                } else if (this.hasTimeSlots && !this.isTimeSlotValid(this.transfer_time)) {
+                    this.setFieldError('datetime', this.getAvailabilityMessage('time_required') || this.datetime_required_message || bravo_booking_i18n.no_date_select);
+                    isValid = false;
+                }
+                if (this.transfer_availability_error) {
+                    this.setFieldError('datetime', this.transfer_availability_error);
+                    isValid = false;
+                } else if (this.transfer_availability_blocked) {
+                    var availabilityMessage = this.transfer_availability_note || this.getAvailabilityMessage('time_required') || this.datetime_required_message || bravo_booking_i18n.no_date_select;
+                    this.setFieldError('datetime', availabilityMessage);
                     isValid = false;
                 }
 
@@ -725,9 +1036,6 @@
 
                 var $root = $(this.$el);
                 this.pickup_location_id = $root.find('.js-transfer-pickup').val();
-                if (this.pickup_location_id === '__mylocation__') {
-                    this.pickup_location_id = '';
-                }
                 var pickupPayload = $root.find('.js-transfer-pickup-payload').val();
                 if (pickupPayload) {
                     try {
@@ -750,7 +1058,7 @@
                 var transferDatetimeField = $root.find('.js-transfer-datetime');
                 this.transfer_datetime = transferDatetimeField.length ? transferDatetimeField.val() : '';
                 if (!this.transfer_datetime && transferDate && transferTime) {
-                    this.transfer_datetime = transferDate + 'T' + transferTime + ':00+04:00';
+                    this.transfer_datetime = this.buildTransferDatetime(transferDate, transferTime);
                 }
 
                 if(!this.validate()) return false;

@@ -54,6 +54,13 @@ return [
         'distance_error' => 'Unable to calculate the travel distance for the selected locations.',
         'unavailable_pickup' => 'This vehicle is not available for the chosen pickup location.',
         'passengers_invalid' => 'Please choose a valid number of passengers.',
+        'availability_fetch_failed' => 'We could not load availability for the selected date. Please try again.',
+        'availability_no_slots' => 'No time slots are available for the selected date. Please choose another date.',
+        'availability_unavailable' => 'This vehicle is fully booked for the selected date. Please choose another date.',
+        'availability_invalid_date' => 'Select a valid date to check availability.',
+        'availability_time_required' => 'Please choose an available time slot.',
+        'availability_loading' => 'Checking availability…',
+        'state_restore_failed' => 'We were unable to restore your saved transfer details. Please review the form and try again.',
     ],
     'admin' => [
         'pickups' => [
