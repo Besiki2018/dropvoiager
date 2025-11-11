@@ -320,15 +320,21 @@
         mounted(){
             var me = this;
             var $root = $(this.$el);
-            var quoteUrl = $root.data('quoteUrl');
+            var quoteUrl = $root.data('quoteUrl') || $root.attr('data-quote-url') || '';
             if (quoteUrl) {
                 this.quote_url = quoteUrl;
             }
             var pricingMeta = $root.data('pricingMeta');
+            if (!pricingMeta || typeof pricingMeta !== 'object') {
+                pricingMeta = this.parseJsonAttribute($root.attr('data-pricing-meta'));
+            }
             if (pricingMeta) {
                 this.pricing_meta = pricingMeta;
             }
             var initialQuote = $root.data('initialQuote');
+            if (!initialQuote || typeof initialQuote !== 'object') {
+                initialQuote = this.parseJsonAttribute($root.attr('data-initial-quote'));
+            }
             if (initialQuote) {
                 this.transfer_quote = initialQuote;
             }
@@ -376,11 +382,17 @@
             }
             var dateField = $root.find('.js-transfer-date');
             if (dateField.length) {
-                this.transfer_date = dateField.val() || '';
+                var initialDateValue = dateField.val() || dateField.attr('value') || '';
+                this.transfer_date = initialDateValue;
+                dateField.val(initialDateValue);
             }
             var timeField = $root.find('.js-transfer-time');
             if (timeField.length) {
-                this.transfer_time = timeField.val() || '';
+                var initialTimeValue = timeField.val() || timeField.attr('value') || '';
+                if (initialTimeValue) {
+                    timeField.val(initialTimeValue);
+                }
+                this.transfer_time = initialTimeValue;
             }
             var datetimeMessage = $root.data('datetimeRequired');
             if (datetimeMessage) {
@@ -399,6 +411,22 @@
             this.cancelQuoteRequest();
         },
         methods:{
+            parseJsonAttribute:function (value) {
+                if (!value) {
+                    return null;
+                }
+                if (typeof value === 'object') {
+                    return value;
+                }
+                if (typeof value !== 'string') {
+                    return null;
+                }
+                try {
+                    return JSON.parse(value);
+                } catch (err) {
+                    return null;
+                }
+            },
             handleTransferFieldChange:function () {
                 if (this.is_initialising) {
                     this.pending_quote_refresh = true;
