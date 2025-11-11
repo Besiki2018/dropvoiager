@@ -330,7 +330,10 @@ class CarController extends Controller
 
     protected function resolveTransferTimeSlots(Car $car, Carbon $date, int $passengers): array
     {
-        $baseSlots = $this->generateBaseTimeSlots($date);
+        $baseSlots = $this->generateTimeSlotsFromAvailability($car, $date, $passengers);
+        if (empty($baseSlots)) {
+            $baseSlots = $this->generateBaseTimeSlots($date);
+        }
         if (empty($baseSlots)) {
             return [];
         }
@@ -349,6 +352,107 @@ class CarController extends Controller
         }
 
         return $availableSlots;
+    }
+
+    protected function generateTimeSlotsFromAvailability(Car $car, Carbon $date, int $passengers): array
+    {
+        $windows = $this->getAvailabilityWindows($car, $date, $passengers);
+        if (empty($windows)) {
+            return [];
+        }
+
+        $step = (int) setting_item('car_transfer_time_step', 30);
+        if ($step <= 0) {
+            $step = 30;
+        }
+
+        $values = [];
+        $maxIterations = (int) ceil((24 * 60) / max($step, 1)) + 2;
+        foreach ($windows as $window) {
+            $start = $window['start']->copy()->second(0);
+            $end = $window['end']->copy()->second(0);
+            if ($end->lt($start)) {
+                continue;
+            }
+
+            $cursor = $start->copy();
+            $iteration = 0;
+            while ($cursor->lte($end) && $iteration <= $maxIterations) {
+                $value = $cursor->format('H:i');
+                if (!in_array($value, $values, true)) {
+                    $values[] = $value;
+                }
+                $cursor->addMinutes($step);
+                $iteration++;
+            }
+        }
+
+        sort($values);
+
+        return array_map(function ($value) {
+            return [
+                'value' => $value,
+                'label' => $value,
+                'disabled' => false,
+            ];
+        }, $values);
+    }
+
+    protected function getAvailabilityWindows(Car $car, Carbon $date, int $passengers): array
+    {
+        $start = $date->copy()->startOfDay();
+        $end = $date->copy()->endOfDay();
+        $ranges = $car->getDatesInRange(
+            $start->format('Y-m-d H:i:s'),
+            $end->format('Y-m-d H:i:s')
+        );
+
+        if ($ranges instanceof \Illuminate\Support\Collection) {
+            if ($ranges->isEmpty()) {
+                return [];
+            }
+        } elseif (empty($ranges)) {
+            return [];
+        }
+
+        $windows = [];
+        foreach ($ranges as $range) {
+            if (!$range->active) {
+                continue;
+            }
+
+            $capacity = is_numeric($range->number) ? (int) $range->number : null;
+            if ($capacity !== null) {
+                if ($capacity <= 0) {
+                    continue;
+                }
+                if ($capacity < $passengers) {
+                    continue;
+                }
+            }
+
+            if (empty($range->start_date) || empty($range->end_date)) {
+                continue;
+            }
+
+            try {
+                $startTime = Carbon::parse($range->start_date)->setTimezone('Asia/Tbilisi');
+                $endTime = Carbon::parse($range->end_date)->setTimezone('Asia/Tbilisi');
+            } catch (\Exception $exception) {
+                continue;
+            }
+
+            if ($endTime->lt($startTime)) {
+                continue;
+            }
+
+            $windows[] = [
+                'start' => $startTime,
+                'end' => $endTime,
+            ];
+        }
+
+        return $windows;
     }
 
     protected function generateBaseTimeSlots(Carbon $date): array
