@@ -50,6 +50,12 @@
                             @case ('location')
                                 @include('Layout::common.search.fields.location')
                                 @break
+                            @case ('pickup')
+                                @include('Layout::common.search.fields.pickup')
+                                @break
+                            @case ('dropoff')
+                                @include('Layout::common.search.fields.dropoff')
+                                @break
                             @case ('date')
                                 @include('Layout::common.search.fields.date')
                                 @break
