@@ -29,11 +29,19 @@ Route::group(['prefix'=>'availability'],function(){
     Route::post('/settings/{car}','AvailabilityController@updateSettings')->name('car.admin.availability.updateSettings');
 });
 
-Route::group(['prefix' => 'pickup-locations'], function () {
-    Route::get('/', 'PickupLocationController@index')->name('car.admin.pickup-locations.index');
-    Route::get('/create', 'PickupLocationController@create')->name('car.admin.pickup-locations.create');
-    Route::get('/edit/{id}', 'PickupLocationController@edit')->name('car.admin.pickup-locations.edit');
-    Route::post('/store/{id?}', 'PickupLocationController@store')->name('car.admin.pickup-locations.store');
-    Route::post('/bulk', 'PickupLocationController@bulkEdit')->name('car.admin.pickup-locations.bulk');
+Route::group(['prefix' => 'transfer-locations'], function () {
+    Route::get('/', 'TransferLocationController@index')->name('car.admin.transfer-locations.index');
+    Route::get('/create', 'TransferLocationController@create')->name('car.admin.transfer-locations.create');
+    Route::get('/edit/{id}', 'TransferLocationController@edit')->name('car.admin.transfer-locations.edit');
+    Route::post('/store/{id?}', 'TransferLocationController@store')->name('car.admin.transfer-locations.store');
+    Route::delete('/{id}', 'TransferLocationController@destroy')->name('car.admin.transfer-locations.destroy');
+});
+
+Route::group(['prefix' => 'transfer-service-centers'], function () {
+    Route::get('/', 'TransferServiceCenterController@index')->name('car.admin.transfer-service-centers.index');
+    Route::get('/create', 'TransferServiceCenterController@create')->name('car.admin.transfer-service-centers.create');
+    Route::get('/edit/{id}', 'TransferServiceCenterController@edit')->name('car.admin.transfer-service-centers.edit');
+    Route::post('/store/{id?}', 'TransferServiceCenterController@store')->name('car.admin.transfer-service-centers.store');
+    Route::delete('/{id}', 'TransferServiceCenterController@destroy')->name('car.admin.transfer-service-centers.destroy');
 });
 

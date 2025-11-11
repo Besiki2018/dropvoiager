@@ -3,6 +3,7 @@ use \Illuminate\Support\Facades\Route;
 
 Route::group(['prefix'=>config('car.car_route_prefix')],function(){
     Route::get('/pickup-locations','CarController@pickupLocations')->name('car.pickup_locations');
+    Route::get('/transfer-locations','CarController@transferLocations')->name('car.transfer_locations');
     Route::get('/transfer-availability/{car}','CarController@availability')->name('car.transfer.availability');
     Route::post('/transfer-quote/{car}','CarController@quote')->name('car.transfer.quote');
     Route::get('/','CarController@index')->name('car.search'); // Search
@@ -20,12 +21,20 @@ Route::group(['prefix'=>'user/'.config('car.car_route_prefix'),'middleware' => [
     Route::get('/recovery','ManageCarController@recovery')->name('car.vendor.recovery');
     Route::get('/restore/{id}','ManageCarController@restore')->name('car.vendor.restore');
 
-    Route::group(['prefix' => 'pickup-locations'], function () {
-        Route::get('/', 'ManagePickupLocationController@index')->name('car.vendor.pickup-locations.index');
-        Route::get('/create', 'ManagePickupLocationController@create')->name('car.vendor.pickup-locations.create');
-        Route::get('/edit/{id}', 'ManagePickupLocationController@edit')->name('car.vendor.pickup-locations.edit');
-        Route::post('/store/{id?}', 'ManagePickupLocationController@store')->name('car.vendor.pickup-locations.store');
-        Route::post('/delete/{id}', 'ManagePickupLocationController@destroy')->name('car.vendor.pickup-locations.destroy');
+    Route::group(['prefix' => 'transfer-locations'], function () {
+        Route::get('/', 'Vendor\\TransferLocationController@index')->name('car.vendor.transfer-locations.index');
+        Route::get('/create', 'Vendor\\TransferLocationController@create')->name('car.vendor.transfer-locations.create');
+        Route::get('/edit/{id}', 'Vendor\\TransferLocationController@edit')->name('car.vendor.transfer-locations.edit');
+        Route::post('/store/{id?}', 'Vendor\\TransferLocationController@store')->name('car.vendor.transfer-locations.store');
+        Route::delete('/{id}', 'Vendor\\TransferLocationController@destroy')->name('car.vendor.transfer-locations.destroy');
+    });
+
+    Route::group(['prefix' => 'transfer-service-centers'], function () {
+        Route::get('/', 'Vendor\\TransferServiceCenterController@index')->name('car.vendor.transfer-service-centers.index');
+        Route::get('/create', 'Vendor\\TransferServiceCenterController@create')->name('car.vendor.transfer-service-centers.create');
+        Route::get('/edit/{id}', 'Vendor\\TransferServiceCenterController@edit')->name('car.vendor.transfer-service-centers.edit');
+        Route::post('/store/{id?}', 'Vendor\\TransferServiceCenterController@store')->name('car.vendor.transfer-service-centers.store');
+        Route::delete('/{id}', 'Vendor\\TransferServiceCenterController@destroy')->name('car.vendor.transfer-service-centers.destroy');
     });
 });
 

@@ -424,6 +424,8 @@
             var dropoffLng = $form.find('.js-transfer-dropoff-lng').first();
             var dropoffPlaceId = $form.find('.js-transfer-dropoff-place-id').first();
             var dropoffMapContainer = $form.find('.js-transfer-dropoff-map').first();
+            var dropoffMap = null;
+            var dropoffMarker = null;
             var userPickupJsonInput = $form.find('.js-transfer-user-pickup-json').first();
             var userPickupDisplay = $form.find('.js-transfer-user-pickup-display').first();
             var userPickupFormatted = $form.find('.js-transfer-user-pickup-formatted').first();
@@ -442,8 +444,6 @@
             var dropoffResolveToken = null;
             var lastResolvedDropoffValue = '';
             var dropoffInputDebounceTimer = null;
-            var dropoffMap = null;
-            var dropoffMarker = null;
             var userPickupResolveToken = null;
             var userPickupMap = null;
             var userPickupMarker = null;
@@ -486,151 +486,6 @@
                 if (window.BravoTransferRoute && typeof window.BravoTransferRoute.setContext === 'function') {
                     window.BravoTransferRoute.setContext(context.pickup, context.dropoff, context.userPickup);
                 }
-                if (!center) {
-                    center = {lat: 41.7151, lng: 44.8271};
-                }
-                userPickupMap = new google.maps.Map(userPickupMapContainer[0], {
-                    center: center,
-                    zoom: 12
-                });
-                userPickupMarker = new google.maps.Marker({
-                    map: userPickupMap,
-                    draggable: true,
-                    visible: false
-                });
-                google.maps.event.addListener(userPickupMap, 'click', function (event) {
-                    if (!event || !event.latLng) {
-                        return;
-                    }
-                    var latLng = event.latLng;
-                    var payload = sanitiseUserPickupPayload({
-                        formatted_address: userPickupFormatted.val() || userPickupAddress.val(),
-                        address: userPickupAddress.val(),
-                        place_id: '',
-                        lat: latLng.lat(),
-                        lng: latLng.lng()
-                    });
-                    setUserPickupPayload(payload, {preserveDisplay: true, skipMarker: true, silent: true});
-                    updateUserPickupMarker(payload);
-                    resolveUserPickupByLatLng(latLng);
-                    emitTransferUpdate();
-                });
-                google.maps.event.addListener(userPickupMarker, 'dragend', function (event) {
-                    if (!event || !event.latLng) {
-                        return;
-                    }
-                    var latLng = event.latLng;
-                    var payload = sanitiseUserPickupPayload({
-                        formatted_address: userPickupFormatted.val() || userPickupAddress.val(),
-                        address: userPickupAddress.val(),
-                        place_id: userPickupPlaceIdInput.val(),
-                        lat: latLng.lat(),
-                        lng: latLng.lng()
-                    });
-                    setUserPickupPayload(payload, {preserveDisplay: true, skipMarker: true, silent: true});
-                    updateUserPickupMarker(payload, {preserveCenter: true});
-                    resolveUserPickupByLatLng(latLng);
-                    emitTransferUpdate();
-                });
-                updateUserPickupMarker(initialPayload, {preserveCenter: true});
-            }
-
-            function geocodeUserPickupAddress(query, options) {
-                options = options || {};
-                if (!query) {
-                    clearUserPickupPayload(options);
-                    return;
-                }
-                if (!userPickupMapContainer.length) {
-                    setUserPickupPayload({
-                        formatted_address: query,
-                        address: query,
-                        name: query,
-                        place_id: '',
-                        lat: null,
-                        lng: null
-                    }, {silent: options.silent, preserveDisplay: true, skipMarker: true});
-                    return;
-                }
-                var geocoder = getGeocoder();
-                if (!geocoder) {
-                    ensureGoogleMapsScript();
-                    return;
-                }
-                if (userPickupResolveToken && typeof userPickupResolveToken.cancelled !== 'undefined') {
-                    userPickupResolveToken.cancelled = true;
-                }
-                var requestToken = {cancelled: false};
-                userPickupResolveToken = requestToken;
-                geocoder.geocode({address: query}, function (results, status) {
-                    if (requestToken.cancelled) {
-                        return;
-                    }
-                    userPickupResolveToken = null;
-                    if (status === 'OK' && results && results.length) {
-                        var best = results[0];
-                        var location = best.geometry && best.geometry.location;
-                        var payload = sanitiseUserPickupPayload({
-                            formatted_address: best.formatted_address || query,
-                            address: best.formatted_address || query,
-                            name: best.name || best.formatted_address || query,
-                            place_id: best.place_id || '',
-                            lat: location && typeof location.lat === 'function' ? location.lat() : (location ? location.lat : null),
-                            lng: location && typeof location.lng === 'function' ? location.lng() : (location ? location.lng : null)
-                        });
-                        setUserPickupPayload(payload);
-                        return;
-                    }
-                    if (!options.silent && userPickupDisplay.length && userPickupDisplay[0].setCustomValidity) {
-                        userPickupDisplay[0].setCustomValidity('{{ __('transfers.form.pickup_coordinates_required') }}');
-                        userPickupDisplay[0].reportValidity();
-                    }
-                });
-            }
-
-            function setupUserPickupInputHandlers() {
-                if (!userPickupDisplay.length) {
-                    return;
-                }
-                userPickupDisplay.on('focus', function () {
-                    if (this.setCustomValidity) {
-                        this.setCustomValidity('');
-                    }
-                });
-                userPickupDisplay.on('input', function () {
-                    if (userPickupMapContainer.length) {
-                        return;
-                    }
-                    var text = $.trim(userPickupDisplay.val());
-                    setUserPickupPayload({
-                        formatted_address: text,
-                        address: text,
-                        name: text,
-                        place_id: userPickupPlaceIdInput.length ? userPickupPlaceIdInput.val() : '',
-                        lat: userPickupLatInput.length ? userPickupLatInput.val() : null,
-                        lng: userPickupLngInput.length ? userPickupLngInput.val() : null
-                    }, {skipMarker: true, preserveDisplay: true});
-                });
-                userPickupDisplay.on('keydown', function (event) {
-                    if (event.key === 'Enter') {
-                        event.preventDefault();
-                        var text = $.trim(userPickupDisplay.val());
-                        if (text && text.length >= 3) {
-                            geocodeUserPickupAddress(text);
-                        }
-                    }
-                });
-                if (!userPickupMapContainer.length) {
-                    return;
-                }
-                userPickupDisplay.on('blur', function () {
-                    var text = $.trim(userPickupDisplay.val());
-                    if (!text) {
-                        clearUserPickupPayload();
-                        return;
-                    }
-                    geocodeUserPickupAddress(text);
-                });
             }
 
             function getUserPickupPayload() {
@@ -1211,6 +1066,7 @@
                     var displayValue = sanitised.address || sanitised.name || '';
                     setDropoffDisplayValue(displayValue);
                 }
+                updateDropoffMarker(sanitised, options);
                 dropoffDisplay.each(function () {
                     this.setCustomValidity('');
                 });
@@ -1225,6 +1081,7 @@
             function clearDropoffPayload() {
                 lastResolvedDropoffValue = '';
                 setDropoffPayload(null, {preserveDisplay: true});
+                updateDropoffMarker(null);
             }
 
             function updateDropoffMarker(payload, options) {
@@ -1370,6 +1227,114 @@
                     } catch (e) {}
                 }
                 return null;
+            }
+
+            function updateDropoffMarker(payload, options) {
+                options = options || {};
+                if (!dropoffMap) {
+                    return;
+                }
+                var hasCoords = payload && typeof payload === 'object' && !isNaN(parseFloat(payload.lat)) && !isNaN(parseFloat(payload.lng));
+                if (!dropoffMarker) {
+                    dropoffMarker = new google.maps.Marker({
+                        map: dropoffMap,
+                        draggable: true,
+                        visible: false
+                    });
+                    google.maps.event.addListener(dropoffMarker, 'dragend', function (event) {
+                        if (!event || !event.latLng) {
+                            return;
+                        }
+                        var dragPayload = sanitiseDropoffPayload({
+                            lat: event.latLng.lat(),
+                            lng: event.latLng.lng(),
+                            place_id: dropoffPlaceId.length ? dropoffPlaceId.val() : '',
+                            address: dropoffAddress.length ? dropoffAddress.val() : '',
+                            name: dropoffName.length ? dropoffName.val() : ''
+                        });
+                        setDropoffPayload(dragPayload, {preserveDisplay: true});
+                        resolveDropoffByLatLng(event.latLng);
+                    });
+                }
+                if (!hasCoords) {
+                    dropoffMarker.setVisible(false);
+                    return;
+                }
+                var position = new google.maps.LatLng(parseFloat(payload.lat), parseFloat(payload.lng));
+                dropoffMarker.setPosition(position);
+                dropoffMarker.setVisible(true);
+                if (!options.preserveCenter) {
+                    dropoffMap.setCenter(position);
+                }
+            }
+
+            function resolveDropoffByLatLng(latLng) {
+                var geocoder = getGeocoder();
+                if (!geocoder || !latLng) {
+                    return;
+                }
+                geocoder.geocode({location: latLng}, function (results, status) {
+                    if (status === 'OK' && results && results.length) {
+                        var first = results[0];
+                        var payload = sanitiseDropoffPayload({
+                            address: first.formatted_address || dropoffDisplay.val(),
+                            name: first.name || first.formatted_address || dropoffDisplay.val(),
+                            place_id: first.place_id || '',
+                            lat: latLng.lat(),
+                            lng: latLng.lng()
+                        });
+                        setDropoffPayload(payload, {preserveDisplay: false});
+                    }
+                });
+            }
+
+            function ensureDropoffMap() {
+                if (!dropoffMapContainer.length) {
+                    return;
+                }
+                if (dropoffMap) {
+                    return;
+                }
+                if (typeof google === 'undefined' || !google.maps) {
+                    schedule(ensureDropoffMap, 400);
+                    return;
+                }
+                var initialPayload = sanitiseDropoffPayload(getDropoffPayload());
+                var center = null;
+                if (initialPayload && !isNaN(parseFloat(initialPayload.lat)) && !isNaN(parseFloat(initialPayload.lng))) {
+                    center = {lat: parseFloat(initialPayload.lat), lng: parseFloat(initialPayload.lng)};
+                } else if (!isNaN(parseFloat(dropoffLat.val())) && !isNaN(parseFloat(dropoffLng.val()))) {
+                    center = {lat: parseFloat(dropoffLat.val()), lng: parseFloat(dropoffLng.val())};
+                } else {
+                    var parsedPickup = parseJsonValue(pickupJsonInput.val(), {onError: handleJsonParseError}) || {};
+                    var parsedPickupLat = parseFloat(parsedPickup.lat);
+                    var parsedPickupLng = parseFloat(parsedPickup.lng);
+                    if (!isNaN(parsedPickupLat) && !isNaN(parsedPickupLng)) {
+                        center = {lat: parsedPickupLat, lng: parsedPickupLng};
+                    }
+                }
+                if (!center) {
+                    center = {lat: 41.7151, lng: 44.8271};
+                }
+                dropoffMap = new google.maps.Map(dropoffMapContainer[0], {
+                    center: center,
+                    zoom: 12
+                });
+                google.maps.event.addListener(dropoffMap, 'click', function (event) {
+                    if (!event || !event.latLng) {
+                        return;
+                    }
+                    var payload = sanitiseDropoffPayload({
+                        lat: event.latLng.lat(),
+                        lng: event.latLng.lng(),
+                        place_id: '',
+                        address: dropoffAddress.length ? dropoffAddress.val() : dropoffDisplay.val(),
+                        name: dropoffName.length ? dropoffName.val() : dropoffDisplay.val()
+                    });
+                    setDropoffPayload(payload, {preserveDisplay: true});
+                    resolveDropoffByLatLng(event.latLng);
+                });
+                updateDropoffMarker(initialPayload, {preserveCenter: true});
             }
 
             pickupSelect.on('change', function () {
@@ -1599,6 +1564,7 @@
             }
 
             setupDropoffAutocomplete();
+            ensureDropoffMap();
             fetchPickupLocations();
             ensurePickupSelection();
 
@@ -1635,8 +1601,8 @@
                 }
             }
 
+            setupUserPickupAutocomplete();
             setupUserPickupInputHandlers();
-            ensureDropoffMap();
             ensureUserPickupMap();
 
             if (dateDisplay.length) {

@@ -84,7 +84,7 @@
                         <div class="text-15 text-light-1 ls-2 lh-16">
                             <select name="pickup_location_id"
                                     class="form-control js-transfer-pickup"
-                                    data-fetch-url="{{ route('car.pickup_locations') }}"
+                                    data-fetch-url="{{ route('car.transfer_locations') }}"
                                     data-default-label="{{ __('transfers.form.select_pickup_option') }}"
                                     @if($pickupLocations->isEmpty()) disabled @endif>
                                 <option value="">{{ __('transfers.form.select_pickup_option') }}</option>
@@ -92,9 +92,6 @@
                                     @php
                                         $payload = $location->toFrontendArray();
                                         $label = $payload['display_name'] ?? $location->display_name ?? $location->name ?? $location->address ?? '';
-                                        if (!empty($location->car?->title)) {
-                                            $label .= ' — ' . $location->car->title;
-                                        }
                                     @endphp
                                     <option value="{{ $location->id }}" data-source="backend" data-payload='@json($payload)' @if($location->id == $selectedPickupLocationId) selected @endif>{{ $label }}</option>
                                 @endforeach
@@ -167,14 +164,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-lg-3 align-self-center px-30 lg:py-20 lg:px-0">
-                <div class="searchMenu-date item">
-                    <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('transfers.form.time_label') }}</h4>
-                    <div class="text-15 text-light-1 ls-2 lh-16">
-                        <input type="time" name="transfer_time" class="form-control js-transfer-time" value="{{ $transferTime }}">
-                    </div>
-                </div>
-            </div>
+            <input type="hidden" name="transfer_time" class="js-transfer-time" value="{{ $transferTime }}">
             <input type="hidden" name="transfer_datetime" class="js-transfer-datetime" value="{{ $transferDatetime }}">
             @if(!empty($car_search_fields))
                 @foreach($car_search_fields as $field)
@@ -206,8 +196,8 @@
         </button>
     </div>
 </form>
-@push('js')
-    @once('transfer-form-script')
+@once
+    @push('js')
         @include('Car::frontend.layouts.partials.transfer-form-script')
-    @endonce
-@endpush
+    @endpush
+@endonce

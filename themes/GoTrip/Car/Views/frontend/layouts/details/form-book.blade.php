@@ -132,16 +132,13 @@
                                 <select class="form-control js-transfer-pickup"
                                         :class="{'is-invalid': fieldErrors.pickup}"
                                         name="pickup_location_id"
-                                        data-fetch-url="{{ route('car.pickup_locations', ['car_id' => $row->id]) }}"
-                                        data-default-label="{{ __('transfers.form.select_pickup_option') }}">
+                                        data-default-label="{{ __('transfers.form.select_pickup_option') }}"
+                                        data-fetch-url="{{ route('car.transfer_locations') }}">
                                     <option value="">{{ __('transfers.form.select_pickup_option') }}</option>
                                     @foreach($pickupLocations as $location)
                                         @php
                                             $payload = $location->toFrontendArray();
                                             $label = $payload['display_name'] ?? $location->display_name ?? $location->name ?? $location->address ?? '';
-                                            if (!empty($location->car?->title)) {
-                                                $label .= ' — ' . $location->car->title;
-                                            }
                                         @endphp
                                         <option value="{{ $location->id }}" data-source="backend" data-payload='@json($payload)' @if($location->id == $selectedPickupId) selected @endif>{{ $label }}</option>
                                     @endforeach
@@ -169,6 +166,11 @@
                                 <input type="hidden" class="js-transfer-dropoff-lat" value="{{ $dropoffData['lat'] ?? '' }}">
                                 <input type="hidden" class="js-transfer-dropoff-lng" value="{{ $dropoffData['lng'] ?? '' }}">
                                 <input type="hidden" class="js-transfer-dropoff-place-id" value="{{ $dropoffData['place_id'] ?? '' }}">
+                                <div class="mt-15">
+                                    <div class="transfer-dropoff-map rounded-4 overflow-hidden" style="height: 260px;">
+                                        <div class="w-100 h-100 js-transfer-dropoff-map"></div>
+                                    </div>
+                                </div>
                                 <input type="hidden" class="js-transfer-pickup-payload" value='@json($selectedPickupPayload)'>
                                 <input type="hidden" class="js-transfer-pickup-json" value='@json($selectedPickupPayload)'>
                                 <input type="hidden" class="js-transfer-dropoff-json" value='@json($dropoffData)'>
@@ -317,8 +319,8 @@
     </div>
 </div>
 @include("Booking::frontend.global.enquiry-form",['service_type'=>'car'])
-@push('js')
-    @once('transfer-form-script')
+@once
+    @push('js')
         @include('Car::frontend.layouts.partials.transfer-form-script')
-    @endonce
-@endpush
+    @endpush
+@endonce

@@ -72,6 +72,16 @@ class ModuleProvider extends ModuleServiceProvider
                         'title'      => __('Recovery'),
                         'permission' => 'car_view',
                     ],
+                    'transfer_locations'=>[
+                        'url'        => route('car.admin.transfer-locations.index'),
+                        'title'      => __('transfers.admin.locations.title'),
+                        'permission' => 'car_manage_attributes',
+                    ],
+                    'transfer_service_centers'=>[
+                        'url'        => route('car.admin.transfer-service-centers.index'),
+                        'title'      => __('transfers.admin.service_centers.title'),
+                        'permission' => 'car_manage_attributes',
+                    ],
                 ]
             ]
         ];
@@ -132,6 +142,16 @@ class ModuleProvider extends ModuleServiceProvider
                         'url'   => route('car.vendor.recovery'),
                         'title'      => __("Recovery"),
                         'permission' => 'car_create',
+                    ],
+                    [
+                        'url'   => route('car.vendor.transfer-locations.index'),
+                        'title'      => __('transfers.admin.locations.title'),
+                        'permission' => 'car_view',
+                    ],
+                    [
+                        'url'   => route('car.vendor.transfer-service-centers.index'),
+                        'title'      => __('transfers.admin.service_centers.title'),
+                        'permission' => 'car_view',
                     ],
                 ]
             ];

@@ -24,6 +24,7 @@ use Modules\Review\Models\Review;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\Car\Models\CarTranslation;
 use Modules\Car\Models\CarPickupLocation;
+use Modules\Car\Models\TransferLocation;
 use Modules\User\Models\UserWishList;
 use Modules\Location\Models\Location;
 
@@ -451,7 +452,7 @@ class Car extends Bookable
                 ]);
             }
             if ($pickupLocation = $request->attributes->get('transfer_pickup_location')) {
-                /** @var CarPickupLocation $pickupLocation */
+                /** @var CarPickupLocation|TransferLocation $pickupLocation */
                 $booking->addMeta('transfer_pickup_location_id', $pickupLocation->id);
             }
 
@@ -1414,10 +1415,8 @@ class Car extends Bookable
 
     public static function getAvailablePickupLocations()
     {
-        return CarPickupLocation::query()
-            ->availableForCar(null)
-            ->orderByRaw("CASE WHEN name IS NULL OR name = '' THEN 1 ELSE 0 END")
-            ->orderByRaw("CASE WHEN address IS NULL OR address = '' THEN 1 ELSE 0 END")
+        return TransferLocation::query()
+            ->active()
             ->orderBy('name')
             ->orderBy('address')
             ->orderBy('id')
@@ -1425,7 +1424,7 @@ class Car extends Bookable
     }
 
     public function applyTransferContext(
-        ?CarPickupLocation $pickupLocation,
+        CarPickupLocation|TransferLocation|null $pickupLocation,
         array $pickupPayload,
         array $dropoff,
         ?float $routeDistanceKm = null,
@@ -1468,8 +1467,18 @@ class Car extends Bookable
             }
         }
 
-        $radiusLat = $normalizedUserPickup['lat'] ?? $pickupLat;
-        $radiusLng = $normalizedUserPickup['lng'] ?? $pickupLng;
+        $pricingOrigin = $normalizedUserPickup ?: array_merge([
+            'formatted_address' => Arr::get($pickupPayload, 'formatted_address') ?: Arr::get($pickupPayload, 'address') ?: Arr::get($pickupPayload, 'name'),
+            'address' => Arr::get($pickupPayload, 'address') ?: Arr::get($pickupPayload, 'formatted_address') ?: Arr::get($pickupPayload, 'name'),
+            'name' => Arr::get($pickupPayload, 'name') ?: Arr::get($pickupPayload, 'display_name') ?: Arr::get($pickupPayload, 'address'),
+            'place_id' => Arr::get($pickupPayload, 'place_id'),
+        ], [
+            'lat' => $pickupLat,
+            'lng' => $pickupLng,
+        ]);
+
+        $radiusLat = static::toFloat(Arr::get($pricingOrigin, 'lat', $pickupLat));
+        $radiusLng = static::toFloat(Arr::get($pricingOrigin, 'lng', $pickupLng));
 
         if (!$this->isWithinServiceRadius($radiusLat, $radiusLng)) {
             return false;
@@ -1500,13 +1509,10 @@ class Car extends Bookable
             }
         } else {
             $pricingMode = 'per_km';
-            if ($normalizedUserPickup === null) {
-                return false;
-            }
-            $distance = $userRouteDistanceKm;
-            $duration = $userRouteDurationMin;
+            $distance = $userRouteDistanceKm ?? $routeDistanceKm;
+            $duration = $userRouteDurationMin ?? $routeDurationMin;
             if ($distance === null || $duration === null) {
-                $resolvedMetrics = static::resolveRouteMetrics($normalizedUserPickup, $dropoff);
+                $resolvedMetrics = static::resolveRouteMetrics($pricingOrigin, $dropoff);
                 if ($distance === null) {
                     $distance = $resolvedMetrics['distance_km'];
                 }
