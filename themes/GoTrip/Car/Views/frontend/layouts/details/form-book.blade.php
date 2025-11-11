@@ -281,6 +281,9 @@
                                 <div class="text-22 text-dark-1 fw-600" v-if="priceSummary.total" v-html="priceSummary.total"></div>
                             </div>
                         </div>
+                        <div class="col-12" v-if="html">
+                            <div v-html="html"></div>
+                        </div>
                         <div class="col-12">
                             <div class="submit-group">
                                 <a class="button -dark-1 py-15 px-35 h-60 col-12 rounded-4 bg-blue-1 text-white cursor-pointer" @click="doSubmit($event)" :class="{'disabled':onSubmit,'btn-success':(step == 2),'btn-primary':step == 1}" name="submit">
