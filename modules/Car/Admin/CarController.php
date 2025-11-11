@@ -225,6 +225,8 @@ class CarController extends AdminController
             'pricing_mode',
             'fixed_price',
             'price_per_km',
+            'transfer_time_start',
+            'transfer_time_end',
             'number',
             'price',
             'sale_price',
