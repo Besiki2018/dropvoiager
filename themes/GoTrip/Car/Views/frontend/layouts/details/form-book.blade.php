@@ -132,8 +132,8 @@
                                 <select class="form-control js-transfer-pickup"
                                         :class="{'is-invalid': fieldErrors.pickup}"
                                         name="pickup_location_id"
-                                        data-default-label="{{ __('transfers.form.select_pickup_option') }}"
-                                        data-fetch-url="{{ route('car.transfer_locations') }}">
+                                        data-fetch-url="{{ route('car.pickup_locations', ['car_id' => $row->id]) }}"
+                                        data-default-label="{{ __('transfers.form.select_pickup_option') }}">
                                     <option value="">{{ __('transfers.form.select_pickup_option') }}</option>
                                     @foreach($pickupLocations as $location)
                                         @php
@@ -186,6 +186,11 @@
                                        value="{{ $userPickupData['formatted_address'] ?? $userPickupData['address'] ?? '' }}"
                                        placeholder="{{ __('transfers.form.exact_pickup_placeholder') }}"
                                        autocomplete="off">
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-primary mt-10 js-transfer-user-pickup-locate"
+                                        data-loading-text="{{ __('transfers.form.locating') }}">
+                                    <i class="fa fa-location-arrow me-5"></i>{{ __('transfers.form.use_my_location') }}
+                                </button>
                                 <div class="mt-15">
                                     <div class="transfer-user-map rounded-4 overflow-hidden" style="height: 260px;">
                                         <div class="w-100 h-100 js-transfer-user-pickup-map"></div>
@@ -319,8 +324,8 @@
     </div>
 </div>
 @include("Booking::frontend.global.enquiry-form",['service_type'=>'car'])
-@once
-    @push('js')
+@push('js')
+    @once
         @include('Car::frontend.layouts.partials.transfer-form-script')
     @endpush
 @endonce

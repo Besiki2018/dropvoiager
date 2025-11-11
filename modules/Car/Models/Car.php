@@ -1415,8 +1415,10 @@ class Car extends Bookable
 
     public static function getAvailablePickupLocations()
     {
-        return TransferLocation::query()
-            ->active()
+        return CarPickupLocation::query()
+            ->availableForCar(null)
+            ->orderByRaw("CASE WHEN name IS NULL OR name = '' THEN 1 ELSE 0 END")
+            ->orderByRaw("CASE WHEN address IS NULL OR address = '' THEN 1 ELSE 0 END")
             ->orderBy('name')
             ->orderBy('address')
             ->orderBy('id')
@@ -1424,7 +1426,7 @@ class Car extends Bookable
     }
 
     public function applyTransferContext(
-        CarPickupLocation|TransferLocation|null $pickupLocation,
+        ?CarPickupLocation $pickupLocation,
         array $pickupPayload,
         array $dropoff,
         ?float $routeDistanceKm = null,
@@ -1467,18 +1469,8 @@ class Car extends Bookable
             }
         }
 
-        $pricingOrigin = $normalizedUserPickup ?: array_merge([
-            'formatted_address' => Arr::get($pickupPayload, 'formatted_address') ?: Arr::get($pickupPayload, 'address') ?: Arr::get($pickupPayload, 'name'),
-            'address' => Arr::get($pickupPayload, 'address') ?: Arr::get($pickupPayload, 'formatted_address') ?: Arr::get($pickupPayload, 'name'),
-            'name' => Arr::get($pickupPayload, 'name') ?: Arr::get($pickupPayload, 'display_name') ?: Arr::get($pickupPayload, 'address'),
-            'place_id' => Arr::get($pickupPayload, 'place_id'),
-        ], [
-            'lat' => $pickupLat,
-            'lng' => $pickupLng,
-        ]);
-
-        $radiusLat = static::toFloat(Arr::get($pricingOrigin, 'lat', $pickupLat));
-        $radiusLng = static::toFloat(Arr::get($pricingOrigin, 'lng', $pickupLng));
+        $radiusLat = $normalizedUserPickup['lat'] ?? $pickupLat;
+        $radiusLng = $normalizedUserPickup['lng'] ?? $pickupLng;
 
         if (!$this->isWithinServiceRadius($radiusLat, $radiusLng)) {
             return false;
@@ -1509,10 +1501,13 @@ class Car extends Bookable
             }
         } else {
             $pricingMode = 'per_km';
-            $distance = $userRouteDistanceKm ?? $routeDistanceKm;
-            $duration = $userRouteDurationMin ?? $routeDurationMin;
+            if ($normalizedUserPickup === null) {
+                return false;
+            }
+            $distance = $userRouteDistanceKm;
+            $duration = $userRouteDurationMin;
             if ($distance === null || $duration === null) {
-                $resolvedMetrics = static::resolveRouteMetrics($pricingOrigin, $dropoff);
+                $resolvedMetrics = static::resolveRouteMetrics($normalizedUserPickup, $dropoff);
                 if ($distance === null) {
                     $distance = $resolvedMetrics['distance_km'];
                 }
