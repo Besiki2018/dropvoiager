@@ -619,6 +619,12 @@
                 }
                 return true;
             },
+            shouldRequestAvailability:function () {
+                if (!this.transfer_date) {
+                    return false;
+                }
+                return this.shouldRequestQuote();
+            },
             queueQuoteRefresh:function (delay) {
                 var me = this;
                 var wait = typeof delay === 'number' ? delay : 200;
@@ -641,7 +647,7 @@
             queueAvailabilityFetch:function (delay) {
                 var me = this;
                 var wait = typeof delay === 'number' ? delay : 200;
-                if (!this.transfer_date) {
+                if (!this.shouldRequestAvailability()) {
                     this.cancelAvailabilityRequest();
                     this.clearAvailabilityState();
                     return;
@@ -683,7 +689,7 @@
                 this.transfer_time_slots = [];
             },
             fetchTransferAvailability:function () {
-                if (!this.availability_url || !this.transfer_date) {
+                if (!this.availability_url || !this.shouldRequestAvailability()) {
                     this.clearAvailabilityState();
                     return;
                 }
@@ -708,6 +714,14 @@
                 if (!isNaN(pickupLng)) {
                     requestData.pickup_lng = pickupLng;
                 }
+                requestData.pickup = JSON.stringify({
+                    id: pickup.id || '',
+                    name: pickup.name || pickup.address || '',
+                    address: pickup.address || pickup.name || '',
+                    lat: pickupLat,
+                    lng: pickupLng,
+                    source: pickup.source || ''
+                });
                 var dropoff = this.dropoff || {};
                 var dropLat = parseFloat(dropoff.lat);
                 var dropLng = parseFloat(dropoff.lng);
@@ -719,6 +733,17 @@
                 }
                 if (dropoff.place_id) {
                     requestData.dropoff_place_id = dropoff.place_id;
+                }
+                requestData.dropoff = JSON.stringify({
+                    address: dropoff.address || dropoff.name || '',
+                    name: dropoff.name || dropoff.address || '',
+                    lat: dropLat,
+                    lng: dropLng,
+                    place_id: dropoff.place_id || ''
+                });
+                if (this.transfer_time) {
+                    requestData.transfer_time = this.transfer_time;
+                    requestData.transfer_datetime = this.buildTransferDatetime(this.transfer_date, this.transfer_time);
                 }
                 var me = this;
                 this.availability_xhr = $.ajax({
