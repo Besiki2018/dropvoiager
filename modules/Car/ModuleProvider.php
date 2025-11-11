@@ -114,6 +114,11 @@ class ModuleProvider extends ModuleServiceProvider
                         'permission' => 'car_create',
                     ],
                     [
+                        'url'   => route('car.vendor.pickup-locations.index'),
+                        'title'      => __("Pickup locations"),
+                        'permission' => 'car_view',
+                    ],
+                    [
                         'url'        => route('car.vendor.availability.index'),
                         'title'      => __("Availability"),
                         'permission' => 'car_create',
