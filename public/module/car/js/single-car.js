@@ -823,44 +823,105 @@
             applyAvailabilityResult:function (response) {
                 var data = response && response.status && response.data ? response.data : null;
                 var dates = data && Array.isArray(data.dates) ? data.dates : [];
-                var match = null;
                 var targetDate = this.transfer_date;
+                var match = null;
+
                 for (var i = 0; i < dates.length; i++) {
-                    if (dates[i] && dates[i].date === targetDate) {
-                        match = dates[i];
+                    var candidate = dates[i] || {};
+                    var candidateDate = this.normalizeAvailabilityDate(candidate.date || candidate.day || candidate.date_iso || candidate.value);
+                    if (!candidateDate && candidate.date_time) {
+                        candidateDate = this.normalizeAvailabilityDate(candidate.date_time);
+                    }
+                    if (candidateDate && candidateDate === targetDate) {
+                        match = candidate;
                         break;
                     }
                 }
+
+                if (!match && data && data.date) {
+                    var normalizedDataDate = this.normalizeAvailabilityDate(data.date);
+                    if (normalizedDataDate && normalizedDataDate === targetDate) {
+                        match = data;
+                    }
+                }
+
+                if (!match && data && data.current_date) {
+                    var normalizedCurrentDate = this.normalizeAvailabilityDate(data.current_date);
+                    if (normalizedCurrentDate && normalizedCurrentDate === targetDate) {
+                        match = data;
+                    }
+                }
+
+                if (!match && dates.length === 1) {
+                    var fallbackCandidate = dates[0] || {};
+                    var fallbackDate = this.normalizeAvailabilityDate(fallbackCandidate.date || fallbackCandidate.day || fallbackCandidate.date_iso || fallbackCandidate.value);
+                    if (!targetDate || (fallbackDate && fallbackDate === targetDate)) {
+                        match = fallbackCandidate;
+                    }
+                }
+
+                var availabilityContext = match;
+                if (!availabilityContext && data) {
+                    if (Array.isArray(data.time_slots) || Array.isArray(data.slots) || Array.isArray(data.available_hours)) {
+                        availabilityContext = data;
+                    }
+                }
+
                 var note = '';
                 var slots = [];
                 this.transfer_availability_error = '';
                 this.transfer_availability_blocked = false;
-                if (match) {
-                    if (match.available) {
-                        if (Array.isArray(match.time_slots)) {
-                            for (var idx = 0; idx < match.time_slots.length; idx++) {
-                                var normalized = this.normalizeTimeSlot(match.time_slots[idx]);
-                                if (normalized) {
-                                    slots.push(normalized);
-                                }
+
+                if (availabilityContext) {
+                    var availableFlag = true;
+                    if (typeof availabilityContext.available !== 'undefined') {
+                        availableFlag = this.normalizeAvailabilityFlag(availabilityContext.available);
+                    } else if (typeof availabilityContext.is_available !== 'undefined') {
+                        availableFlag = this.normalizeAvailabilityFlag(availabilityContext.is_available);
+                    }
+
+                    var slotSources = [];
+                    if (Array.isArray(availabilityContext.time_slots)) {
+                        slotSources.push(availabilityContext.time_slots);
+                    }
+                    if (Array.isArray(availabilityContext.slots)) {
+                        slotSources.push(availabilityContext.slots);
+                    }
+                    if (Array.isArray(availabilityContext.available_hours)) {
+                        slotSources.push(availabilityContext.available_hours);
+                    }
+
+                    for (var sourceIndex = 0; sourceIndex < slotSources.length; sourceIndex++) {
+                        var source = slotSources[sourceIndex];
+                        for (var slotIndex = 0; slotIndex < source.length; slotIndex++) {
+                            var normalizedSlot = this.normalizeTimeSlot(source[slotIndex]);
+                            if (normalizedSlot) {
+                                slots.push(normalizedSlot);
                             }
                         }
+                    }
+
+                    if (availableFlag) {
                         if (!slots.length) {
-                            note = match.note || this.getAvailabilityMessage('no_slots');
+                            note = availabilityContext.note || availabilityContext.message || this.getAvailabilityMessage('no_slots');
                             this.transfer_availability_blocked = true;
-                        } else if (match.note) {
-                            note = match.note;
+                        } else if (availabilityContext.note) {
+                            note = availabilityContext.note;
+                        } else if (availabilityContext.message) {
+                            note = availabilityContext.message;
                         }
                     } else {
-                        note = match.note || this.getAvailabilityMessage('unavailable');
+                        note = availabilityContext.note || availabilityContext.message || this.getAvailabilityMessage('unavailable');
                         this.transfer_availability_blocked = true;
                     }
                 } else {
                     note = this.getAvailabilityMessage('invalid_date');
                     this.transfer_availability_blocked = true;
                 }
+
                 this.transfer_availability_note = note;
                 this.transfer_time_slots = slots;
+
                 var currentTime = this.transfer_time;
                 if (currentTime && (!this.isTimeSlotValid(currentTime) || this.transfer_availability_blocked)) {
                     currentTime = '';
@@ -890,6 +951,64 @@
                     };
                 }
                 return null;
+            },
+            normalizeAvailabilityDate:function (value) {
+                if (value === null || typeof value === 'undefined') {
+                    return '';
+                }
+                if (typeof value === 'string') {
+                    var trimmed = value.trim();
+                    if (!trimmed) {
+                        return '';
+                    }
+                    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+                        return trimmed;
+                    }
+                    if (trimmed.length >= 10 && /^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
+                        return trimmed.substr(0, 10);
+                    }
+                    if (typeof moment !== 'undefined') {
+                        var parsed = moment(trimmed, moment.ISO_8601, true);
+                        if (!parsed.isValid()) {
+                            parsed = moment(trimmed, 'YYYY-MM-DD', true);
+                        }
+                        if (parsed.isValid()) {
+                            return parsed.format('YYYY-MM-DD');
+                        }
+                    }
+                    return '';
+                }
+                if (typeof value === 'object') {
+                    if (value.date) {
+                        return this.normalizeAvailabilityDate(value.date);
+                    }
+                    if (value.value) {
+                        return this.normalizeAvailabilityDate(value.value);
+                    }
+                }
+                if (typeof value === 'number') {
+                    var intValue = parseInt(value, 10);
+                    if (!isNaN(intValue) && intValue > 0 && intValue < 100000000000) {
+                        return this.normalizeAvailabilityDate(String(intValue));
+                    }
+                }
+                return '';
+            },
+            normalizeAvailabilityFlag:function (value) {
+                if (typeof value === 'string') {
+                    var normalized = value.toLowerCase();
+                    if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+                        return false;
+                    }
+                    if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+                        return true;
+                    }
+                    return normalized !== '' && normalized !== 'null' && normalized !== 'undefined';
+                }
+                if (typeof value === 'number') {
+                    return value > 0;
+                }
+                return !!value;
             },
             isTimeSlotValid:function (value) {
                 if (!value) {
