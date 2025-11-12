@@ -25,6 +25,22 @@
                     </div>
                 </div>
 
+                <div class="col-lg-12">
+                    <div class="form-group mb-0">
+                        <label>
+                            <input type="checkbox" name="enable_price_by_distance" value="1" @if(!empty($row->enable_price_by_distance)) checked @endif>
+                            {{ __('Enable price by distance') }}
+                        </label>
+                        <div class="form-text text-muted">{{ __('When enabled, the booking total will be calculated from the distance between pickup and drop-off locations.') }}</div>
+                    </div>
+                </div>
+                <div class="col-lg-6 mt-3" data-condition="enable_price_by_distance:is(1)">
+                    <div class="form-group">
+                        <label class="control-label">{{ __('Price per kilometer') }}</label>
+                        <input type="number" step="0.01" min="0" name="price_per_km" class="form-control" value="{{$row->price_per_km}}" placeholder="{{ __('Ex: 2.50') }}">
+                    </div>
+                </div>
+
             </div>
         @endif
         @if(is_default_lang())

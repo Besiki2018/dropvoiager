@@ -64,7 +64,7 @@
             return;
         }
         loaderState.loading = true;
-        var params = ['libraries=places'];
+        var params = ['libraries=places,geometry'];
         if (typeof bookingCore !== 'undefined' && bookingCore.map_gmap_key) {
             params.unshift('key=' + bookingCore.map_gmap_key);
         }
@@ -163,6 +163,20 @@
                     placeId: '',
                     display: '',
                     payload: ''
+                },
+                userPickup: {
+                    address: '',
+                    name: '',
+                    lat: null,
+                    lng: null,
+                    placeId: '',
+                    display: '',
+                    payload: ''
+                },
+                route: {
+                    distanceKm: null,
+                    distanceText: '',
+                    durationText: ''
                 }
             };
             $context.data('transferFormState', state);
@@ -189,6 +203,102 @@
         }
     }
 
+    function formatDistanceText(km) {
+        if (typeof km !== 'number' || !isFinite(km)) {
+            return '';
+        }
+        return km.toFixed(2) + ' km';
+    }
+
+    function computeDistanceKm(pickup, dropoff) {
+        if (!pickup || !dropoff) {
+            return null;
+        }
+        if (typeof pickup.lat !== 'number' || typeof pickup.lng !== 'number' || typeof dropoff.lat !== 'number' || typeof dropoff.lng !== 'number') {
+            return null;
+        }
+        try {
+            if (window.google && google.maps && google.maps.geometry && google.maps.geometry.spherical && google.maps.LatLng) {
+                var from = new google.maps.LatLng(pickup.lat, pickup.lng);
+                var to = new google.maps.LatLng(dropoff.lat, dropoff.lng);
+                var meters = google.maps.geometry.spherical.computeDistanceBetween(from, to);
+                if (isFinite(meters)) {
+                    return meters / 1000;
+                }
+            }
+        } catch (error) {}
+        var toRad = function (value) {
+            return value * Math.PI / 180;
+        };
+        var lat1 = toRad(pickup.lat);
+        var lng1 = toRad(pickup.lng);
+        var lat2 = toRad(dropoff.lat);
+        var lng2 = toRad(dropoff.lng);
+        var latDelta = lat2 - lat1;
+        var lngDelta = lng2 - lng1;
+        var a = Math.pow(Math.sin(latDelta / 2), 2) + Math.cos(lat1) * Math.cos(lat2) * Math.pow(Math.sin(lngDelta / 2), 2);
+        var c = 2 * Math.asin(Math.sqrt(a));
+        var earthRadiusKm = 6371;
+        var distance = earthRadiusKm * c;
+        return isFinite(distance) ? distance : null;
+    }
+
+    function updateRouteState($context, updates) {
+        if (!$context || !$context.length) {
+            return;
+        }
+        var state = getContextState($context);
+        state.route = state.route || { distanceKm: null, distanceText: '', durationText: '' };
+        updates = updates || {};
+        if (Object.prototype.hasOwnProperty.call(updates, 'distanceKm')) {
+            state.route.distanceKm = typeof updates.distanceKm === 'number' && isFinite(updates.distanceKm) ? updates.distanceKm : null;
+        }
+        if (Object.prototype.hasOwnProperty.call(updates, 'distanceText')) {
+            state.route.distanceText = updates.distanceText || '';
+        }
+        if (Object.prototype.hasOwnProperty.call(updates, 'durationText')) {
+            state.route.durationText = updates.durationText || '';
+        }
+        return state.route;
+    }
+
+    function cloneLocationForEvent(location) {
+        if (!location) {
+            return null;
+        }
+        return {
+            address: location.address || '',
+            name: location.name || '',
+            display_name: location.display || location.name || location.address || '',
+            lat: typeof location.lat === 'number' ? location.lat : null,
+            lng: typeof location.lng === 'number' ? location.lng : null,
+            place_id: location.placeId || location.place_id || ''
+        };
+    }
+
+    function buildContextPayload(state) {
+        state = state || {};
+        return {
+            pickup: cloneLocationForEvent(state.pickup),
+            dropoff: cloneLocationForEvent(state.dropoff),
+            userPickup: cloneLocationForEvent(state.userPickup),
+            route: {
+                distance_km: state.route && typeof state.route.distanceKm === 'number' ? state.route.distanceKm : null,
+                distance_text: state.route && state.route.distanceText ? state.route.distanceText : '',
+                duration_text: state.route && state.route.durationText ? state.route.durationText : ''
+            }
+        };
+    }
+
+    function emitContextChanged($context) {
+        if (!$context || !$context.length) {
+            return;
+        }
+        var state = getContextState($context);
+        var payload = buildContextPayload(state);
+        $context.trigger('transfer:context-changed', [payload]);
+    }
+
     function readInitialValues($context) {
         var state = getContextState($context);
         var pickup = state.pickup;
@@ -208,6 +318,22 @@
         dropoff.placeId = $context.find('.js-transfer-dropoff-place-id').val() || '';
         dropoff.display = $context.find('.js-transfer-dropoff-display').val() || dropoff.name || dropoff.address;
         dropoff.payload = $context.find('.js-transfer-dropoff-json').val() || buildPayload(dropoff);
+
+        var userPickup = state.userPickup;
+        userPickup.address = $context.find('.js-transfer-user-pickup-address').val() || '';
+        userPickup.name = $context.find('.js-transfer-user-pickup-formatted').val() || userPickup.address;
+        userPickup.lat = parseCoordinate($context.find('.js-transfer-user-pickup-lat').val());
+        userPickup.lng = parseCoordinate($context.find('.js-transfer-user-pickup-lng').val());
+        userPickup.placeId = $context.find('.js-transfer-user-pickup-place-id').val() || '';
+        userPickup.display = userPickup.name || userPickup.address;
+        userPickup.payload = $context.find('.js-transfer-user-pickup-json').val() || buildPayload({
+            address: userPickup.address,
+            name: userPickup.name,
+            display: userPickup.display,
+            lat: userPickup.lat,
+            lng: userPickup.lng,
+            placeId: userPickup.placeId
+        });
     }
 
     function setInputValues($context, type, data, options) {
@@ -238,8 +364,25 @@
             $context.find(prefix + '-json').val(target.payload || '');
         }
 
+        state = getContextState($context);
+        var shouldCompute = state && state.pickup && state.dropoff && typeof state.pickup.lat === 'number' && typeof state.pickup.lng === 'number' && typeof state.dropoff.lat === 'number' && typeof state.dropoff.lng === 'number';
+        if (shouldCompute) {
+            var fallbackKm = computeDistanceKm(state.pickup, state.dropoff);
+            updateRouteState($context, {
+                distanceKm: fallbackKm,
+                distanceText: formatDistanceText(fallbackKm)
+            });
+        } else {
+            updateRouteState($context, {
+                distanceKm: null,
+                distanceText: '',
+                durationText: ''
+            });
+        }
+
         refreshContextMaps($context);
         refreshDetailMap();
+        emitContextChanged($context);
     }
 
     function clearType($context, type) {
@@ -331,7 +474,8 @@
         var instance = {
             type: type,
             map: map,
-            defaultCenter: new google.maps.LatLng(center.lat, center.lng)
+            defaultCenter: new google.maps.LatLng(center.lat, center.lng),
+            context: $context
         };
         if (type === 'pickup' || type === 'dropoff') {
             var marker = new google.maps.Marker({
@@ -406,6 +550,7 @@
         if (!instance || !instance.map) {
             return;
         }
+        var $context = instance.context || null;
         var hasPickup = pickup && typeof pickup.lat === 'number' && typeof pickup.lng === 'number';
         var hasDropoff = dropoff && typeof dropoff.lat === 'number' && typeof dropoff.lng === 'number';
         var bounds = new google.maps.LatLngBounds();
@@ -427,13 +572,55 @@
         }
         if (hasPickup && hasDropoff) {
             instance.directionsRenderer.setMap(instance.map);
+            var requestId = Date.now();
+            instance.lastRouteRequestId = requestId;
             instance.directionsService.route({
                 origin: { lat: pickup.lat, lng: pickup.lng },
                 destination: { lat: dropoff.lat, lng: dropoff.lng },
                 travelMode: google.maps.TravelMode.DRIVING
             }, function (response, status) {
-                if (status === 'OK') {
+                if (instance.lastRouteRequestId !== requestId) {
+                    return;
+                }
+                if (status === 'OK' && response && response.routes && response.routes.length) {
                     instance.directionsRenderer.setDirections(response);
+                    var leg = response.routes[0].legs && response.routes[0].legs.length ? response.routes[0].legs[0] : null;
+                    var distanceKm = null;
+                    var distanceText = '';
+                    var durationText = '';
+                    if (leg) {
+                        if (leg.distance && typeof leg.distance.value !== 'undefined') {
+                            distanceKm = leg.distance.value / 1000;
+                        }
+                        if (leg.distance && leg.distance.text) {
+                            distanceText = leg.distance.text;
+                        }
+                        if (leg.duration && leg.duration.text) {
+                            durationText = leg.duration.text;
+                        }
+                    }
+                    if (distanceKm === null) {
+                        distanceKm = computeDistanceKm(pickup, dropoff);
+                    }
+                    if (!distanceText) {
+                        distanceText = formatDistanceText(distanceKm);
+                    }
+                    updateRouteState($context, {
+                        distanceKm: distanceKm,
+                        distanceText: distanceText,
+                        durationText: durationText
+                    });
+                } else {
+                    instance.directionsRenderer.setDirections({ routes: [] });
+                    var fallbackKm = computeDistanceKm(pickup, dropoff);
+                    updateRouteState($context, {
+                        distanceKm: fallbackKm,
+                        distanceText: formatDistanceText(fallbackKm),
+                        durationText: ''
+                    });
+                }
+                if ($context) {
+                    emitContextChanged($context);
                 }
             });
             instance.map.fitBounds(bounds);
@@ -442,6 +629,14 @@
             if (instance.defaultCenter) {
                 instance.map.setCenter(instance.defaultCenter);
                 instance.map.setZoom(13);
+            }
+            if ($context) {
+                updateRouteState($context, {
+                    distanceKm: null,
+                    distanceText: '',
+                    durationText: ''
+                });
+                emitContextChanged($context);
             }
         }
     }
@@ -584,6 +779,7 @@
         }
         readInitialValues($context);
         refreshContextMaps($context);
+        emitContextChanged($context);
         $context.find('.js-transfer-pickup-display').each(function () {
             attachAutocomplete($(this), 'pickup');
         });

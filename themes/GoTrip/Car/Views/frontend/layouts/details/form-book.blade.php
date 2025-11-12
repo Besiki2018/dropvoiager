@@ -204,6 +204,18 @@
                                 <div class="text-13 text-red-1 mt-5" v-if="fieldErrors && fieldErrors.dropoff" v-text="fieldErrors.dropoff"></div>
                             </div>
                         </div>
+                        <div class="col-12" v-if="pricing_meta && pricing_meta.mode === 'distance' && priceSummary && (priceSummary.distance || priceSummary.total)">
+                            <div class="px-20 py-10 border-light rounded-4">
+                                <div class="d-flex justify-content-between" v-if="priceSummary.distance">
+                                    <span class="text-15 fw-500">{{ __('Distance') }}</span>
+                                    <span class="text-15 text-dark-1">@{{ priceSummary.distance }}</span>
+                                </div>
+                                <div class="d-flex justify-content-between mt-5" v-if="priceSummary.total">
+                                    <span class="text-15 fw-500">{{ __('Estimated price') }}</span>
+                                    <span class="text-15 text-dark-1">@{{ priceSummary.total }}</span>
+                                </div>
+                            </div>
+                        </div>
                         <div class="col-12">
                             <div class="form-date-search is_single_picker position-relative px-20 py-10 border-light rounded-4 js-transfer-car-calendar" data-format="{{ get_moment_date_format() }}">
                                 <div class="date-wrapper" data-x-dd-click="car-calendar">
