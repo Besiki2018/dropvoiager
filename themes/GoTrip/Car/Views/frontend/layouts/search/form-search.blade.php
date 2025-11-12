@@ -27,7 +27,7 @@
     }
 @endphp
 
-<form action="{{ route("car.search") }}" class="gotrip_form_search bravo_form_search bravo_form form-search-all-service form {{ $classes }}" method="get">
+<form action="{{ route("car.search") }}" class="gotrip_form_search bravo_form_search bravo_form form-search-all-service form {{ $classes }}" method="get" data-transfer-form="car-search">
     @if( !empty(Request::query('_layout')) )
         <input type="hidden" name="_layout" value="{{Request::query('_layout')}}">
     @endif
@@ -58,6 +58,9 @@
                                 @break
                             @case ('date')
                                 @include('Layout::common.search.fields.date')
+                                @break
+                            @case('car_calendar')
+                                @include('Layout::common.search.fields.car_calendar')
                                 @break
                             @case ('attr')
                                 @include('Layout::common.search.fields.attr')

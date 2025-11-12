@@ -23,6 +23,7 @@
                                 'location'=>__("Location"),
                                 'pickup'=>__("Pickup Location"),
                                 'dropoff'=>__("Drop-off Location"),
+                                'car_calendar'=>__("Car Calendar"),
                                 'date'=>__("Date"),
                                 'attr'=>__("Attribute"),
                             ];

@@ -5,6 +5,30 @@
     $pickupLng = request()->input('pickup_lng');
     $pickupDisplay = request()->input('pickup_display', $pickupName ?: $pickupAddress);
     $pickupPayload = request()->input('pickup_payload');
+    $pickupPlaceId = request()->input('pickup_place_id');
+    if ($pickupPayload) {
+        try {
+            $parsedPickup = json_decode($pickupPayload, true);
+            if (is_array($parsedPickup)) {
+                $pickupAddress = $pickupAddress ?: ($parsedPickup['address'] ?? '');
+                $pickupName = $pickupName ?: ($parsedPickup['name'] ?? $pickupAddress);
+                $pickupDisplay = $pickupDisplay ?: ($parsedPickup['display_name'] ?? $pickupName ?? $pickupAddress);
+                if (empty($pickupPlaceId) && !empty($parsedPickup['place_id'])) {
+                    $pickupPlaceId = $parsedPickup['place_id'];
+                }
+                if (empty($pickupLat) && !empty($parsedPickup['lat'])) {
+                    $pickupLat = $parsedPickup['lat'];
+                }
+                if (empty($pickupLng) && !empty($parsedPickup['lng'])) {
+                    $pickupLng = $parsedPickup['lng'];
+                }
+            }
+        } catch (\Exception $exception) {
+        }
+    }
+    if (empty($pickupDisplay)) {
+        $pickupDisplay = $pickupName ?: $pickupAddress;
+    }
 @endphp
 <div class="searchMenu-loc item">
     <div>
@@ -20,6 +44,7 @@
             <input type="hidden" name="pickup_name" class="js-transfer-pickup-name" value="{{ $pickupName }}">
             <input type="hidden" name="pickup_lat" class="js-transfer-pickup-lat" value="{{ $pickupLat }}">
             <input type="hidden" name="pickup_lng" class="js-transfer-pickup-lng" value="{{ $pickupLng }}">
+            <input type="hidden" name="pickup_place_id" class="js-transfer-pickup-place-id" value="{{ $pickupPlaceId }}">
             <input type="hidden" name="pickup_payload" class="js-transfer-pickup-payload" value="{{ $pickupPayload }}">
         </div>
     </div>
