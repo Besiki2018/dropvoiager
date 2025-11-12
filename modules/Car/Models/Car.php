@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\Car\Models\CarTranslation;
 use Modules\User\Models\UserWishList;
 use Modules\Location\Models\Location;
+use function format_money;
 
 class Car extends Bookable
 {
@@ -81,6 +82,7 @@ class Car extends Bookable
 
     protected $tmp_price = 0;
     protected $tmp_dates = [];
+    protected $transferPreview = null;
 
     public function __construct(array $attributes = [])
     {
@@ -159,6 +161,105 @@ class Car extends Bookable
             'lng' => $lng,
             'place_id' => $placeId,
         ];
+    }
+
+    protected function extractTransferLocationFromInput(array $inputs, $prefix)
+    {
+        $payloadKey = $prefix === 'pickup' ? 'pickup_payload' : ($prefix === 'dropoff' ? 'dropoff_json' : $prefix . '_payload');
+        $rawPayload = Arr::get($inputs, $payloadKey);
+        $location = $this->normalizeTransferLocation($rawPayload);
+        if ($location) {
+            return $location;
+        }
+        $lat = Arr::get($inputs, $prefix . '_lat');
+        $lng = Arr::get($inputs, $prefix . '_lng');
+        if (!is_numeric($lat) || !is_numeric($lng)) {
+            return null;
+        }
+        $lat = (float)$lat;
+        $lng = (float)$lng;
+        $address = trim(Arr::get($inputs, $prefix . '_address', ''));
+        $name = trim(Arr::get($inputs, $prefix . '_name', ''));
+        $display = trim(Arr::get($inputs, $prefix . '_display', $name ?: $address));
+        if ($display === '') {
+            $display = $name ?: $address;
+        }
+        return [
+            'address' => $address,
+            'name' => $name ?: $display,
+            'display_name' => $display ?: ($name ?: $address),
+            'lat' => $lat,
+            'lng' => $lng,
+            'place_id' => Arr::get($inputs, $prefix . '_place_id', ''),
+        ];
+    }
+
+    public function applyTransferContext(array $inputs = [])
+    {
+        $this->transferPreview = null;
+        $this->setAttribute('route_distance_km', null);
+        $this->setAttribute('route_distance_text', null);
+        $this->setAttribute('transfer_price_total', null);
+        $this->setAttribute('transfer_price_total_display', null);
+
+        $pickup = $this->extractTransferLocationFromInput($inputs, 'pickup');
+        $dropoff = $this->extractTransferLocationFromInput($inputs, 'dropoff');
+
+        if ($pickup) {
+            $this->setAttribute('transfer_pickup_context', $pickup);
+        }
+        if ($dropoff) {
+            $this->setAttribute('transfer_dropoff_context', $dropoff);
+        }
+
+        $passengers = (int)($inputs['number'] ?? $inputs['passengers'] ?? 1);
+        if ($passengers < 1) {
+            $passengers = 1;
+        }
+
+        if (!$this->enable_price_by_distance || !$pickup || !$dropoff) {
+            return $this;
+        }
+
+        $distanceKm = $this->calculateDistanceKm($pickup, $dropoff);
+        if ($distanceKm === null) {
+            return $this;
+        }
+
+        $pricePerKm = (float)($this->price_per_km ?? 0);
+        if ($pricePerKm <= 0) {
+            return $this;
+        }
+
+        $total = $distanceKm * $pricePerKm * $passengers;
+        $distanceRounded = round($distanceKm, 2);
+        $distanceText = $this->formatDistanceText($distanceKm);
+        $formattedTotal = format_money($total);
+
+        $this->transferPreview = [
+            'pickup' => $pickup,
+            'dropoff' => $dropoff,
+            'passengers' => $passengers,
+            'price_per_km' => $pricePerKm,
+            'distance_km' => $distanceRounded,
+            'distance_text' => $distanceText,
+            'total' => $total,
+            'total_formatted' => $formattedTotal,
+        ];
+
+        $this->setAttribute('route_distance_km', $distanceRounded);
+        $this->setAttribute('route_distance_text', $distanceText);
+        $this->setAttribute('transfer_price_total', $total);
+        $this->setAttribute('transfer_price_total_display', $formattedTotal);
+        $this->setAttribute('display_price', $formattedTotal);
+        $this->setAttribute('display_sale_price', '');
+
+        return $this;
+    }
+
+    public function getTransferPreview()
+    {
+        return $this->transferPreview;
     }
 
     protected function calculateDistanceKm(array $pickup, array $dropoff)
@@ -653,6 +754,14 @@ class Car extends Bookable
             'base_price_display' => $this->display_price,
             'base_sale_price_display' => $this->display_sale_price,
         ];
+        if ($preview = $this->getTransferPreview()) {
+            $booking_data['route_distance_km'] = $preview['distance_km'];
+            $booking_data['route_distance_text'] = $preview['distance_text'];
+            $booking_data['transfer_preview'] = $preview;
+            $booking_data['base_price_display'] = $preview['total_formatted'];
+            $booking_data['base_sale_price_display'] = '';
+            $booking_data['number'] = max($booking_data['number'], (int)($preview['passengers'] ?? 1));
+        }
         $booking_data['pricing_meta'] = $this->buildPricingMeta();
         $lang = app()->getLocale();
         if ($this->enable_extra_price) {

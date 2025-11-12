@@ -210,6 +210,85 @@
         return km.toFixed(2) + ' km';
     }
 
+    function parseLocaleNumber(value) {
+        if (typeof value !== 'string') {
+            return null;
+        }
+        var sanitized = value.trim();
+        if (!sanitized) {
+            return null;
+        }
+        sanitized = sanitized.replace(/\s+/g, '');
+        var commaCount = (sanitized.match(/,/g) || []).length;
+        var dotCount = (sanitized.match(/\./g) || []).length;
+        if (commaCount && dotCount) {
+            if (sanitized.indexOf(',') > sanitized.indexOf('.')) {
+                sanitized = sanitized.replace(/,/g, '');
+            } else {
+                sanitized = sanitized.replace(/\./g, '').replace(/,/g, '.');
+            }
+        } else if (commaCount && !dotCount) {
+            sanitized = sanitized.replace(/,/g, '.');
+        } else {
+            sanitized = sanitized.replace(/,/g, '');
+        }
+        sanitized = sanitized.replace(/[^0-9.-]/g, '');
+        var parsed = parseFloat(sanitized);
+        return isNaN(parsed) ? null : parsed;
+    }
+
+    function parseDistanceTextToKm(text) {
+        if (!text) {
+            return null;
+        }
+        var lower = text.toLowerCase();
+        var numeric = parseLocaleNumber(text);
+        if (numeric === null) {
+            return null;
+        }
+        if (lower.indexOf('mi') !== -1) {
+            return numeric * 1.60934;
+        }
+        if (lower.indexOf('km') !== -1) {
+            return numeric;
+        }
+        if (lower.indexOf('m') !== -1) {
+            return numeric / 1000;
+        }
+        return numeric;
+    }
+
+    function normalizeDistanceKm(rawValue, text) {
+        var numeric = null;
+        if (typeof rawValue === 'number' && isFinite(rawValue)) {
+            numeric = rawValue;
+        } else if (typeof rawValue === 'string') {
+            var parsed = parseFloat(rawValue);
+            if (!isNaN(parsed)) {
+                numeric = parsed;
+            }
+        }
+        if (numeric !== null) {
+            if (numeric > 1000) {
+                return numeric / 1000;
+            }
+            if (text) {
+                var lower = text.toLowerCase();
+                if (lower.indexOf('mi') !== -1) {
+                    return numeric * 1.60934;
+                }
+                if (lower.indexOf('km') !== -1) {
+                    return numeric;
+                }
+                if (lower.indexOf('m') !== -1) {
+                    return numeric / 1000;
+                }
+            }
+            return numeric;
+        }
+        return parseDistanceTextToKm(text);
+    }
+
     function computeDistanceKm(pickup, dropoff) {
         if (!pickup || !dropoff) {
             return null;
@@ -589,11 +668,11 @@
                     var distanceText = '';
                     var durationText = '';
                     if (leg) {
-                        if (leg.distance && typeof leg.distance.value !== 'undefined') {
-                            distanceKm = leg.distance.value / 1000;
-                        }
-                        if (leg.distance && leg.distance.text) {
-                            distanceText = leg.distance.text;
+                        if (leg.distance) {
+                            distanceKm = normalizeDistanceKm(leg.distance.value, leg.distance.text);
+                            if (leg.distance.text) {
+                                distanceText = leg.distance.text;
+                            }
                         }
                         if (leg.duration && leg.duration.text) {
                             durationText = leg.duration.text;
