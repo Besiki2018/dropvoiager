@@ -9,6 +9,8 @@
             pickup_location:null,
             dropoff:{},
             user_pickup:{},
+            route_distance_km:null,
+            route_distance_text:'',
             transfer_datetime:'',
             transfer_date:'',
             transfer_time:'',
@@ -183,6 +185,19 @@
                     }
                 }
 
+                if (!quote && meta && (meta.mode || '').toLowerCase() === 'distance') {
+                    var distanceKm = this.toNumeric(this.route_distance_km);
+                    var ratePerKm = this.toNumeric(meta.price_per_km);
+                    if (distanceKm !== null && ratePerKm !== null) {
+                        totalNumeric = distanceKm * ratePerKm * passengerCount;
+                        totalDisplay = this.formatMoney(totalNumeric);
+                        distanceNumeric = distanceKm;
+                        if (!distanceDisplay) {
+                            distanceDisplay = this.formatDistance(distanceKm);
+                        }
+                    }
+                }
+
                 if (totalNumeric === null && totalDisplay === null && meta && meta.mode === 'fixed') {
                     var fixedMetaPrice = this.toNumeric(meta.fixed_price);
                     if (fixedMetaPrice !== null) {
@@ -226,80 +241,102 @@
             },
             total_price:function(){
                 var me = this;
-                if (me.start_date !== "") {
-                    var total_price = 0;
+                var meta = this.pricing_meta || {};
+                var mode = (meta.mode || '').toLowerCase();
+                var guests = this.getPassengerCount();
+                var total_price = 0;
+                var isBook = true;
+                var duration_in_day = 1;
+
+                if (mode === 'distance') {
+                    var distanceKm = this.toNumeric(this.route_distance_km);
+                    var pricePerKm = this.toNumeric(meta.price_per_km);
+                    if (distanceKm === null || pricePerKm === null || guests <= 0) {
+                        this.total_price_before_fee = 0;
+                        this.total_price_fee = 0;
+                        return 0;
+                    }
+                    total_price = distanceKm * pricePerKm * guests;
+                } else if (me.start_date !== "") {
                     var startDate = new Date(me.start_date).getTime();
                     var endDate = new Date(me.end_date).getTime();
-                    var isBook = true;
+                    isBook = true;
+                    var rawTotal = 0;
                     for (var ix in me.allEvents) {
                         var item = me.allEvents[ix];
                         var cur_date = new Date(item.start).getTime();
-                        if (startDate == endDate) {
+                        if (startDate === endDate) {
                             if (cur_date >= startDate && cur_date <= endDate) {
-                                total_price += parseFloat(item.price);
+                                rawTotal += parseFloat(item.price);
                                 if (item.active === 0) {
-                                    isBook = false
+                                    isBook = false;
                                 }
                             }
                         } else {
                             if (cur_date >= startDate && cur_date <= endDate) {
-                                total_price += parseFloat(item.price);
+                                rawTotal += parseFloat(item.price);
                                 if (item.active === 0) {
-                                    isBook = false
+                                    isBook = false;
                                 }
                             }
                         }
                     }
+                    total_price = me.number * rawTotal;
+                    duration_in_day = moment(endDate).diff(moment(startDate), 'days') + 1;
+                } else {
+                    this.total_price_before_fee = 0;
+                    this.total_price_fee = 0;
+                    return 0;
+                }
 
-                    total_price = me.number * total_price;
+                if (me.number === 0) {
+                    this.total_price_before_fee = 0;
+                    this.total_price_fee = 0;
+                    return 0;
+                }
 
-                    var duration_in_day = moment(endDate).diff(moment(startDate), 'days') + 1;
-                    for (var ix in me.extra_price) {
-                        var item = me.extra_price[ix];
-                        if(!item.price) continue;
+                if (Array.isArray(me.extra_price) && me.extra_price.length) {
+                    for (var extraIndex in me.extra_price) {
+                        var extraItem = me.extra_price[extraIndex];
+                        if (!extraItem.price) continue;
                         var type_total = 0;
-                        if (item.enable == 1) {
-                            switch (item.type) {
+                        if (extraItem.enable == 1) {
+                            switch (extraItem.type) {
                                 case "one_time":
-                                    type_total += parseFloat(item.price) * me.number;
+                                    type_total += parseFloat(extraItem.price) * me.number;
                                     break;
                                 case "per_day":
-                                        type_total += parseFloat(item.price) * Math.max(1,duration_in_day) * me.number;
+                                    type_total += parseFloat(extraItem.price) * Math.max(1, duration_in_day) * me.number;
                                     break;
                             }
                             total_price += type_total;
                         }
                     }
-                    this.total_price_before_fee = total_price;
-
-                    var total_fee = 0;
-                    for (var ix in me.buyer_fees) {
-                        var item = me.buyer_fees[ix];
-                        if(!item.price) continue;
-
-                        //for Fixed
-                        var fee_price = parseFloat(item.price);
-
-                        //for Percent
-                        if (typeof item.unit !== "undefined" && item.unit === "percent" ) {
-                            fee_price = ( total_price / 100 ) * fee_price;
-                        }
-
-                        if (typeof item.per_person !== "undefined") {
-                            fee_price = fee_price * guests;
-                        }
-                        total_fee += fee_price;
-                    }
-                    total_price += total_fee;
-                    this.total_price_fee = total_fee;
-
-                    if (isBook === false || me.number === 0) {
-                        return 0;
-                    } else {
-                       return total_price;
-                    }
                 }
-                return 0;
+
+                this.total_price_before_fee = total_price;
+
+                var total_fee = 0;
+                for (var feeIndex in me.buyer_fees) {
+                    var feeItem = me.buyer_fees[feeIndex];
+                    if (!feeItem.price) continue;
+                    var fee_price = parseFloat(feeItem.price);
+                    if (typeof feeItem.unit !== "undefined" && feeItem.unit === "percent") {
+                        fee_price = (total_price / 100) * fee_price;
+                    }
+                    if (typeof feeItem.per_person !== "undefined") {
+                        fee_price = fee_price * guests;
+                    }
+                    total_fee += fee_price;
+                }
+                total_price += total_fee;
+                this.total_price_fee = total_fee;
+
+                if (mode !== 'distance' && (isBook === false)) {
+                    return 0;
+                }
+
+                return total_price;
             },
             total_price_html:function(){
                 if(!this.total_price) return '';
@@ -417,6 +454,19 @@
                 }
                 if (context.userPickup) {
                     me.user_pickup = context.userPickup;
+                }
+                if (context.route) {
+                    var distanceValue = me.toNumeric(context.route.distance_km);
+                    if (distanceValue !== null) {
+                        me.route_distance_km = distanceValue;
+                        me.route_distance_text = context.route.distance_text || me.formatDistance(distanceValue);
+                    } else {
+                        me.route_distance_km = null;
+                        me.route_distance_text = '';
+                    }
+                } else {
+                    me.route_distance_km = null;
+                    me.route_distance_text = '';
                 }
                 me.handleTransferFieldChange();
             });
@@ -719,6 +769,7 @@
                 var dropoff = this.dropoff || {};
                 var userPickup = this.user_pickup || {};
                 var meta = this.pricing_meta || {};
+                var mode = (meta.mode || '').toLowerCase();
                 var pickupLat = parseFloat(pickup.lat);
                 var pickupLng = parseFloat(pickup.lng);
                 var dropLat = parseFloat(dropoff.lat);
@@ -728,10 +779,19 @@
                 if (isNaN(pickupLat) || isNaN(pickupLng)) {
                     return false;
                 }
-                if (!dropoff.place_id || isNaN(dropLat) || isNaN(dropLng)) {
+                if (isNaN(dropLat) || isNaN(dropLng)) {
                     return false;
                 }
-                if ((meta.mode || '') !== 'fixed') {
+                if (mode !== 'distance' && !dropoff.place_id) {
+                    return false;
+                }
+                var requiresUserPickup = false;
+                if (typeof meta.requires_user_pickup !== 'undefined') {
+                    requiresUserPickup = !!meta.requires_user_pickup;
+                } else {
+                    requiresUserPickup = mode !== 'fixed' && mode !== 'distance';
+                }
+                if (requiresUserPickup) {
                     if (!userPickup.place_id || isNaN(userLat) || isNaN(userLng)) {
                         return false;
                     }
