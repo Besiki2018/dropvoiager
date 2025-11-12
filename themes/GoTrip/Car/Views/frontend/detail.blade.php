@@ -9,13 +9,17 @@
         <div class="bravo-more-book-mobile">
             <div class="container">
                 <div class="left">
-                    <div class="g-price">
+                    <div class="g-price" data-transfer-price-summary>
                         <div class="prefix">
                             <span class="fr_text">{{__("from")}}</span>
                         </div>
                         <div class="price">
-                            <span class="onsale">{{ $row->display_sale_price }}</span>
-                            <span class="text-price">{{ $row->display_price }}</span>
+                            @php
+                                $salePrice = $row->display_sale_price;
+                                $regularPrice = $row->display_price;
+                            @endphp
+                            <span class="onsale js-car-mobile-sale-price {{ empty($salePrice) ? 'd-none' : '' }}" data-default="{{ $salePrice }}">{{ $salePrice }}</span>
+                            <span class="text-price js-car-mobile-price" data-default="{{ $regularPrice }}">{{ $regularPrice }}</span>
                         </div>
                     </div>
                     @if(setting_item('car_enable_review'))
@@ -66,6 +70,9 @@
 
 @push('js')
     {!! App\Helpers\MapEngine::scripts() !!}
+    @php
+        $carMarkerIcon = get_file_url(setting_item("car_icon_marker_map"),'full') ?? url('images/icons/png/pin.png');
+    @endphp
     <script>
         jQuery(function ($) {
             @if($row->map_lat && $row->map_lng)
@@ -77,9 +84,15 @@
                 ready: function (engineMap) {
                     engineMap.addMarker([{{$row->map_lat}}, {{$row->map_lng}}], {
                         icon_options: {
-                            iconUrl:"{{get_file_url(setting_item("car_icon_marker_map"),'full') ?? url('images/icons/png/pin.png') }}"
+                            iconUrl:"{{ $carMarkerIcon }}"
                         }
                     });
+                    if (window.BravoTransferForm && typeof window.BravoTransferForm.registerDetailMap === 'function') {
+                        window.BravoTransferForm.registerDetailMap(engineMap, {
+                            defaultCenter: [{{$row->map_lat}}, {{$row->map_lng}}],
+                            markerIcon: "{{ $carMarkerIcon }}"
+                        });
+                    }
                 }
             });
             @endif

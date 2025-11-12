@@ -45,6 +45,13 @@ class CarController extends Controller
         }
         $query = $this->carClass->search($request->input());
         $list = $query->paginate($limit);
+        $transferInputs = $request->all();
+        $list->getCollection()->transform(function ($row) use ($transferInputs) {
+            if (method_exists($row, 'applyTransferContext')) {
+                $row->applyTransferContext($transferInputs);
+            }
+            return $row;
+        });
         $markers = [];
         if (!empty($list) and $for_map) {
             foreach ($list as $row) {
@@ -100,6 +107,7 @@ class CarController extends Controller
         if ( empty($row) or !$row->hasPermissionDetailView()) {
             return redirect('/');
         }
+        $row->applyTransferContext($request->all());
         $translation = $row->translate();
         $car_related = [];
         $location_id = $row->location_id;
