@@ -1,5 +1,5 @@
 @php
-    $headerStyle = (!empty($row->header_style)) ? $row->header_style : 'normal' ;
+    $headerStyle = (!empty($row->header_style)) ? $row->header_style : 'normal_white' ;
     $dataBg = 'bg-dark-1';
     $navTextStyle =  'text-white';
     switch ($headerStyle){
