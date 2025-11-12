@@ -49,3 +49,8 @@
         </div>
     </div>
 </div>
+@once('transfer-form-script')
+    @push('js')
+        <script src="{{ asset('js/transfer-form.js?_ver='.config('app.asset_version')) }}"></script>
+    @endpush
+@endonce

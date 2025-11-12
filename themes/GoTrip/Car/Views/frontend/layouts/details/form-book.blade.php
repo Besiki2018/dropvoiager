@@ -102,6 +102,11 @@
         }
     }
 @endphp
+@once('transfer-form-script')
+    @push('js')
+        <script src="{{ asset('js/transfer-form.js?_ver='.config('app.asset_version')) }}"></script>
+    @endpush
+@endonce
 <div class="bravo_single_book_wrap d-flex justify-end">
     <div class="bravo_single_book">
         @include('Layout::common.detail.vendor')
@@ -212,13 +217,6 @@
                                 <input type="text" class="check-in-out absolute invisible" autocomplete="off" value="{{ $carDateValue }}">
                             </div>
                         </div>
-                        <div class="col-12">
-                            <div class="px-20 py-10 border-light rounded-4">
-                                <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('Adjust on Map') }}</h4>
-                                <div class="mt-10 rounded-4 overflow-hidden position-relative" style="min-height: 260px;">
-                                    <div class="transfer-map h-100 w-100 position-absolute top-0 start-0" data-transfer-map="route" data-default-lat="{{ $row->map_lat }}" data-default-lng="{{ $row->map_lng }}" style="min-height: 260px;"></div>
-                                </div>
-                            </div>
                         </div>
                         <input type="hidden" class="js-transfer-user-pickup-json" value="{{ $userPickupJson }}">
                         <input type="hidden" class="js-transfer-user-pickup-formatted" value="{{ $userPickupFormatted }}">
@@ -229,39 +227,6 @@
                         <input type="hidden" class="js-transfer-datetime" value="{{ $transferDatetime }}">
                         <input type="hidden" class="js-transfer-date" value="{{ $carDateValue }}">
                         <input type="hidden" class="js-transfer-time" value="{{ $transferTime }}">
-                        <div class="col-12">
-                            <div class="form-group form-date-field form-date-search clearfix px-20 py-10 border-light rounded-4 -right position-relative" data-format="{{get_moment_date_format()}}">
-                                <div class="date-wrapper clearfix" @click="openStartDate">
-                                    <div class="check-in-wrapper">
-                                        <h4 class="text-15 fw-500 ls-2 lh-16">{{__("Select Dates")}}</h4>
-                                        <div class="render check-in-render" v-html="start_date_html"></div>
-                                        @if(!empty($row->min_day_before_booking))
-                                            <div class="render check-in-render">
-                                                <small>
-                                                    @if($row->min_day_before_booking > 1)
-                                                        - {{ __("Book :number days in advance",["number"=>$row->min_day_before_booking]) }}
-                                                    @else
-                                                        - {{ __("Book :number day in advance",["number"=>$row->min_day_before_booking]) }}
-                                                    @endif
-                                                </small>
-                                            </div>
-                                        @endif
-                                        @if(!empty($row->min_day_stays))
-                                            <div class="render check-in-render">
-                                                <small>
-                                                    @if($row->min_day_stays > 1)
-                                                        - {{ __("Stay at least :number days",["number"=>$row->min_day_stays]) }}
-                                                    @else
-                                                        - {{ __("Stay at least :number day",["number"=>$row->min_day_stays]) }}
-                                                    @endif
-                                                </small>
-                                            </div>
-                                        @endif
-                                    </div>
-                                </div>
-                                <input type="text" class="start_date" ref="start_date" style="height: 1px;visibility: hidden;position: absolute;left: 0;">
-                            </div>
-                        </div>
                         <div class="col-12">
                             <div class="searchMenu-guests px-20 py-10 border-light rounded-4 js-form-dd">
                                 <div data-x-dd-click="searchMenu-guests">
