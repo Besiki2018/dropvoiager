@@ -221,6 +221,8 @@ class CarController extends AdminController
             'number',
             'price',
             'sale_price',
+            'enable_price_by_distance',
+            'price_per_km',
             'passenger',
             'gear',
             'baggage',

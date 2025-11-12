@@ -66,6 +66,9 @@
 
 @push('js')
     {!! App\Helpers\MapEngine::scripts() !!}
+    @php
+        $carMarkerIcon = get_file_url(setting_item("car_icon_marker_map"),'full') ?? url('images/icons/png/pin.png');
+    @endphp
     <script>
         jQuery(function ($) {
             @if($row->map_lat && $row->map_lng)
@@ -77,9 +80,15 @@
                 ready: function (engineMap) {
                     engineMap.addMarker([{{$row->map_lat}}, {{$row->map_lng}}], {
                         icon_options: {
-                            iconUrl:"{{get_file_url(setting_item("car_icon_marker_map"),'full') ?? url('images/icons/png/pin.png') }}"
+                            iconUrl:"{{ $carMarkerIcon }}"
                         }
                     });
+                    if (window.BravoTransferForm && typeof window.BravoTransferForm.registerDetailMap === 'function') {
+                        window.BravoTransferForm.registerDetailMap(engineMap, {
+                            defaultCenter: [{{$row->map_lat}}, {{$row->map_lng}}],
+                            markerIcon: "{{ $carMarkerIcon }}"
+                        });
+                    }
                 }
             });
             @endif

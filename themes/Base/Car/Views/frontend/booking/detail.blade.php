@@ -1,4 +1,35 @@
-@php $lang_local = app()->getLocale() @endphp
+@php
+    $lang_local = app()->getLocale();
+    $pickupMeta = $booking->getJsonMeta('transfer_pickup') ?: [];
+    $dropoffMeta = $booking->getJsonMeta('transfer_dropoff') ?: [];
+    $distanceMeta = $booking->getJsonMeta('distance_pricing') ?: [];
+    $buildMapLink = function ($meta) {
+        if (empty($meta)) {
+            return '';
+        }
+        $lat = $meta['lat'] ?? null;
+        $lng = $meta['lng'] ?? null;
+        $query = '';
+        if (is_numeric($lat) && is_numeric($lng)) {
+            $query = $lat . ',' . $lng;
+        } elseif (!empty($meta['display_name'])) {
+            $query = $meta['display_name'];
+        } elseif (!empty($meta['address'])) {
+            $query = $meta['address'];
+        }
+        if ($query === '') {
+            return '';
+        }
+        $params = [
+            'api=1',
+            'query=' . urlencode($query)
+        ];
+        if (!empty($meta['place_id'])) {
+            $params[] = 'query_place_id=' . urlencode($meta['place_id']);
+        }
+        return 'https://www.google.com/maps/search/?' . implode('&', $params);
+    };
+@endphp
 <div class="booking-review">
     <h4 class="booking-review-title">{{__("Your Booking")}}</h4>
     <div class="booking-review-content">
@@ -53,6 +84,38 @@
                         <div class="val">
                             {{$booking->duration_days}}
                         </div>
+                    </li>
+                @endif
+                @if(!empty($pickupMeta))
+                    @php $pickupLink = $buildMapLink($pickupMeta); @endphp
+                    <li>
+                        <div class="label">{{ __('Pickup location:') }}</div>
+                        <div class="val">
+                            @if($pickupLink)
+                                <a href="{{ $pickupLink }}" target="_blank">{{ $pickupMeta['display_name'] ?? $pickupMeta['address'] ?? '' }}</a>
+                            @else
+                                {{ $pickupMeta['display_name'] ?? $pickupMeta['address'] ?? '' }}
+                            @endif
+                        </div>
+                    </li>
+                @endif
+                @if(!empty($dropoffMeta))
+                    @php $dropoffLink = $buildMapLink($dropoffMeta); @endphp
+                    <li>
+                        <div class="label">{{ __('Drop-off location:') }}</div>
+                        <div class="val">
+                            @if($dropoffLink)
+                                <a href="{{ $dropoffLink }}" target="_blank">{{ $dropoffMeta['display_name'] ?? $dropoffMeta['address'] ?? '' }}</a>
+                            @else
+                                {{ $dropoffMeta['display_name'] ?? $dropoffMeta['address'] ?? '' }}
+                            @endif
+                        </div>
+                    </li>
+                @endif
+                @if(!empty($distanceMeta['distance_text']))
+                    <li>
+                        <div class="label">{{ __('Route distance:') }}</div>
+                        <div class="val">{{ $distanceMeta['distance_text'] }}</div>
                     </li>
                 @endif
                 @if($meta = $booking->number)
