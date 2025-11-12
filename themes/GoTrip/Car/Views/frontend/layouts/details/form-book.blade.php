@@ -181,6 +181,16 @@
                                 <div class="text-13 text-red-1 mt-5" v-if="fieldErrors && fieldErrors.pickup" v-text="fieldErrors.pickup"></div>
                             </div>
                         </div>
+                        </div>
+                        <input type="hidden" class="js-transfer-user-pickup-json" value="{{ $userPickupJson }}">
+                        <input type="hidden" class="js-transfer-user-pickup-formatted" value="{{ $userPickupFormatted }}">
+                        <input type="hidden" class="js-transfer-user-pickup-address" value="{{ $userPickupAddress }}">
+                        <input type="hidden" class="js-transfer-user-pickup-lat" value="{{ $userPickupLat }}">
+                        <input type="hidden" class="js-transfer-user-pickup-lng" value="{{ $userPickupLng }}">
+                        <input type="hidden" class="js-transfer-user-pickup-place-id" value="{{ $userPickupPlaceId }}">
+                        <input type="hidden" class="js-transfer-datetime" value="{{ $transferDatetime }}">
+                        <input type="hidden" class="js-transfer-date" value="{{ $carDateValue }}">
+                        <input type="hidden" class="js-transfer-time" value="{{ $transferTime }}">
                         <div class="col-12">
                             <div class="px-20 py-10 border-light rounded-4">
                                 <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('Drop-off Location') }}</h4>
