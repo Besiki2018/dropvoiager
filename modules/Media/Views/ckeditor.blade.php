@@ -25,7 +25,7 @@
     var bookingCore  = {
         url:'{{url('/')}}',
         map_provider:'{{setting_item('map_provider')}}',
-        map_gmap_key:'{{setting_item('map_gmap_key')}}'
+        map_gmap_key:'{{ setting_item('map_gmap_key') ?: config('services.google.maps_api_key') }}'
     };
 
 </script>

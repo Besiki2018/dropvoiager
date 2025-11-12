@@ -1,8 +1,102 @@
-@php $review_score = $row->review_data @endphp
+@php
+    $review_score = $row->review_data;
+    $pickupAddress = request()->input('pickup_address');
+    $pickupName = request()->input('pickup_name');
+    $pickupLat = request()->input('pickup_lat');
+    $pickupLng = request()->input('pickup_lng');
+    $pickupPlaceId = request()->input('pickup_place_id');
+    $pickupPayload = request()->input('pickup_payload');
+    $pickupDisplay = request()->input('pickup_display', $pickupName ?: $pickupAddress);
+    if ($pickupPayload) {
+        try {
+            $parsedPickup = json_decode($pickupPayload, true);
+            if (is_array($parsedPickup)) {
+                $pickupAddress = $pickupAddress ?: ($parsedPickup['address'] ?? '');
+                $pickupName = $pickupName ?: ($parsedPickup['name'] ?? $pickupAddress);
+                if (empty($pickupDisplay)) {
+                    $pickupDisplay = $parsedPickup['display_name'] ?? $pickupName ?? $pickupAddress;
+                }
+                if (empty($pickupPlaceId) && !empty($parsedPickup['place_id'])) {
+                    $pickupPlaceId = $parsedPickup['place_id'];
+                }
+                if (empty($pickupLat) && !empty($parsedPickup['lat'])) {
+                    $pickupLat = $parsedPickup['lat'];
+                }
+                if (empty($pickupLng) && !empty($parsedPickup['lng'])) {
+                    $pickupLng = $parsedPickup['lng'];
+                }
+            }
+        } catch (\Exception $exception) {
+        }
+    }
+    if (empty($pickupDisplay)) {
+        $pickupDisplay = $pickupName ?: $pickupAddress;
+    }
+
+    $dropoffAddress = request()->input('dropoff_address');
+    $dropoffName = request()->input('dropoff_name');
+    $dropoffLat = request()->input('dropoff_lat');
+    $dropoffLng = request()->input('dropoff_lng');
+    $dropoffPlaceId = request()->input('dropoff_place_id');
+    $dropoffJson = request()->input('dropoff_json');
+    $dropoffDisplay = request()->input('dropoff_display', $dropoffName ?: $dropoffAddress);
+    if ($dropoffJson) {
+        try {
+            $parsedDropoff = json_decode($dropoffJson, true);
+            if (is_array($parsedDropoff)) {
+                $dropoffAddress = $dropoffAddress ?: ($parsedDropoff['address'] ?? '');
+                $dropoffName = $dropoffName ?: ($parsedDropoff['name'] ?? $dropoffAddress);
+                if (empty($dropoffDisplay)) {
+                    $dropoffDisplay = $parsedDropoff['display_name'] ?? $dropoffName ?? $dropoffAddress;
+                }
+                if (empty($dropoffPlaceId) && !empty($parsedDropoff['place_id'])) {
+                    $dropoffPlaceId = $parsedDropoff['place_id'];
+                }
+                if (empty($dropoffLat) && !empty($parsedDropoff['lat'])) {
+                    $dropoffLat = $parsedDropoff['lat'];
+                }
+                if (empty($dropoffLng) && !empty($parsedDropoff['lng'])) {
+                    $dropoffLng = $parsedDropoff['lng'];
+                }
+            }
+        } catch (\Exception $exception) {
+        }
+    }
+    if (empty($dropoffDisplay)) {
+        $dropoffDisplay = $dropoffName ?: $dropoffAddress;
+    }
+
+    $userPickupJson = request()->input('user_pickup');
+    $userPickupFormatted = request()->input('user_pickup_formatted');
+    $userPickupAddress = request()->input('user_pickup_address');
+    $userPickupLat = request()->input('user_pickup_lat');
+    $userPickupLng = request()->input('user_pickup_lng');
+    $userPickupPlaceId = request()->input('user_pickup_place_id');
+
+    $transferDatetime = request()->input('transfer_datetime');
+    $transferDate = request()->input('transfer_date');
+    $transferTime = request()->input('transfer_time');
+    $carDateRaw = request()->input('car_date', $transferDate);
+    $carDateValue = '';
+    $carDateDisplay = __('Select date');
+    if ($carDateRaw) {
+        try {
+            $carDateValue = \Illuminate\Support\Carbon::parse($carDateRaw)->format('Y-m-d');
+        } catch (\Exception $exception) {
+            $carDateValue = $carDateRaw;
+        }
+        $timestamp = strtotime($carDateValue);
+        if ($timestamp) {
+            $carDateDisplay = display_date($timestamp);
+        } else {
+            $carDateDisplay = $carDateValue;
+        }
+    }
+@endphp
 <div class="bravo_single_book_wrap d-flex justify-end">
     <div class="bravo_single_book">
         @include('Layout::common.detail.vendor')
-        <div id="bravo_car_book_app" v-cloak class="px-30 py-30 rounded-4 border-light shadow-4 bg-white w-360 lg:w-full">
+        <div id="bravo_car_book_app" v-cloak class="px-30 py-30 rounded-4 border-light shadow-4 bg-white w-360 lg:w-full" data-transfer-form="car-booking">
             <div class="row y-gap-15 items-center justify-between">
                 <div class="col-auto">
                     <div class="text-14 text-light-1">
@@ -43,6 +137,75 @@
             <div class="form-book" :class="{'d-none':enquiry_type!='book'}">
                 <div class="form-content">
                     <div class="row y-gap-20 pt-20">
+                        <div class="col-12">
+                            <div class="px-20 py-10 border-light rounded-4">
+                                <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('Pickup Location') }}</h4>
+                                <div class="text-15 text-dark-1 ls-2 lh-16 mt-5">
+                                    <input type="text"
+                                           class="w-100 border-0 bg-transparent p-0 text-15 text-dark-1 js-transfer-pickup-display"
+                                           value="{{ $pickupDisplay }}"
+                                           placeholder="{{ __('Enter pickup location') }}"
+                                           autocomplete="off">
+                                </div>
+                                <input type="hidden" name="pickup_address" class="js-transfer-pickup-address" value="{{ $pickupAddress }}">
+                                <input type="hidden" name="pickup_name" class="js-transfer-pickup-name" value="{{ $pickupName }}">
+                                <input type="hidden" name="pickup_lat" class="js-transfer-pickup-lat" value="{{ $pickupLat }}">
+                                <input type="hidden" name="pickup_lng" class="js-transfer-pickup-lng" value="{{ $pickupLng }}">
+                                <input type="hidden" name="pickup_place_id" class="js-transfer-pickup-place-id" value="{{ $pickupPlaceId }}">
+                                <input type="hidden" name="pickup_payload" class="js-transfer-pickup-payload" value="{{ $pickupPayload }}">
+                                <input type="hidden" name="pickup_location_id" class="js-transfer-pickup" value="{{ request()->input('pickup_location_id') }}">
+                                <div class="text-13 text-red-1 mt-5" v-if="fieldErrors && fieldErrors.pickup" v-text="fieldErrors.pickup"></div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="px-20 py-10 border-light rounded-4">
+                                <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('Drop-off Location') }}</h4>
+                                <div class="text-15 text-dark-1 ls-2 lh-16 mt-5">
+                                    <input type="text"
+                                           class="w-100 border-0 bg-transparent p-0 text-15 text-dark-1 js-transfer-dropoff-display"
+                                           value="{{ $dropoffDisplay }}"
+                                           placeholder="{{ __('Enter drop-off location') }}"
+                                           autocomplete="off">
+                                </div>
+                                <input type="hidden" name="dropoff_address" class="js-transfer-dropoff-address" value="{{ $dropoffAddress }}">
+                                <input type="hidden" name="dropoff_name" class="js-transfer-dropoff-name" value="{{ $dropoffName }}">
+                                <input type="hidden" name="dropoff_lat" class="js-transfer-dropoff-lat" value="{{ $dropoffLat }}">
+                                <input type="hidden" name="dropoff_lng" class="js-transfer-dropoff-lng" value="{{ $dropoffLng }}">
+                                <input type="hidden" name="dropoff_place_id" class="js-transfer-dropoff-place-id" value="{{ $dropoffPlaceId }}">
+                                <input type="hidden" name="dropoff_json" class="js-transfer-dropoff-json" value="{{ $dropoffJson }}">
+                                <div class="text-13 text-red-1 mt-5" v-if="fieldErrors && fieldErrors.dropoff" v-text="fieldErrors.dropoff"></div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-date-search is_single_picker position-relative px-20 py-10 border-light rounded-4 js-transfer-car-calendar" data-format="{{ get_moment_date_format() }}">
+                                <div class="date-wrapper" data-x-dd-click="car-calendar">
+                                    <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('Car Calendar') }}</h4>
+                                    <div class="text-15 text-dark-1 ls-2 lh-16 mt-5">
+                                        <span class="render check-in-render">{{ $carDateDisplay }}</span>
+                                    </div>
+                                </div>
+                                <input type="hidden" class="check-in-input js-transfer-car-date-input" name="car_date" value="{{ $carDateValue }}">
+                                <input type="hidden" class="check-out-input" value="{{ $carDateValue }}">
+                                <input type="text" class="check-in-out absolute invisible" autocomplete="off" value="{{ $carDateValue }}">
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="px-20 py-10 border-light rounded-4">
+                                <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('Adjust on Map') }}</h4>
+                                <div class="mt-10 rounded-4 overflow-hidden position-relative" style="min-height: 260px;">
+                                    <div class="transfer-map h-100 w-100 position-absolute top-0 start-0" data-transfer-map="car-booking" data-default-lat="{{ $row->map_lat }}" data-default-lng="{{ $row->map_lng }}" style="min-height: 260px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <input type="hidden" class="js-transfer-user-pickup-json" value="{{ $userPickupJson }}">
+                        <input type="hidden" class="js-transfer-user-pickup-formatted" value="{{ $userPickupFormatted }}">
+                        <input type="hidden" class="js-transfer-user-pickup-address" value="{{ $userPickupAddress }}">
+                        <input type="hidden" class="js-transfer-user-pickup-lat" value="{{ $userPickupLat }}">
+                        <input type="hidden" class="js-transfer-user-pickup-lng" value="{{ $userPickupLng }}">
+                        <input type="hidden" class="js-transfer-user-pickup-place-id" value="{{ $userPickupPlaceId }}">
+                        <input type="hidden" class="js-transfer-datetime" value="{{ $transferDatetime }}">
+                        <input type="hidden" class="js-transfer-date" value="{{ $carDateValue }}">
+                        <input type="hidden" class="js-transfer-time" value="{{ $transferTime }}">
                         <div class="col-12">
                             <div class="form-group form-date-field form-date-search clearfix px-20 py-10 border-light rounded-4 -right position-relative" data-format="{{get_moment_date_format()}}">
                                 <div class="date-wrapper clearfix" @click="openStartDate">

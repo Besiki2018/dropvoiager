@@ -1,3 +1,9 @@
+@php
+    $bookingMapKey = setting_item('map_gmap_key');
+    if (empty($bookingMapKey)) {
+        $bookingMapKey = config('services.google.maps_api_key');
+    }
+@endphp
 <script>
     var bookingCore = {
         url:'{{url( app_get_locale() )}}',
@@ -11,7 +17,7 @@
         currency_rate:'{{get_current_currency('rate',1)}}',
         date_format:'{{get_moment_date_format()}}',
         map_provider:'{{setting_item('map_provider')}}',
-        map_gmap_key:'{{setting_item('map_gmap_key')}}',
+        map_gmap_key:'{{ $bookingMapKey }}',
         map_options:{
             map_lat_default:'{{setting_item('map_lat_default')}}',
             map_lng_default:'{{setting_item('map_lng_default')}}',

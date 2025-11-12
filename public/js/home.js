@@ -114,6 +114,1053 @@ jQuery(function ($) {
     };
 });
 
+jQuery && (function ($) {
+    if (!$) {
+        return;
+    }
+
+    function createBravoTransferForm($) {
+        var googleState = {
+            loading: false,
+            callbacks: []
+        };
+        var delegatedBound = false;
+        var geocoder = null;
+        var directionsService = null;
+        var pickupMarkerIcon = 'http://maps.google.com/mapfiles/ms/icons/green-dot.png';
+        var dropoffMarkerIcon = 'http://maps.google.com/mapfiles/ms/icons/red-dot.png';
+        var detailMapState = {
+            engine: null,
+            map: null,
+            defaultCenter: null,
+            markerIcon: null,
+            pickupIcon: null,
+            dropoffIcon: null,
+            pickupMarker: null,
+            dropoffMarker: null,
+            directionsRenderer: null,
+            directionsService: null,
+            ready: false
+        };
+        var pendingDetailRoute = null;
+        var lastContextState = null;
+
+        function parseJsonSafe(raw) {
+            if (!raw || typeof raw !== 'string') {
+                return null;
+            }
+            try {
+                return JSON.parse(raw);
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function flushGoogleCallbacks(success) {
+            var callbacks = googleState.callbacks.splice(0, googleState.callbacks.length);
+            var ready = success && typeof window !== 'undefined' && window.google && window.google.maps && window.google.maps.places;
+            for (var i = 0; i < callbacks.length; i++) {
+                var cb = callbacks[i];
+                if (typeof cb === 'function') {
+                    try {
+                        cb(ready);
+                    } catch (err) {
+                    }
+                }
+            }
+        }
+
+        function ensureGooglePlaces(callback) {
+            if (typeof callback === 'function') {
+                if (window.google && window.google.maps && window.google.maps.places) {
+                    callback(true);
+                    return;
+                }
+                googleState.callbacks.push(callback);
+            }
+            if (window.google && window.google.maps && window.google.maps.places) {
+                flushGoogleCallbacks(true);
+                return;
+            }
+            if (googleState.loading) {
+                return;
+            }
+            googleState.loading = true;
+            var params = ['libraries=places'];
+            if (typeof bookingCore !== 'undefined' && bookingCore.map_gmap_key) {
+                params.unshift('key=' + bookingCore.map_gmap_key);
+            }
+            var script = document.createElement('script');
+            script.src = 'https://maps.googleapis.com/maps/api/js?' + params.join('&');
+            script.async = true;
+            script.defer = true;
+            script.addEventListener('load', function () {
+                googleState.loading = false;
+                flushGoogleCallbacks(true);
+            });
+            script.addEventListener('error', function () {
+                googleState.loading = false;
+                flushGoogleCallbacks(false);
+            });
+            document.head.appendChild(script);
+        }
+
+        function ensureGeocoder(callback) {
+            ensureGooglePlaces(function (ready) {
+                if (!ready) {
+                    if (typeof callback === 'function') {
+                        callback(null);
+                    }
+                    return;
+                }
+                if (!geocoder) {
+                    try {
+                        geocoder = new google.maps.Geocoder();
+                    } catch (error) {
+                        geocoder = null;
+                    }
+                }
+                if (typeof callback === 'function') {
+                    callback(geocoder);
+                }
+            });
+        }
+
+        function getDirectionsService() {
+            if (!window.google || !window.google.maps) {
+                return null;
+            }
+            if (!directionsService) {
+                try {
+                    directionsService = new google.maps.DirectionsService();
+                } catch (error) {
+                    directionsService = null;
+                }
+            }
+            return directionsService;
+        }
+
+        function parseCoordinate(value) {
+            var parsed = parseFloat(value);
+            if (isNaN(parsed)) {
+                return null;
+            }
+            return parsed;
+        }
+
+        function ensureContextMap($context, callback) {
+            if (!$context || !$context.length) {
+                if (typeof callback === 'function') {
+                    callback(null);
+                }
+                return;
+            }
+            var $mapContainer = $context.find('[data-transfer-map]');
+            if (!$mapContainer.length) {
+                if (typeof callback === 'function') {
+                    callback(null);
+                }
+                return;
+            }
+            ensureGooglePlaces(function (ready) {
+                if (!ready) {
+                    if (typeof callback === 'function') {
+                        callback(null);
+                    }
+                    return;
+                }
+                var instance = $mapContainer.data('transferMapInstance');
+                if (!instance) {
+                    var defaultLat = null;
+                    var defaultLng = null;
+                    if (typeof bookingCore !== 'undefined' && bookingCore.map_options) {
+                        defaultLat = parseCoordinate(bookingCore.map_options.map_lat_default);
+                        defaultLng = parseCoordinate(bookingCore.map_options.map_lng_default);
+                    }
+                    var attrLat = parseCoordinate($mapContainer.attr('data-default-lat'));
+                    var attrLng = parseCoordinate($mapContainer.attr('data-default-lng'));
+                    if (attrLat !== null) {
+                        defaultLat = attrLat;
+                    }
+                    if (attrLng !== null) {
+                        defaultLng = attrLng;
+                    }
+                    if (defaultLat === null) {
+                        defaultLat = 0;
+                    }
+                    if (defaultLng === null) {
+                        defaultLng = 0;
+                    }
+                    var map = new google.maps.Map($mapContainer.get(0), {
+                        center: { lat: defaultLat, lng: defaultLng },
+                        zoom: 12,
+                        mapTypeControl: false,
+                        streetViewControl: false,
+                        fullscreenControl: false
+                    });
+                    var pickupMarker = new google.maps.Marker({
+                        map: map,
+                        draggable: true,
+                        visible: false,
+                        icon: pickupMarkerIcon
+                    });
+                    var dropoffMarker = new google.maps.Marker({
+                        map: map,
+                        draggable: true,
+                        visible: false,
+                        icon: dropoffMarkerIcon
+                    });
+                    var directionsRenderer = new google.maps.DirectionsRenderer({
+                        suppressMarkers: true,
+                        polylineOptions: {
+                            strokeColor: '#0d6efd',
+                            strokeOpacity: 0.85,
+                            strokeWeight: 5
+                        }
+                    });
+                    directionsRenderer.setMap(map);
+                    instance = {
+                        map: map,
+                        markers: {
+                            pickup: pickupMarker,
+                            dropoff: dropoffMarker
+                        },
+                        directionsRenderer: directionsRenderer
+                    };
+                    $mapContainer.data('transferMapInstance', instance);
+                    pickupMarker.addListener('dragend', function (event) {
+                        handleMarkerDrag($context, 'pickup', event && event.latLng ? event.latLng : null);
+                    });
+                    dropoffMarker.addListener('dragend', function (event) {
+                        handleMarkerDrag($context, 'dropoff', event && event.latLng ? event.latLng : null);
+                    });
+                }
+                if (typeof callback === 'function') {
+                    callback(instance);
+                }
+            });
+        }
+
+        function handleMarkerDrag($context, type, latLng) {
+            if (!$context || !$context.length || !latLng) {
+                return;
+            }
+            var lat = typeof latLng.lat === 'function' ? latLng.lat() : latLng.lat;
+            var lng = typeof latLng.lng === 'function' ? latLng.lng() : latLng.lng;
+            if (typeof lat !== 'number') {
+                lat = parseCoordinate(lat);
+            }
+            if (typeof lng !== 'number') {
+                lng = parseCoordinate(lng);
+            }
+            ensureGeocoder(function (geo) {
+                if (geo) {
+                    geo.geocode({ location: latLng }, function (results, status) {
+                        var place = null;
+                        if (status === 'OK' && results && results.length) {
+                            place = results[0];
+                        }
+                        applyMarkerDragUpdate($context, type, lat, lng, place);
+                    });
+                } else {
+                    applyMarkerDragUpdate($context, type, lat, lng, null);
+                }
+            });
+        }
+
+        function applyMarkerDragUpdate($context, type, lat, lng, place) {
+            var address = '';
+            var name = '';
+            var placeId = '';
+            if (place && typeof place === 'object') {
+                address = place.formatted_address || '';
+                name = place.name || '';
+                placeId = place.place_id || '';
+            }
+            var fallback = address || name;
+            if (!fallback && lat !== null && lng !== null) {
+                fallback = lat.toFixed(5) + ', ' + lng.toFixed(5);
+            }
+            if (type === 'pickup') {
+                setPickupValues($context, address || fallback, name || fallback, lat, lng, placeId, place || null);
+                var displayValue = address || name || fallback || '';
+                if (displayValue) {
+                    $context.find('.js-transfer-pickup-display').each(function () {
+                        $(this).val(displayValue);
+                    });
+                }
+            } else if (type === 'dropoff') {
+                setDropoffValues($context, address || fallback, name || fallback, lat, lng, placeId, place || null);
+                var dropDisplay = address || name || fallback || '';
+                if (dropDisplay) {
+                    $context.find('.js-transfer-dropoff-display').each(function () {
+                        $(this).val(dropDisplay);
+                    });
+                }
+            }
+        }
+
+        function syncCarDateValue($context, value) {
+            var $target = $context.find('.js-transfer-date');
+            if ($target.length) {
+                $target.val(value || '');
+            }
+        }
+
+        function initCarCalendars($context) {
+            $context.find('.js-transfer-car-calendar').each(function () {
+                var $calendar = $(this);
+                if ($calendar.data('bravoTransferCarCalendarInit')) {
+                    return;
+                }
+                $calendar.data('bravoTransferCarCalendarInit', true);
+                var $input = $calendar.find('.js-transfer-car-date-input');
+                if ($input.length) {
+                    $input.on('change.bravoTransferCarDate', function () {
+                        syncCarDateValue($context, $(this).val());
+                    });
+                    syncCarDateValue($context, $input.val());
+                }
+                $calendar.on('apply.daterangepicker', function () {
+                    var $field = $calendar.find('.js-transfer-car-date-input');
+                    syncCarDateValue($context, $field.val());
+                });
+            });
+        }
+
+        function bindContextEvents($context) {
+            if (!$context || !$context.length || $context.data('bravoTransferContextEvents')) {
+                return;
+            }
+            $context.data('bravoTransferContextEvents', true);
+            $context.on('transfer:context-changed', function (event, contextData) {
+                updateContextMap($context, contextData);
+                updateDetailMapRoute(contextData);
+            });
+        }
+
+        function updateContextMap($context, contextData) {
+            if (!$context || !$context.length) {
+                return;
+            }
+            ensureContextMap($context, function (instance) {
+                if (!instance || !window.google || !window.google.maps) {
+                    return;
+                }
+                var pickup = contextData && contextData.pickup ? contextData.pickup : null;
+                var dropoff = contextData && contextData.dropoff ? contextData.dropoff : null;
+                var pickupMarker = instance.markers ? instance.markers.pickup : null;
+                var dropoffMarker = instance.markers ? instance.markers.dropoff : null;
+                var renderer = instance.directionsRenderer || null;
+                var service = getDirectionsService();
+                var map = instance.map || null;
+                var bounds = null;
+                var hasBounds = false;
+                var pickupPosition = null;
+                var dropoffPosition = null;
+                if (pickupMarker) {
+                    var pickupLat = pickup ? parseCoordinate(pickup.lat) : null;
+                    var pickupLng = pickup ? parseCoordinate(pickup.lng) : null;
+                    if (pickupLat !== null && pickupLng !== null) {
+                        pickupPosition = new google.maps.LatLng(pickupLat, pickupLng);
+                        pickupMarker.setPosition(pickupPosition);
+                        pickupMarker.setVisible(true);
+                        bounds = bounds || new google.maps.LatLngBounds();
+                        bounds.extend(pickupPosition);
+                        hasBounds = true;
+                    } else {
+                        pickupMarker.setVisible(false);
+                    }
+                }
+                if (dropoffMarker) {
+                    var dropoffLat = dropoff ? parseCoordinate(dropoff.lat) : null;
+                    var dropoffLng = dropoff ? parseCoordinate(dropoff.lng) : null;
+                    if (dropoffLat !== null && dropoffLng !== null) {
+                        dropoffPosition = new google.maps.LatLng(dropoffLat, dropoffLng);
+                        dropoffMarker.setPosition(dropoffPosition);
+                        dropoffMarker.setVisible(true);
+                        bounds = bounds || new google.maps.LatLngBounds();
+                        bounds.extend(dropoffPosition);
+                        hasBounds = true;
+                    } else {
+                        dropoffMarker.setVisible(false);
+                    }
+                }
+                if (pickupPosition && dropoffPosition && service && renderer) {
+                    service.route({
+                        origin: pickupPosition,
+                        destination: dropoffPosition,
+                        travelMode: google.maps.TravelMode.DRIVING
+                    }, function (response, status) {
+                        if (status === google.maps.DirectionsStatus.OK || status === 'OK') {
+                            renderer.setDirections(response);
+                        } else {
+                            renderer.set('directions', null);
+                        }
+                    });
+                } else if (renderer) {
+                    renderer.set('directions', null);
+                }
+                if (map) {
+                    if (hasBounds && bounds) {
+                        map.fitBounds(bounds);
+                    } else if (pickupPosition) {
+                        map.setCenter(pickupPosition);
+                        map.setZoom(14);
+                    } else if (dropoffPosition) {
+                        map.setCenter(dropoffPosition);
+                        map.setZoom(14);
+                    }
+                }
+            });
+        }
+
+        function setupDetailMapState() {
+            if (!detailMapState.map || !window.google || !window.google.maps) {
+                detailMapState.ready = false;
+                return;
+            }
+            if (!detailMapState.pickupIcon) {
+                detailMapState.pickupIcon = pickupMarkerIcon;
+            }
+            if (!detailMapState.dropoffIcon) {
+                detailMapState.dropoffIcon = dropoffMarkerIcon;
+            }
+            if (!detailMapState.directionsRenderer) {
+                detailMapState.directionsRenderer = new google.maps.DirectionsRenderer({
+                    suppressMarkers: true,
+                    polylineOptions: {
+                        strokeColor: '#0d6efd',
+                        strokeOpacity: 0.85,
+                        strokeWeight: 5
+                    }
+                });
+                detailMapState.directionsRenderer.setMap(detailMapState.map);
+            }
+            if (!detailMapState.directionsService) {
+                try {
+                    detailMapState.directionsService = new google.maps.DirectionsService();
+                } catch (error) {
+                    detailMapState.directionsService = null;
+                }
+            }
+            if (!detailMapState.pickupMarker) {
+                detailMapState.pickupMarker = new google.maps.Marker({
+                    map: detailMapState.map,
+                    visible: false,
+                    icon: detailMapState.pickupIcon
+                });
+            }
+            if (!detailMapState.dropoffMarker) {
+                detailMapState.dropoffMarker = new google.maps.Marker({
+                    map: detailMapState.map,
+                    visible: false,
+                    icon: detailMapState.dropoffIcon
+                });
+            }
+            detailMapState.ready = true;
+        }
+
+        function performDetailRoute(contextData) {
+            if (!detailMapState.ready) {
+                return;
+            }
+            var pickup = contextData && contextData.pickup ? contextData.pickup : null;
+            var dropoff = contextData && contextData.dropoff ? contextData.dropoff : null;
+            var pickupMarker = detailMapState.pickupMarker;
+            var dropoffMarker = detailMapState.dropoffMarker;
+            var renderer = detailMapState.directionsRenderer;
+            var service = detailMapState.directionsService;
+            var map = detailMapState.map;
+            var bounds = new google.maps.LatLngBounds();
+            var hasBounds = false;
+            var pickupPosition = null;
+            var dropoffPosition = null;
+            if (pickupMarker) {
+                var pickupLat = pickup ? parseCoordinate(pickup.lat) : null;
+                var pickupLng = pickup ? parseCoordinate(pickup.lng) : null;
+                if (pickupLat !== null && pickupLng !== null) {
+                    pickupPosition = new google.maps.LatLng(pickupLat, pickupLng);
+                    pickupMarker.setPosition(pickupPosition);
+                    pickupMarker.setVisible(true);
+                    bounds.extend(pickupPosition);
+                    hasBounds = true;
+                } else {
+                    pickupMarker.setVisible(false);
+                }
+            }
+            if (dropoffMarker) {
+                var dropoffLat = dropoff ? parseCoordinate(dropoff.lat) : null;
+                var dropoffLng = dropoff ? parseCoordinate(dropoff.lng) : null;
+                if (dropoffLat !== null && dropoffLng !== null) {
+                    dropoffPosition = new google.maps.LatLng(dropoffLat, dropoffLng);
+                    dropoffMarker.setPosition(dropoffPosition);
+                    dropoffMarker.setVisible(true);
+                    bounds.extend(dropoffPosition);
+                    hasBounds = true;
+                } else {
+                    dropoffMarker.setVisible(false);
+                }
+            }
+            if (pickupPosition && dropoffPosition && service && renderer) {
+                service.route({
+                    origin: pickupPosition,
+                    destination: dropoffPosition,
+                    travelMode: google.maps.TravelMode.DRIVING
+                }, function (response, status) {
+                    if (status === google.maps.DirectionsStatus.OK || status === 'OK') {
+                        renderer.setDirections(response);
+                    } else {
+                        renderer.set('directions', null);
+                    }
+                });
+            } else if (renderer) {
+                renderer.set('directions', null);
+            }
+            if (map) {
+                if (hasBounds) {
+                    map.fitBounds(bounds);
+                } else if (pickupPosition) {
+                    map.setCenter(pickupPosition);
+                    map.setZoom(14);
+                } else if (dropoffPosition) {
+                    map.setCenter(dropoffPosition);
+                    map.setZoom(14);
+                } else if (detailMapState.defaultCenter && detailMapState.defaultCenter.length === 2) {
+                    var centerLat = parseCoordinate(detailMapState.defaultCenter[0]);
+                    var centerLng = parseCoordinate(detailMapState.defaultCenter[1]);
+                    if (centerLat !== null && centerLng !== null) {
+                        map.setCenter({ lat: centerLat, lng: centerLng });
+                    }
+                }
+            }
+        }
+
+        function updateDetailMapRoute(contextData) {
+            if (contextData) {
+                lastContextState = contextData;
+            } else {
+                contextData = lastContextState;
+            }
+            if (!contextData) {
+                return;
+            }
+            if (!detailMapState.map) {
+                pendingDetailRoute = contextData;
+                return;
+            }
+            ensureGooglePlaces(function (ready) {
+                if (!ready) {
+                    pendingDetailRoute = contextData;
+                    return;
+                }
+                setupDetailMapState();
+                if (!detailMapState.ready) {
+                    pendingDetailRoute = contextData;
+                    return;
+                }
+                pendingDetailRoute = null;
+                performDetailRoute(contextData);
+            });
+        }
+
+        function registerDetailMap(engineMap, options) {
+            detailMapState.engine = engineMap || null;
+            detailMapState.map = engineMap && engineMap.map ? engineMap.map : null;
+            if (options && options.defaultCenter) {
+                detailMapState.defaultCenter = options.defaultCenter;
+            }
+            if (options && options.pickupIcon) {
+                detailMapState.pickupIcon = options.pickupIcon;
+            }
+            if (options && options.dropoffIcon) {
+                detailMapState.dropoffIcon = options.dropoffIcon;
+            }
+            if (options && options.markerIcon && !options.pickupIcon && !options.dropoffIcon) {
+                detailMapState.pickupIcon = options.markerIcon;
+                detailMapState.dropoffIcon = options.markerIcon;
+            }
+            ensureGooglePlaces(function (ready) {
+                if (!ready) {
+                    return;
+                }
+                setupDetailMapState();
+                if (pendingDetailRoute) {
+                    updateDetailMapRoute(pendingDetailRoute);
+                } else if (lastContextState) {
+                    updateDetailMapRoute(lastContextState);
+                }
+            });
+        }
+
+        function resolveContext($element) {
+            if (!$element || !$element.length) {
+                return $(document);
+            }
+            var candidates = [
+                '[data-transfer-form]',
+                'form',
+                '.bravo_single_book',
+                '.bravo_form_search',
+                '#bravo_car_book_app'
+            ];
+            for (var i = 0; i < candidates.length; i++) {
+                var $context = $element.closest(candidates[i]);
+                if ($context.length) {
+                    return $context;
+                }
+            }
+            return $(document);
+        }
+
+        function parsePickupPayloadOption($option) {
+            if (!$option || !$option.length) {
+                return null;
+            }
+            var raw = $option.attr('data-payload');
+            return parseJsonSafe(raw);
+        }
+
+        function buildPickupContext($context) {
+            var payload = parseJsonSafe($context.find('.js-transfer-pickup-payload').val());
+            var context = payload && typeof payload === 'object' ? $.extend({}, payload) : {};
+            var address = $context.find('.js-transfer-pickup-address').val() || '';
+            var name = $context.find('.js-transfer-pickup-name').val() || '';
+            var lat = $context.find('.js-transfer-pickup-lat').val();
+            var lng = $context.find('.js-transfer-pickup-lng').val();
+            var placeId = $context.find('.js-transfer-pickup-place-id').val() || '';
+            if (!context.address && address) {
+                context.address = address;
+            }
+            if (!context.name && name) {
+                context.name = name;
+            }
+            if (!context.display_name) {
+                context.display_name = context.name || context.address || '';
+            }
+            if (!context.lat && lat) {
+                context.lat = lat;
+            }
+            if (!context.lng && lng) {
+                context.lng = lng;
+            }
+            if (!context.place_id && placeId) {
+                context.place_id = placeId;
+            }
+            if (!context.id && context.place_id) {
+                context.id = context.place_id;
+            }
+            if (!context.address && !context.name && !context.lat && !context.lng && !context.place_id) {
+                return null;
+            }
+            return context;
+        }
+
+        function buildDropoffContext($context) {
+            var payload = parseJsonSafe($context.find('.js-transfer-dropoff-json').val());
+            var context = payload && typeof payload === 'object' ? $.extend({}, payload) : {};
+            var address = $context.find('.js-transfer-dropoff-address').val() || '';
+            var name = $context.find('.js-transfer-dropoff-name').val() || '';
+            var lat = $context.find('.js-transfer-dropoff-lat').val();
+            var lng = $context.find('.js-transfer-dropoff-lng').val();
+            var placeId = $context.find('.js-transfer-dropoff-place-id').val() || '';
+            if (!context.address && address) {
+                context.address = address;
+            }
+            if (!context.name && name) {
+                context.name = name;
+            }
+            if (!context.display_name) {
+                context.display_name = context.name || context.address || '';
+            }
+            if (!context.lat && lat) {
+                context.lat = lat;
+            }
+            if (!context.lng && lng) {
+                context.lng = lng;
+            }
+            if (!context.place_id && placeId) {
+                context.place_id = placeId;
+            }
+            if (!context.address && !context.name && !context.lat && !context.lng && !context.place_id) {
+                return null;
+            }
+            return context;
+        }
+
+        function buildUserPickupContext($context) {
+            var payload = parseJsonSafe($context.find('.js-transfer-user-pickup-json').val());
+            var context = payload && typeof payload === 'object' ? $.extend({}, payload) : {};
+            var formatted = $context.find('.js-transfer-user-pickup-formatted').val() || '';
+            var address = $context.find('.js-transfer-user-pickup-address').val() || '';
+            var lat = $context.find('.js-transfer-user-pickup-lat').val();
+            var lng = $context.find('.js-transfer-user-pickup-lng').val();
+            var placeId = $context.find('.js-transfer-user-pickup-place-id').val() || '';
+            if (!context.formatted_address && formatted) {
+                context.formatted_address = formatted;
+            }
+            if (!context.address && address) {
+                context.address = address;
+            }
+            if (!context.name) {
+                context.name = context.formatted_address || context.address || '';
+            }
+            if (!context.lat && lat) {
+                context.lat = lat;
+            }
+            if (!context.lng && lng) {
+                context.lng = lng;
+            }
+            if (!context.place_id && placeId) {
+                context.place_id = placeId;
+            }
+            if (!context.address && !context.formatted_address && !context.lat && !context.lng && !context.place_id && !context.name) {
+                return null;
+            }
+            return context;
+        }
+
+        function emitContextChanged($context) {
+            if (!$context || !$context.length) {
+                return;
+            }
+            var contextData = {
+                pickup: buildPickupContext($context),
+                dropoff: buildDropoffContext($context),
+                userPickup: buildUserPickupContext($context)
+            };
+            lastContextState = contextData;
+            $context.triggerHandler('transfer:context-changed', [contextData]);
+        }
+
+        function setPickupValues($context, address, name, lat, lng, placeId, source, $input) {
+            address = address || '';
+            name = name || '';
+            var resolvedName = name || address;
+            var resolvedAddress = address || resolvedName;
+            $context.find('.js-transfer-pickup-address').val(resolvedAddress);
+            $context.find('.js-transfer-pickup-name').val(resolvedName);
+            $context.find('.js-transfer-pickup-lat').val(lat || '');
+            $context.find('.js-transfer-pickup-lng').val(lng || '');
+            $context.find('.js-transfer-pickup-place-id').val(placeId || '');
+            if ($input && $input.length) {
+                $input.data('bravoTransferPickupLastValue', resolvedAddress);
+                if ($input.val() !== resolvedAddress) {
+                    $input.val(resolvedAddress);
+                }
+            } else {
+                $context.find('.js-transfer-pickup-display').each(function () {
+                    if ($(this).val() !== resolvedAddress) {
+                        $(this).val(resolvedAddress);
+                    }
+                });
+            }
+            var payloadField = $context.find('.js-transfer-pickup-payload');
+            if (payloadField.length) {
+                if (resolvedAddress || resolvedName || lat || lng || placeId) {
+                    var payload = {
+                        address: resolvedAddress,
+                        name: resolvedName,
+                        display_name: resolvedName || resolvedAddress,
+                        lat: lat || '',
+                        lng: lng || '',
+                        place_id: placeId || ''
+                    };
+                    if (source && typeof source === 'object') {
+                        if (source.formatted_address) {
+                            payload.formatted_address = source.formatted_address;
+                        }
+                        if (!payload.display_name && source.name) {
+                            payload.display_name = source.name;
+                        }
+                        if (source.id && !payload.id) {
+                            payload.id = source.id;
+                        }
+                    }
+                    payloadField.val(JSON.stringify(payload));
+                } else {
+                    payloadField.val('');
+                }
+            }
+            emitContextChanged($context);
+        }
+
+        function clearPickupValues($context) {
+            setPickupValues($context, '', '', '', '', '', null);
+        }
+
+        function setDropoffValues($context, address, name, lat, lng, placeId, source) {
+            address = address || '';
+            name = name || '';
+            var resolvedName = name || address;
+            var resolvedAddress = address || resolvedName;
+            $context.find('.js-transfer-dropoff-address').val(resolvedAddress);
+            $context.find('.js-transfer-dropoff-name').val(resolvedName);
+            $context.find('.js-transfer-dropoff-lat').val(lat || '');
+            $context.find('.js-transfer-dropoff-lng').val(lng || '');
+            $context.find('.js-transfer-dropoff-place-id').val(placeId || '');
+            var dropoffDisplays = $context.find('.js-transfer-dropoff-display');
+            dropoffDisplays.each(function () {
+                if ($(this).val() !== resolvedAddress) {
+                    $(this).val(resolvedAddress);
+                }
+            });
+            var payloadField = $context.find('.js-transfer-dropoff-json');
+            if (payloadField.length) {
+                if (resolvedAddress || resolvedName || lat || lng || placeId) {
+                    var payload = {
+                        address: resolvedAddress,
+                        name: resolvedName,
+                        display_name: resolvedName || resolvedAddress,
+                        lat: lat || '',
+                        lng: lng || '',
+                        place_id: placeId || ''
+                    };
+                    if (source && typeof source === 'object' && source.formatted_address) {
+                        payload.formatted_address = source.formatted_address;
+                    }
+                    payloadField.val(JSON.stringify(payload));
+                } else {
+                    payloadField.val('');
+                }
+            }
+            emitContextChanged($context);
+        }
+
+        function clearDropoffValues($context) {
+            setDropoffValues($context, '', '', '', '', '', null);
+        }
+
+        function resetDropoff($context) {
+            if (!$context || !$context.length) {
+                return;
+            }
+            clearDropoffValues($context);
+            $context.find('.js-transfer-dropoff-display').each(function () {
+                var $input = $(this);
+                if ($input.val()) {
+                    $input.val('');
+                }
+            });
+        }
+
+        function updatePickupSelection($select) {
+            if (!$select || !$select.length) {
+                return;
+            }
+            var $context = resolveContext($select);
+            var payload = parsePickupPayloadOption($select.find('option:selected'));
+            if (payload) {
+                var lat = payload.lat || payload.latitude || '';
+                var lng = payload.lng || payload.longitude || '';
+                var placeId = payload.place_id || payload.placeId || payload.id || '';
+                var name = payload.name || payload.display_name || payload.address || '';
+                setPickupValues($context, payload.address || name, name, lat, lng, placeId, payload);
+            } else {
+                clearPickupValues($context);
+            }
+            resetDropoff($context);
+        }
+
+        function attachPickupAutocomplete($input) {
+            if (!$input || !$input.length || $input.data('bravoTransferPickupAutocomplete')) {
+                ensureGooglePlaces(function () {});
+                return;
+            }
+            var $context = resolveContext($input);
+            $input.data('bravoTransferPickupAutocomplete', true);
+            ensureGooglePlaces(function (ready) {
+                if (!ready) {
+                    return;
+                }
+                if ($input.data('bravoTransferPickupAutocompleteInstance')) {
+                    return;
+                }
+                var autocomplete = new google.maps.places.Autocomplete($input.get(0), {
+                    fields: ['formatted_address', 'geometry', 'name', 'place_id']
+                });
+                $input.data('bravoTransferPickupAutocompleteInstance', autocomplete);
+                autocomplete.addListener('place_changed', function () {
+                    var place = autocomplete.getPlace() || {};
+                    var address = place.formatted_address || $input.val();
+                    var name = place.name || address;
+                    var lat = '';
+                    var lng = '';
+                    if (place.geometry && place.geometry.location) {
+                        lat = place.geometry.location.lat();
+                        lng = place.geometry.location.lng();
+                    }
+                    var placeId = place.place_id || '';
+                    setPickupValues($context, address, name, lat, lng, placeId, place, $input);
+                    resetDropoff($context);
+                });
+            });
+        }
+
+        function attachDropoffAutocomplete($input) {
+            if (!$input || !$input.length || $input.data('bravoTransferDropoffAutocomplete')) {
+                ensureGooglePlaces(function () {});
+                return;
+            }
+            var $context = resolveContext($input);
+            $input.data('bravoTransferDropoffAutocomplete', true);
+            ensureGooglePlaces(function (ready) {
+                if (!ready) {
+                    return;
+                }
+                if ($input.data('bravoTransferDropoffAutocompleteInstance')) {
+                    return;
+                }
+                var autocomplete = new google.maps.places.Autocomplete($input.get(0), {
+                    fields: ['formatted_address', 'geometry', 'name', 'place_id']
+                });
+                $input.data('bravoTransferDropoffAutocompleteInstance', autocomplete);
+                autocomplete.addListener('place_changed', function () {
+                    var place = autocomplete.getPlace() || {};
+                    var address = place.formatted_address || $input.val();
+                    var name = place.name || address;
+                    var lat = '';
+                    var lng = '';
+                    if (place.geometry && place.geometry.location) {
+                        lat = place.geometry.location.lat();
+                        lng = place.geometry.location.lng();
+                    }
+                    var placeId = place.place_id || '';
+                    setDropoffValues($context, address, name, lat, lng, placeId, place);
+                });
+            });
+        }
+
+        function bindDelegatedEvents() {
+            if (delegatedBound) {
+                return;
+            }
+            delegatedBound = true;
+            $(document).on('change.bravoTransferPickupSelect', '.js-transfer-pickup', function () {
+                updatePickupSelection($(this));
+            });
+            $(document).on('input.bravoTransferPickupDisplay', '.js-transfer-pickup-display', function () {
+                var $input = $(this);
+                if (!$input.val()) {
+                    clearPickupValues(resolveContext($input));
+                }
+            });
+            $(document).on('change.bravoTransferPickupDisplay', '.js-transfer-pickup-display', function () {
+                var $input = $(this);
+                var value = $.trim($input.val());
+                var $context = resolveContext($input);
+                if (!value) {
+                    clearPickupValues($context);
+                    resetDropoff($context);
+                    return;
+                }
+                setPickupValues($context, value, value, '', '', '', null, $input);
+                resetDropoff($context);
+            });
+            $(document).on('focus.bravoTransferPickupDisplayInit', '.js-transfer-pickup-display', function () {
+                attachPickupAutocomplete($(this));
+            });
+            $(document).on('input.bravoTransferDropoffDisplay', '.js-transfer-dropoff-display', function () {
+                var $input = $(this);
+                if (!$input.val()) {
+                    clearDropoffValues(resolveContext($input));
+                }
+            });
+            $(document).on('change.bravoTransferDropoffDisplay', '.js-transfer-dropoff-display', function () {
+                var $input = $(this);
+                var value = $.trim($input.val());
+                var $context = resolveContext($input);
+                if (!value) {
+                    clearDropoffValues($context);
+                    return;
+                }
+                setDropoffValues($context, value, value, '', '', '', null);
+            });
+            $(document).on('focus.bravoTransferDropoffDisplayInit', '.js-transfer-dropoff-display', function () {
+                attachDropoffAutocomplete($(this));
+            });
+        }
+
+        function collectContexts($scope) {
+            var contexts = [];
+            var seen = [];
+            function remember($ctx) {
+                if (!$ctx || !$ctx.length) {
+                    return;
+                }
+                var node = $ctx.get(0);
+                if (seen.indexOf(node) === -1) {
+                    seen.push(node);
+                    contexts.push($ctx);
+                }
+            }
+            if ($scope && $scope.length) {
+                $scope.each(function () {
+                    var $node = $(this);
+                    if ($node.is('[data-transfer-form]')) {
+                        remember($node);
+                    }
+                    $node.find('[data-transfer-form]').each(function () {
+                        remember($(this));
+                    });
+                });
+            }
+            if (!contexts.length) {
+                $('[data-transfer-form]').each(function () {
+                    remember($(this));
+                });
+            }
+            if (!contexts.length) {
+                remember($scope && $scope.length ? $scope : $(document));
+            }
+            return contexts;
+        }
+
+        function initPickupSelectors($context) {
+            $context.find('.js-transfer-pickup').each(function () {
+                updatePickupSelection($(this));
+            });
+        }
+
+        function initPickupInputs($context) {
+            $context.find('.js-transfer-pickup-display').each(function () {
+                attachPickupAutocomplete($(this));
+            });
+        }
+
+        function initDropoffInputs($context) {
+            $context.find('.js-transfer-dropoff-display').each(function () {
+                attachDropoffAutocomplete($(this));
+            });
+        }
+
+        return {
+            ensureGooglePlaces: ensureGooglePlaces,
+            attachPickupAutocomplete: attachPickupAutocomplete,
+            attachDropoffAutocomplete: attachDropoffAutocomplete,
+            resetDropoff: resetDropoff,
+            registerDetailMap: registerDetailMap,
+            initAll: function ($scope) {
+                bindDelegatedEvents();
+                ensureGooglePlaces();
+                var contexts = collectContexts($scope && $scope.length ? $scope : $(document));
+                for (var i = 0; i < contexts.length; i++) {
+                    var $context = contexts[i];
+                    initPickupSelectors($context);
+                    initPickupInputs($context);
+                    initDropoffInputs($context);
+                    initCarCalendars($context);
+                    bindContextEvents($context);
+                    ensureContextMap($context, function () {});
+                    emitContextChanged($context);
+                }
+            }
+        };
+    }
+
+    window.BravoTransferForm = window.BravoTransferForm || createBravoTransferForm($);
+})(window.jQuery);
+
 jQuery(function ($) {
     function parseErrorMessage(e){
         var html = '';
@@ -124,96 +1171,13 @@ jQuery(function ($) {
         }
         return html;
     }
-    function parsePickupPayload($option) {
-        var payload = null;
-        var raw = $option.attr('data-payload');
-        if (raw) {
-            try {
-                payload = JSON.parse(raw);
-            } catch (e) {
-                payload = null;
-            }
-        }
-        return payload;
+    var transferForm = window.BravoTransferForm || null;
+    if (transferForm && typeof transferForm.ensureGooglePlaces === 'function') {
+        transferForm.ensureGooglePlaces();
     }
-
-    function updatePickupSelection($select) {
-        var $form = $select.closest('form');
-        var payload = parsePickupPayload($select.find('option:selected'));
-        if (payload) {
-            $form.find('.js-transfer-pickup-payload').val(JSON.stringify(payload));
-        } else {
-            $form.find('.js-transfer-pickup-payload').val('');
-        }
-        $form.find('.js-transfer-dropoff-address').val('');
-        $form.find('.js-transfer-dropoff-name').val('');
-        $form.find('.js-transfer-dropoff-lat').val('');
-        $form.find('.js-transfer-dropoff-lng').val('');
-        $form.find('.js-transfer-dropoff-display').val('').trigger('input');
+    if (transferForm && typeof transferForm.initAll === 'function') {
+        transferForm.initAll($(document));
     }
-
-    function initPickupSelectors() {
-        $('.js-transfer-pickup').each(function () {
-            updatePickupSelection($(this));
-        });
-        $(document).on('change', '.js-transfer-pickup', function () {
-            updatePickupSelection($(this));
-        });
-    }
-
-    function attachDropoffAutocomplete($input) {
-        var $form = $input.closest('form');
-        if (typeof bookingCore === 'undefined' || bookingCore.map_provider !== 'gmap' || typeof google === 'undefined' || !google.maps || !google.maps.places) {
-            $input.on('change', function () {
-                var value = $(this).val();
-                $form.find('.js-transfer-dropoff-address').val(value);
-                $form.find('.js-transfer-dropoff-name').val(value);
-                if (!value) {
-                    $form.find('.js-transfer-dropoff-lat').val('');
-                    $form.find('.js-transfer-dropoff-lng').val('');
-                }
-            });
-            return;
-        }
-
-        var autocomplete = new google.maps.places.Autocomplete($input.get(0), {
-            fields: ['formatted_address', 'geometry', 'name']
-        });
-        autocomplete.addListener('place_changed', function () {
-            var place = autocomplete.getPlace();
-            var address = place.formatted_address || $input.val();
-            var name = place.name || address;
-            $form.find('.js-transfer-dropoff-address').val(address);
-            $form.find('.js-transfer-dropoff-name').val(name);
-            if (place.geometry && place.geometry.location) {
-                $form.find('.js-transfer-dropoff-lat').val(place.geometry.location.lat());
-                $form.find('.js-transfer-dropoff-lng').val(place.geometry.location.lng());
-            } else {
-                $form.find('.js-transfer-dropoff-lat').val('');
-                $form.find('.js-transfer-dropoff-lng').val('');
-            }
-        });
-    }
-
-    function initDropoffInputs() {
-        $('.js-transfer-dropoff-display').each(function () {
-            var $input = $(this);
-            attachDropoffAutocomplete($input);
-        });
-        $(document).on('input', '.js-transfer-dropoff-display', function () {
-            var $form = $(this).closest('form');
-            var value = $(this).val();
-            if (!value) {
-                $form.find('.js-transfer-dropoff-address').val('');
-                $form.find('.js-transfer-dropoff-name').val('');
-                $form.find('.js-transfer-dropoff-lat').val('');
-                $form.find('.js-transfer-dropoff-lng').val('');
-            }
-        });
-    }
-
-    initPickupSelectors();
-    initDropoffInputs();
     $('.bravo_form_search').on('submit', function () {
         var $form = $(this);
         var $datetime = $form.find('.js-transfer-datetime');
