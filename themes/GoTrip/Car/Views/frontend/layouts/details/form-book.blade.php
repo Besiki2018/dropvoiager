@@ -115,8 +115,11 @@
                 <div class="col-auto">
                     <div class="text-14 text-light-1">
                         {{__("From")}}
-                        <span class="text-14 text-red-1 line-through">{{ $row->display_sale_price }}</span>
-                        <span class="text-20 fw-500 text-dark-1">{{ $row->display_price }}</span>
+                        <span class="text-14 text-red-1 line-through" v-if="headerSalePrice" v-text="headerSalePrice">{{ $row->display_sale_price }}</span>
+                        <span class="text-20 fw-500 text-dark-1" v-text="headerPrice">{{ $row->display_price }}</span>
+                    </div>
+                    <div class="text-13 text-light-1 mt-5" v-if="pricing_meta && pricing_meta.mode === 'distance' && priceSummary && priceSummary.distance">
+                        <span>@{{ priceSummary.distance }}</span>
                     </div>
                 </div>
                 @if($review_score)
@@ -178,6 +181,16 @@
                                 <div class="text-13 text-red-1 mt-5" v-if="fieldErrors && fieldErrors.pickup" v-text="fieldErrors.pickup"></div>
                             </div>
                         </div>
+                        </div>
+                        <input type="hidden" class="js-transfer-user-pickup-json" value="{{ $userPickupJson }}">
+                        <input type="hidden" class="js-transfer-user-pickup-formatted" value="{{ $userPickupFormatted }}">
+                        <input type="hidden" class="js-transfer-user-pickup-address" value="{{ $userPickupAddress }}">
+                        <input type="hidden" class="js-transfer-user-pickup-lat" value="{{ $userPickupLat }}">
+                        <input type="hidden" class="js-transfer-user-pickup-lng" value="{{ $userPickupLng }}">
+                        <input type="hidden" class="js-transfer-user-pickup-place-id" value="{{ $userPickupPlaceId }}">
+                        <input type="hidden" class="js-transfer-datetime" value="{{ $transferDatetime }}">
+                        <input type="hidden" class="js-transfer-date" value="{{ $carDateValue }}">
+                        <input type="hidden" class="js-transfer-time" value="{{ $transferTime }}">
                         <div class="col-12">
                             <div class="px-20 py-10 border-light rounded-4">
                                 <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('Drop-off Location') }}</h4>
@@ -240,33 +253,25 @@
                         <input type="hidden" class="js-transfer-date" value="{{ $carDateValue }}">
                         <input type="hidden" class="js-transfer-time" value="{{ $transferTime }}">
                         <div class="col-12">
-                            <div class="searchMenu-guests px-20 py-10 border-light rounded-4 js-form-dd">
-                                <div data-x-dd-click="searchMenu-guests">
-                                    <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('Select Number') }}</h4>
-                                    <div class="text-15 text-light-1 ls-2 lh-16">
-                                        <span class="js-count-adult">@{{ number }}</span>
-                                    </div>
+                            <div class="px-20 py-10 border-light rounded-4">
+                                <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('Passengers') }}</h4>
+                                <div class="d-flex align-items-center gap-10 mt-10">
+                                    <button type="button" class="button -outline-blue-1 text-blue-1 size-38 rounded-4" @click.prevent="minusNumberType()">
+                                        <i class="icon-minus text-12"></i>
+                                    </button>
+                                    <input type="number"
+                                           class="form-control text-center"
+                                           style="max-width: 90px;"
+                                           min="1"
+                                           :max="max_number || null"
+                                           v-model="number"
+                                           @input="handlePassengerInput"
+                                           @blur="handlePassengerInput">
+                                    <button type="button" class="button -outline-blue-1 text-blue-1 size-38 rounded-4" @click.prevent="addNumberType()">
+                                        <i class="icon-plus text-12"></i>
+                                    </button>
                                 </div>
-                                <div class="searchMenu-guests__field shadow-2" data-x-dd="searchMenu-guests" data-x-dd-toggle="-is-active">
-                                    <div class="bg-white px-30 py-30 rounded-4">
-                                        <div class="row y-gap-10 justify-between items-center form-guest-search">
-                                            <div class="col-auto">
-                                                <div class="text-15 fw-500">{{ __('Number') }}</div>
-                                            </div>
-                                            <div class="col-auto">
-                                                <div class="d-flex items-center js-counter" data-value-change=".js-count-adult">
-                                                    <button class="button -outline-blue-1 text-blue-1 size-38 rounded-4 js-down" @click="minusNumberType()">
-                                                        <i class="icon-minus text-12"></i>
-                                                    </button>
-                                                    <span class="input"><input type="number" v-model="number" min="0"/></span>
-                                                    <button class="button -outline-blue-1 text-blue-1 size-38 rounded-4 js-up" @click="addNumberType()">
-                                                        <i class="icon-plus text-12"></i>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                <div class="text-13 text-red-1 mt-5" v-if="fieldErrors && fieldErrors.passengers" v-text="fieldErrors.passengers"></div>
                             </div>
                         </div>
                         <div class="col-12" v-if="extra_price.length">

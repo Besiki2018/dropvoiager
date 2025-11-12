@@ -35,6 +35,10 @@
             pending_quote_refresh:false,
             quote_refresh_timer:null,
             pending_availability_refresh:false,
+            base_price:0,
+            base_sale_price:0,
+            base_price_display:'',
+            base_sale_price_display:'',
             fieldErrors:{
                 pickup:'',
                 dropoff:'',
@@ -153,6 +157,55 @@
             }
         },
         computed:{
+            headerPrice:function () {
+                if (this.priceSummary && this.priceSummary.total) {
+                    return this.priceSummary.total;
+                }
+                if (this.transfer_quote) {
+                    if (this.transfer_quote.total_price_formatted) {
+                        return this.transfer_quote.total_price_formatted;
+                    }
+                    if (this.transfer_quote.price_formatted) {
+                        return this.transfer_quote.price_formatted;
+                    }
+                }
+                if (this.pricing_meta && (this.pricing_meta.mode || '').toLowerCase() === 'distance') {
+                    var distanceKm = this.toNumeric(this.route_distance_km);
+                    var ratePerKm = this.toNumeric(this.pricing_meta.price_per_km);
+                    if (distanceKm !== null && ratePerKm !== null && distanceKm > 0) {
+                        var passengers = this.getPassengerCount();
+                        var estimated = distanceKm * ratePerKm * passengers;
+                        return this.formatMoney(estimated);
+                    }
+                }
+                if (this.base_price_display) {
+                    return this.base_price_display;
+                }
+                if (this.base_price && this.toNumeric(this.base_price) !== null) {
+                    return this.formatMoney(this.base_price);
+                }
+                return '';
+            },
+            headerSalePrice:function () {
+                if (this.priceSummary && this.priceSummary.total) {
+                    return '';
+                }
+                if (this.transfer_quote) {
+                    if (this.transfer_quote.total_price_formatted || this.transfer_quote.price_formatted) {
+                        return '';
+                    }
+                }
+                if (this.pricing_meta && (this.pricing_meta.mode || '').toLowerCase() === 'distance' && this.route_distance_km) {
+                    return '';
+                }
+                if (this.base_sale_price_display) {
+                    return this.base_sale_price_display;
+                }
+                if (this.base_sale_price && this.toNumeric(this.base_sale_price) !== null) {
+                    return this.formatMoney(this.base_sale_price);
+                }
+                return '';
+            },
             hasTimeSlots:function () {
                 return Array.isArray(this.transfer_time_slots) && this.transfer_time_slots.length > 0;
             },
@@ -1373,14 +1426,16 @@
                     }
                 }
 
-                if (this.transfer_quote_error) {
-                    this.setFieldError('dropoff', this.transfer_quote_error);
-                    isValid = false;
-                } else if (!this.transfer_quote && !this.transfer_quote_loading) {
-                    var quoteMessage = bravo_booking_i18n.quote_required || '';
-                    if (quoteMessage) {
-                        this.setFieldError('dropoff', quoteMessage);
+                if (this.quote_url && this.shouldRequestQuote()) {
+                    if (this.transfer_quote_error) {
+                        this.setFieldError('dropoff', this.transfer_quote_error);
                         isValid = false;
+                    } else if (!this.transfer_quote && !this.transfer_quote_loading) {
+                        var quoteMessage = bravo_booking_i18n.quote_required || '';
+                        if (quoteMessage) {
+                            this.setFieldError('dropoff', quoteMessage);
+                            isValid = false;
+                        }
                     }
                 }
 

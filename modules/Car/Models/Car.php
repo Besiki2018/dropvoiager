@@ -248,6 +248,35 @@ class Car extends Bookable
             if(!empty($children =  request()->input('children'))){
                 $param['children'] = $children;
             }
+
+            $transferFields = [
+                'pickup_address',
+                'pickup_name',
+                'pickup_lat',
+                'pickup_lng',
+                'pickup_place_id',
+                'pickup_payload',
+                'pickup_display',
+                'pickup_location_id',
+                'dropoff_address',
+                'dropoff_name',
+                'dropoff_lat',
+                'dropoff_lng',
+                'dropoff_place_id',
+                'dropoff_json',
+                'dropoff_display',
+                'car_date',
+                'transfer_date',
+                'transfer_time',
+                'transfer_datetime',
+            ];
+
+            foreach ($transferFields as $field) {
+                $value = request()->query($field);
+                if ($value !== null && $value !== '') {
+                    $param[$field] = $value;
+                }
+            }
         }
         $urlDetail = app_get_locale(false, false, '/') . config('car.car_route_prefix') . "/" . $this->slug;
         if(!empty($param)){
@@ -618,6 +647,10 @@ class Car extends Bookable
             'deposit_fomular'=>$this->getDepositFomular(),
             'is_form_enquiry_and_book'=> $this->isFormEnquiryAndBook(),
             'enquiry_type'=> $this->getBookingEnquiryType(),
+            'base_price' => $this->price,
+            'base_sale_price' => $this->sale_price,
+            'base_price_display' => $this->display_price,
+            'base_sale_price_display' => $this->display_sale_price,
         ];
         $booking_data['pricing_meta'] = $this->buildPricingMeta();
         $lang = app()->getLocale();
