@@ -76,6 +76,22 @@
     $transferDatetime = request()->input('transfer_datetime');
     $transferDate = request()->input('transfer_date');
     $transferTime = request()->input('transfer_time');
+    $carDateRaw = request()->input('car_date', $transferDate);
+    $carDateValue = '';
+    $carDateDisplay = __('Select date');
+    if ($carDateRaw) {
+        try {
+            $carDateValue = \Illuminate\Support\Carbon::parse($carDateRaw)->format('Y-m-d');
+        } catch (\Exception $exception) {
+            $carDateValue = $carDateRaw;
+        }
+        $timestamp = strtotime($carDateValue);
+        if ($timestamp) {
+            $carDateDisplay = display_date($timestamp);
+        } else {
+            $carDateDisplay = $carDateValue;
+        }
+    }
 @endphp
 <div class="bravo_single_book_wrap d-flex justify-end">
     <div class="bravo_single_book">
@@ -160,6 +176,27 @@
                                 <div class="text-13 text-red-1 mt-5" v-if="fieldErrors && fieldErrors.dropoff" v-text="fieldErrors.dropoff"></div>
                             </div>
                         </div>
+                        <div class="col-12">
+                            <div class="form-date-search is_single_picker position-relative px-20 py-10 border-light rounded-4 js-transfer-car-calendar" data-format="{{ get_moment_date_format() }}">
+                                <div class="date-wrapper" data-x-dd-click="car-calendar">
+                                    <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('Car Calendar') }}</h4>
+                                    <div class="text-15 text-dark-1 ls-2 lh-16 mt-5">
+                                        <span class="render check-in-render">{{ $carDateDisplay }}</span>
+                                    </div>
+                                </div>
+                                <input type="hidden" class="check-in-input js-transfer-car-date-input" name="car_date" value="{{ $carDateValue }}">
+                                <input type="hidden" class="check-out-input" value="{{ $carDateValue }}">
+                                <input type="text" class="check-in-out absolute invisible" autocomplete="off" value="{{ $carDateValue }}">
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="px-20 py-10 border-light rounded-4">
+                                <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('Adjust on Map') }}</h4>
+                                <div class="mt-10 rounded-4 overflow-hidden position-relative" style="min-height: 260px;">
+                                    <div class="transfer-map h-100 w-100 position-absolute top-0 start-0" data-transfer-map="car-booking" data-default-lat="{{ $row->map_lat }}" data-default-lng="{{ $row->map_lng }}" style="min-height: 260px;"></div>
+                                </div>
+                            </div>
+                        </div>
                         <input type="hidden" class="js-transfer-user-pickup-json" value="{{ $userPickupJson }}">
                         <input type="hidden" class="js-transfer-user-pickup-formatted" value="{{ $userPickupFormatted }}">
                         <input type="hidden" class="js-transfer-user-pickup-address" value="{{ $userPickupAddress }}">
@@ -167,7 +204,7 @@
                         <input type="hidden" class="js-transfer-user-pickup-lng" value="{{ $userPickupLng }}">
                         <input type="hidden" class="js-transfer-user-pickup-place-id" value="{{ $userPickupPlaceId }}">
                         <input type="hidden" class="js-transfer-datetime" value="{{ $transferDatetime }}">
-                        <input type="hidden" class="js-transfer-date" value="{{ $transferDate }}">
+                        <input type="hidden" class="js-transfer-date" value="{{ $carDateValue }}">
                         <input type="hidden" class="js-transfer-time" value="{{ $transferTime }}">
                         <div class="col-12">
                             <div class="form-group form-date-field form-date-search clearfix px-20 py-10 border-light rounded-4 -right position-relative" data-format="{{get_moment_date_format()}}">
