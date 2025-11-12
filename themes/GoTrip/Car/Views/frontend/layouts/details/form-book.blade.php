@@ -66,6 +66,15 @@
         $dropoffDisplay = $dropoffName ?: $dropoffAddress;
     }
 
+    $defaultMapLat = $row->map_lat ?: setting_item('map_lat_default');
+    $defaultMapLng = $row->map_lng ?: setting_item('map_lng_default');
+    $defaultMapLat = is_numeric($defaultMapLat) ? (float)$defaultMapLat : 0;
+    $defaultMapLng = is_numeric($defaultMapLng) ? (float)$defaultMapLng : 0;
+    $pickupDefaultLat = is_numeric($pickupLat) ? (float)$pickupLat : $defaultMapLat;
+    $pickupDefaultLng = is_numeric($pickupLng) ? (float)$pickupLng : $defaultMapLng;
+    $dropoffDefaultLat = is_numeric($dropoffLat) ? (float)$dropoffLat : $defaultMapLat;
+    $dropoffDefaultLng = is_numeric($dropoffLng) ? (float)$dropoffLng : $defaultMapLng;
+
     $userPickupJson = request()->input('user_pickup');
     $userPickupFormatted = request()->input('user_pickup_formatted');
     $userPickupAddress = request()->input('user_pickup_address');
@@ -154,6 +163,13 @@
                                 <input type="hidden" name="pickup_place_id" class="js-transfer-pickup-place-id" value="{{ $pickupPlaceId }}">
                                 <input type="hidden" name="pickup_payload" class="js-transfer-pickup-payload" value="{{ $pickupPayload }}">
                                 <input type="hidden" name="pickup_location_id" class="js-transfer-pickup" value="{{ request()->input('pickup_location_id') }}">
+                                <div class="mt-10 rounded-4 overflow-hidden position-relative" style="min-height: 200px;">
+                                    <div class="transfer-map h-100 w-100 position-absolute top-0 start-0"
+                                         data-transfer-map="pickup"
+                                         data-default-lat="{{ $pickupDefaultLat }}"
+                                         data-default-lng="{{ $pickupDefaultLng }}"
+                                         style="min-height: 200px;"></div>
+                                </div>
                                 <div class="text-13 text-red-1 mt-5" v-if="fieldErrors && fieldErrors.pickup" v-text="fieldErrors.pickup"></div>
                             </div>
                         </div>
@@ -173,6 +189,13 @@
                                 <input type="hidden" name="dropoff_lng" class="js-transfer-dropoff-lng" value="{{ $dropoffLng }}">
                                 <input type="hidden" name="dropoff_place_id" class="js-transfer-dropoff-place-id" value="{{ $dropoffPlaceId }}">
                                 <input type="hidden" name="dropoff_json" class="js-transfer-dropoff-json" value="{{ $dropoffJson }}">
+                                <div class="mt-10 rounded-4 overflow-hidden position-relative" style="min-height: 200px;">
+                                    <div class="transfer-map h-100 w-100 position-absolute top-0 start-0"
+                                         data-transfer-map="dropoff"
+                                         data-default-lat="{{ $dropoffDefaultLat }}"
+                                         data-default-lng="{{ $dropoffDefaultLng }}"
+                                         style="min-height: 200px;"></div>
+                                </div>
                                 <div class="text-13 text-red-1 mt-5" v-if="fieldErrors && fieldErrors.dropoff" v-text="fieldErrors.dropoff"></div>
                             </div>
                         </div>
@@ -193,7 +216,7 @@
                             <div class="px-20 py-10 border-light rounded-4">
                                 <h4 class="text-15 fw-500 ls-2 lh-16">{{ __('Adjust on Map') }}</h4>
                                 <div class="mt-10 rounded-4 overflow-hidden position-relative" style="min-height: 260px;">
-                                    <div class="transfer-map h-100 w-100 position-absolute top-0 start-0" data-transfer-map="car-booking" data-default-lat="{{ $row->map_lat }}" data-default-lng="{{ $row->map_lng }}" style="min-height: 260px;"></div>
+                                    <div class="transfer-map h-100 w-100 position-absolute top-0 start-0" data-transfer-map="route" data-default-lat="{{ $row->map_lat }}" data-default-lng="{{ $row->map_lng }}" style="min-height: 260px;"></div>
                                 </div>
                             </div>
                         </div>

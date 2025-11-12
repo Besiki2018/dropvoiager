@@ -248,97 +248,255 @@ jQuery && (function ($) {
             return parsed;
         }
 
+        function createContextMapInstance($context, $container) {
+            if (!$container || !$container.length || !window.google || !window.google.maps) {
+                return null;
+            }
+            var typeAttr = ($container.attr('data-transfer-map') || '').toLowerCase();
+            var type = 'route';
+            if (typeAttr === 'pickup') {
+                type = 'pickup';
+            } else if (typeAttr === 'dropoff') {
+                type = 'dropoff';
+            }
+            var defaultLat = null;
+            var defaultLng = null;
+            if (typeof bookingCore !== 'undefined' && bookingCore.map_options) {
+                defaultLat = parseCoordinate(bookingCore.map_options.map_lat_default);
+                defaultLng = parseCoordinate(bookingCore.map_options.map_lng_default);
+            }
+            var attrLat = parseCoordinate($container.attr('data-default-lat'));
+            var attrLng = parseCoordinate($container.attr('data-default-lng'));
+            if (attrLat !== null) {
+                defaultLat = attrLat;
+            }
+            if (attrLng !== null) {
+                defaultLng = attrLng;
+            }
+            if (defaultLat === null) {
+                defaultLat = 0;
+            }
+            if (defaultLng === null) {
+                defaultLng = 0;
+            }
+            var map = new google.maps.Map($container.get(0), {
+                center: { lat: defaultLat, lng: defaultLng },
+                zoom: 12,
+                mapTypeControl: false,
+                streetViewControl: false,
+                fullscreenControl: false
+            });
+            var instance = {
+                type: type,
+                map: map,
+                container: $container,
+                defaultCenter: { lat: defaultLat, lng: defaultLng }
+            };
+            if (type === 'pickup') {
+                var pickupMarker = new google.maps.Marker({
+                    map: map,
+                    draggable: true,
+                    visible: false,
+                    icon: pickupMarkerIcon
+                });
+                pickupMarker.addListener('dragend', function (event) {
+                    handleMarkerDrag($context, 'pickup', event && event.latLng ? event.latLng : null);
+                });
+                map.addListener('click', function (event) {
+                    if (event && event.latLng) {
+                        pickupMarker.setPosition(event.latLng);
+                        pickupMarker.setVisible(true);
+                        handleMarkerDrag($context, 'pickup', event.latLng);
+                    }
+                });
+                instance.marker = pickupMarker;
+            } else if (type === 'dropoff') {
+                var dropoffMarker = new google.maps.Marker({
+                    map: map,
+                    draggable: true,
+                    visible: false,
+                    icon: dropoffMarkerIcon
+                });
+                dropoffMarker.addListener('dragend', function (event) {
+                    handleMarkerDrag($context, 'dropoff', event && event.latLng ? event.latLng : null);
+                });
+                map.addListener('click', function (event) {
+                    if (event && event.latLng) {
+                        dropoffMarker.setPosition(event.latLng);
+                        dropoffMarker.setVisible(true);
+                        handleMarkerDrag($context, 'dropoff', event.latLng);
+                    }
+                });
+                instance.marker = dropoffMarker;
+            } else {
+                var pickupRouteMarker = new google.maps.Marker({
+                    map: map,
+                    draggable: false,
+                    visible: false,
+                    icon: pickupMarkerIcon
+                });
+                var dropoffRouteMarker = new google.maps.Marker({
+                    map: map,
+                    draggable: false,
+                    visible: false,
+                    icon: dropoffMarkerIcon
+                });
+                var directionsRenderer = new google.maps.DirectionsRenderer({
+                    suppressMarkers: true,
+                    polylineOptions: {
+                        strokeColor: '#0d6efd',
+                        strokeOpacity: 0.85,
+                        strokeWeight: 5
+                    }
+                });
+                directionsRenderer.setMap(map);
+                instance.markers = {
+                    pickup: pickupRouteMarker,
+                    dropoff: dropoffRouteMarker
+                };
+                instance.directionsRenderer = directionsRenderer;
+            }
+            $container.data('transferMapInstance', instance);
+            return instance;
+        }
+
         function ensureContextMap($context, callback) {
             if (!$context || !$context.length) {
                 if (typeof callback === 'function') {
-                    callback(null);
+                    callback([]);
                 }
                 return;
             }
-            var $mapContainer = $context.find('[data-transfer-map]');
-            if (!$mapContainer.length) {
+            var $containers = $context.find('[data-transfer-map]');
+            if (!$containers.length) {
                 if (typeof callback === 'function') {
-                    callback(null);
+                    callback([]);
                 }
                 return;
             }
             ensureGooglePlaces(function (ready) {
                 if (!ready) {
                     if (typeof callback === 'function') {
-                        callback(null);
+                        callback([]);
                     }
                     return;
                 }
-                var instance = $mapContainer.data('transferMapInstance');
-                if (!instance) {
-                    var defaultLat = null;
-                    var defaultLng = null;
-                    if (typeof bookingCore !== 'undefined' && bookingCore.map_options) {
-                        defaultLat = parseCoordinate(bookingCore.map_options.map_lat_default);
-                        defaultLng = parseCoordinate(bookingCore.map_options.map_lng_default);
-                    }
-                    var attrLat = parseCoordinate($mapContainer.attr('data-default-lat'));
-                    var attrLng = parseCoordinate($mapContainer.attr('data-default-lng'));
-                    if (attrLat !== null) {
-                        defaultLat = attrLat;
-                    }
-                    if (attrLng !== null) {
-                        defaultLng = attrLng;
-                    }
-                    if (defaultLat === null) {
-                        defaultLat = 0;
-                    }
-                    if (defaultLng === null) {
-                        defaultLng = 0;
-                    }
-                    var map = new google.maps.Map($mapContainer.get(0), {
-                        center: { lat: defaultLat, lng: defaultLng },
-                        zoom: 12,
-                        mapTypeControl: false,
-                        streetViewControl: false,
-                        fullscreenControl: false
-                    });
-                    var pickupMarker = new google.maps.Marker({
-                        map: map,
-                        draggable: true,
-                        visible: false,
-                        icon: pickupMarkerIcon
-                    });
-                    var dropoffMarker = new google.maps.Marker({
-                        map: map,
-                        draggable: true,
-                        visible: false,
-                        icon: dropoffMarkerIcon
-                    });
-                    var directionsRenderer = new google.maps.DirectionsRenderer({
-                        suppressMarkers: true,
-                        polylineOptions: {
-                            strokeColor: '#0d6efd',
-                            strokeOpacity: 0.85,
-                            strokeWeight: 5
+                var instances = [];
+                $containers.each(function () {
+                    var $container = $(this);
+                    var instance = $container.data('transferMapInstance');
+                    if (!instance || !instance.map) {
+                        try {
+                            instance = createContextMapInstance($context, $container);
+                        } catch (error) {
+                            instance = null;
                         }
-                    });
-                    directionsRenderer.setMap(map);
-                    instance = {
-                        map: map,
-                        markers: {
-                            pickup: pickupMarker,
-                            dropoff: dropoffMarker
-                        },
-                        directionsRenderer: directionsRenderer
-                    };
-                    $mapContainer.data('transferMapInstance', instance);
-                    pickupMarker.addListener('dragend', function (event) {
-                        handleMarkerDrag($context, 'pickup', event && event.latLng ? event.latLng : null);
-                    });
-                    dropoffMarker.addListener('dragend', function (event) {
-                        handleMarkerDrag($context, 'dropoff', event && event.latLng ? event.latLng : null);
-                    });
-                }
+                    }
+                    if (instance) {
+                        instances.push(instance);
+                    }
+                });
                 if (typeof callback === 'function') {
-                    callback(instance);
+                    callback(instances);
                 }
             });
+        }
+
+        function updateSingleMarkerMap(instance, context) {
+            if (!instance || !instance.map || !instance.marker) {
+                return;
+            }
+            var map = instance.map;
+            var marker = instance.marker;
+            var lat = context ? parseCoordinate(context.lat) : null;
+            var lng = context ? parseCoordinate(context.lng) : null;
+            if (lat !== null && lng !== null) {
+                var position = new google.maps.LatLng(lat, lng);
+                marker.setPosition(position);
+                marker.setVisible(true);
+                map.setCenter(position);
+                if (map.getZoom() < 14) {
+                    map.setZoom(14);
+                }
+            } else {
+                marker.setVisible(false);
+                if (instance.defaultCenter) {
+                    map.setCenter(instance.defaultCenter);
+                }
+            }
+        }
+
+        function updateRouteMap(instance, pickup, dropoff) {
+            if (!instance || !instance.map) {
+                return;
+            }
+            var map = instance.map;
+            var pickupMarker = instance.markers ? instance.markers.pickup : null;
+            var dropoffMarker = instance.markers ? instance.markers.dropoff : null;
+            var renderer = instance.directionsRenderer || null;
+            var service = getDirectionsService();
+            var bounds = null;
+            var hasBounds = false;
+            var pickupPosition = null;
+            var dropoffPosition = null;
+            if (pickupMarker) {
+                var pickupLat = pickup ? parseCoordinate(pickup.lat) : null;
+                var pickupLng = pickup ? parseCoordinate(pickup.lng) : null;
+                if (pickupLat !== null && pickupLng !== null) {
+                    pickupPosition = new google.maps.LatLng(pickupLat, pickupLng);
+                    pickupMarker.setPosition(pickupPosition);
+                    pickupMarker.setVisible(true);
+                    bounds = bounds || new google.maps.LatLngBounds();
+                    bounds.extend(pickupPosition);
+                    hasBounds = true;
+                } else {
+                    pickupMarker.setVisible(false);
+                }
+            }
+            if (dropoffMarker) {
+                var dropoffLat = dropoff ? parseCoordinate(dropoff.lat) : null;
+                var dropoffLng = dropoff ? parseCoordinate(dropoff.lng) : null;
+                if (dropoffLat !== null && dropoffLng !== null) {
+                    dropoffPosition = new google.maps.LatLng(dropoffLat, dropoffLng);
+                    dropoffMarker.setPosition(dropoffPosition);
+                    dropoffMarker.setVisible(true);
+                    bounds = bounds || new google.maps.LatLngBounds();
+                    bounds.extend(dropoffPosition);
+                    hasBounds = true;
+                } else {
+                    dropoffMarker.setVisible(false);
+                }
+            }
+            if (pickupPosition && dropoffPosition && service && renderer) {
+                service.route({
+                    origin: pickupPosition,
+                    destination: dropoffPosition,
+                    travelMode: google.maps.TravelMode.DRIVING
+                }, function (response, status) {
+                    if (status === google.maps.DirectionsStatus.OK || status === 'OK') {
+                        renderer.setDirections(response);
+                    } else {
+                        renderer.set('directions', null);
+                    }
+                });
+            } else if (renderer) {
+                renderer.set('directions', null);
+            }
+            if (hasBounds && bounds) {
+                map.fitBounds(bounds);
+            } else if (pickupPosition) {
+                map.setCenter(pickupPosition);
+                if (map.getZoom() < 14) {
+                    map.setZoom(14);
+                }
+            } else if (dropoffPosition) {
+                map.setCenter(dropoffPosition);
+                if (map.getZoom() < 14) {
+                    map.setZoom(14);
+                }
+            } else if (instance.defaultCenter) {
+                map.setCenter(instance.defaultCenter);
+            }
         }
 
         function handleMarkerDrag($context, type, latLng) {
@@ -443,73 +601,23 @@ jQuery && (function ($) {
             if (!$context || !$context.length) {
                 return;
             }
-            ensureContextMap($context, function (instance) {
-                if (!instance || !window.google || !window.google.maps) {
+            ensureContextMap($context, function (instances) {
+                if (!instances || !instances.length || !window.google || !window.google.maps) {
                     return;
                 }
                 var pickup = contextData && contextData.pickup ? contextData.pickup : null;
                 var dropoff = contextData && contextData.dropoff ? contextData.dropoff : null;
-                var pickupMarker = instance.markers ? instance.markers.pickup : null;
-                var dropoffMarker = instance.markers ? instance.markers.dropoff : null;
-                var renderer = instance.directionsRenderer || null;
-                var service = getDirectionsService();
-                var map = instance.map || null;
-                var bounds = null;
-                var hasBounds = false;
-                var pickupPosition = null;
-                var dropoffPosition = null;
-                if (pickupMarker) {
-                    var pickupLat = pickup ? parseCoordinate(pickup.lat) : null;
-                    var pickupLng = pickup ? parseCoordinate(pickup.lng) : null;
-                    if (pickupLat !== null && pickupLng !== null) {
-                        pickupPosition = new google.maps.LatLng(pickupLat, pickupLng);
-                        pickupMarker.setPosition(pickupPosition);
-                        pickupMarker.setVisible(true);
-                        bounds = bounds || new google.maps.LatLngBounds();
-                        bounds.extend(pickupPosition);
-                        hasBounds = true;
-                    } else {
-                        pickupMarker.setVisible(false);
+                for (var i = 0; i < instances.length; i++) {
+                    var instance = instances[i];
+                    if (!instance) {
+                        continue;
                     }
-                }
-                if (dropoffMarker) {
-                    var dropoffLat = dropoff ? parseCoordinate(dropoff.lat) : null;
-                    var dropoffLng = dropoff ? parseCoordinate(dropoff.lng) : null;
-                    if (dropoffLat !== null && dropoffLng !== null) {
-                        dropoffPosition = new google.maps.LatLng(dropoffLat, dropoffLng);
-                        dropoffMarker.setPosition(dropoffPosition);
-                        dropoffMarker.setVisible(true);
-                        bounds = bounds || new google.maps.LatLngBounds();
-                        bounds.extend(dropoffPosition);
-                        hasBounds = true;
+                    if (instance.type === 'pickup') {
+                        updateSingleMarkerMap(instance, pickup);
+                    } else if (instance.type === 'dropoff') {
+                        updateSingleMarkerMap(instance, dropoff);
                     } else {
-                        dropoffMarker.setVisible(false);
-                    }
-                }
-                if (pickupPosition && dropoffPosition && service && renderer) {
-                    service.route({
-                        origin: pickupPosition,
-                        destination: dropoffPosition,
-                        travelMode: google.maps.TravelMode.DRIVING
-                    }, function (response, status) {
-                        if (status === google.maps.DirectionsStatus.OK || status === 'OK') {
-                            renderer.setDirections(response);
-                        } else {
-                            renderer.set('directions', null);
-                        }
-                    });
-                } else if (renderer) {
-                    renderer.set('directions', null);
-                }
-                if (map) {
-                    if (hasBounds && bounds) {
-                        map.fitBounds(bounds);
-                    } else if (pickupPosition) {
-                        map.setCenter(pickupPosition);
-                        map.setZoom(14);
-                    } else if (dropoffPosition) {
-                        map.setCenter(dropoffPosition);
-                        map.setZoom(14);
+                        updateRouteMap(instance, pickup, dropoff);
                     }
                 }
             });
