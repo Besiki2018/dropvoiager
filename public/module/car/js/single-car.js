@@ -54,6 +54,7 @@
             },
             html:'',
             onSubmit:false,
+            externalPriceTargets:null,
             start_date:'',
             end_date:'',
             start_date_html:'',
@@ -152,6 +153,18 @@
                 handler:function () {
                     this.setFieldError('user_pickup', '');
                     this.handleTransferFieldChange();
+                },
+                deep:true
+            },
+            headerPrice:function () {
+                this.syncExternalPricingDisplays();
+            },
+            headerSalePrice:function () {
+                this.syncExternalPricingDisplays();
+            },
+            priceSummary:{
+                handler:function () {
+                    this.syncExternalPricingDisplays();
                 },
                 deep:true
             }
@@ -450,6 +463,7 @@
             for(var k in bravo_booking_data){
                 this[k] = bravo_booking_data[k];
             }
+            this.number = this.getPassengerCount();
         },
         mounted(){
             var me = this;
@@ -592,12 +606,45 @@
             } else {
                 this.queueQuoteRefresh(50);
             }
+            this.cacheExternalPriceTargets();
+            this.syncExternalPricingDisplays();
         },
         beforeDestroy:function () {
             this.cancelQuoteRequest();
             this.cancelAvailabilityRequest();
         },
         methods:{
+            cacheExternalPriceTargets:function () {
+                var targets = this.externalPriceTargets || {};
+                if (!targets.mobilePrice || !targets.mobilePrice.length) {
+                    targets.mobilePrice = $('.js-car-mobile-price');
+                }
+                if (!targets.mobileSale || !targets.mobileSale.length) {
+                    targets.mobileSale = $('.js-car-mobile-sale-price');
+                }
+                this.externalPriceTargets = targets;
+                return targets;
+            },
+            syncExternalPricingDisplays:function () {
+                var targets = this.cacheExternalPriceTargets() || {};
+                var priceText = this.headerPrice || '';
+                var saleText = this.headerSalePrice || '';
+                if (targets.mobilePrice && targets.mobilePrice.length) {
+                    var fallbackPrice = targets.mobilePrice.data('default') || '';
+                    targets.mobilePrice.text(priceText || fallbackPrice);
+                }
+                if (targets.mobileSale && targets.mobileSale.length) {
+                    var fallbackSale = targets.mobileSale.data('default') || '';
+                    if (saleText) {
+                        targets.mobileSale.text(saleText).removeClass('d-none');
+                    } else if (fallbackSale) {
+                        targets.mobileSale.text(fallbackSale).removeClass('d-none');
+                    } else {
+                        targets.mobileSale.text('');
+                        targets.mobileSale.addClass('d-none');
+                    }
+                }
+            },
             parseJsonAttribute:function (value) {
                 if (!value) {
                     return null;

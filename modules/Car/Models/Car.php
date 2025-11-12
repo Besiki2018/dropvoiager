@@ -637,6 +637,7 @@ class Car extends Bookable
             'extra_price'     => [],
             'minDate'         => date('m/d/Y'),
             'max_number'      => $this->number ?? 1,
+            'number'          => max(1, (int)request()->input('number', 1)),
             'buyer_fees'      => [],
             'start_date'      => request()->input('start') ?? "",
             'start_date_html' => $date_html ?? __('Please select date!'),
