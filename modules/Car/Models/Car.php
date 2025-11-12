@@ -5,6 +5,7 @@ namespace Modules\Car\Models;
 use App\Currency;
 use Illuminate\Http\Response;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Validator;
@@ -53,6 +54,8 @@ class Car extends Bookable
         'service_fee'  => 'array',
         'price'=>'float',
         'sale_price'=>'float',
+        'enable_price_by_distance' => 'boolean',
+        'price_per_km' => 'float',
     ];
     /**
      * @var Booking
@@ -88,6 +91,103 @@ class Car extends Bookable
         $this->carTermClass = CarTerm::class;
         $this->carTranslationClass = CarTranslation::class;
         $this->userWishListClass = UserWishList::class;
+    }
+
+    protected function getBasePriceValue()
+    {
+        if (!empty($this->sale_price) && $this->sale_price > 0 && $this->sale_price < $this->price) {
+            return (float)$this->sale_price;
+        }
+        return (float)($this->price ?? 0);
+    }
+
+    protected function buildPricingMeta()
+    {
+        $mode = $this->enable_price_by_distance ? 'distance' : 'fixed';
+        $meta = [
+            'mode' => $mode,
+            'price_per_km' => (float)($this->price_per_km ?? 0),
+            'requires_user_pickup' => false,
+        ];
+        if ($mode === 'fixed') {
+            $meta['fixed_price'] = $this->getBasePriceValue();
+            $meta['base_fee'] = 0;
+        } else {
+            $meta['fixed_price'] = null;
+            $meta['base_fee'] = 0;
+        }
+        return $meta;
+    }
+
+    protected function normalizeTransferLocation($value)
+    {
+        if (empty($value)) {
+            return null;
+        }
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $value = $decoded;
+            }
+        }
+        if (!is_array($value)) {
+            return null;
+        }
+        $lat = Arr::get($value, 'lat', Arr::get($value, 'latitude'));
+        $lng = Arr::get($value, 'lng', Arr::get($value, 'longitude'));
+        if (!is_numeric($lat) || !is_numeric($lng)) {
+            return null;
+        }
+        $lat = (float)$lat;
+        $lng = (float)$lng;
+        $address = trim(Arr::get($value, 'address', ''));
+        $name = trim(Arr::get($value, 'name', ''));
+        $display = trim(Arr::get($value, 'display_name', Arr::get($value, 'display', $name ?: $address)));
+        if ($display === '' && $address !== '') {
+            $display = $address;
+        }
+        if ($display === '' && $name !== '') {
+            $display = $name;
+        }
+        $placeId = Arr::get($value, 'place_id', Arr::get($value, 'placeId', ''));
+
+        return [
+            'address' => $address,
+            'name' => $name ?: $display,
+            'display_name' => $display,
+            'lat' => $lat,
+            'lng' => $lng,
+            'place_id' => $placeId,
+        ];
+    }
+
+    protected function calculateDistanceKm(array $pickup, array $dropoff)
+    {
+        $lat1 = Arr::get($pickup, 'lat');
+        $lng1 = Arr::get($pickup, 'lng');
+        $lat2 = Arr::get($dropoff, 'lat');
+        $lng2 = Arr::get($dropoff, 'lng');
+        if (!is_numeric($lat1) || !is_numeric($lng1) || !is_numeric($lat2) || !is_numeric($lng2)) {
+            return null;
+        }
+        $earthRadius = 6371; // Kilometers
+        $lat1 = deg2rad((float)$lat1);
+        $lng1 = deg2rad((float)$lng1);
+        $lat2 = deg2rad((float)$lat2);
+        $lng2 = deg2rad((float)$lng2);
+        $latDelta = $lat2 - $lat1;
+        $lngDelta = $lng2 - $lng1;
+        $angle = 2 * asin(sqrt(pow(sin($latDelta / 2), 2) + cos($lat1) * cos($lat2) * pow(sin($lngDelta / 2), 2)));
+        $distance = $earthRadius * $angle;
+        return $distance >= 0 ? $distance : null;
+    }
+
+    protected function formatDistanceText($km)
+    {
+        if (!is_numeric($km)) {
+            return '';
+        }
+        return number_format((float)$km, 2) . ' km';
     }
 
     public static function getModelName()
@@ -148,6 +248,38 @@ class Car extends Bookable
             if(!empty($children =  request()->input('children'))){
                 $param['children'] = $children;
             }
+            $transferKeys = [
+                'pickup_display',
+                'pickup_address',
+                'pickup_name',
+                'pickup_lat',
+                'pickup_lng',
+                'pickup_place_id',
+                'pickup_payload',
+                'pickup_location_id',
+                'dropoff_display',
+                'dropoff_address',
+                'dropoff_name',
+                'dropoff_lat',
+                'dropoff_lng',
+                'dropoff_place_id',
+                'dropoff_json',
+                'car_date',
+                'transfer_date',
+                'transfer_time',
+                'transfer_datetime',
+                'number',
+            ];
+            foreach ($transferKeys as $key) {
+                $value = request()->query($key, request()->input($key));
+                if ($value === null) {
+                    continue;
+                }
+                if (is_string($value) && $value === '') {
+                    continue;
+                }
+                $param[$key] = $value;
+            }
         }
         $urlDetail = app_get_locale(false, false, '/') . config('car.car_route_prefix') . "/" . $this->slug;
         if(!empty($param)){
@@ -205,7 +337,50 @@ class Car extends Bookable
         $extra_price = [];
         $number = $request->input('number',1);
 
+        $pickupData = $this->normalizeTransferLocation($request->input('pickup'));
+        $dropoffData = $this->normalizeTransferLocation($request->input('dropoff'));
+        $distanceMeta = null;
+
+        if ($this->enable_price_by_distance) {
+            if (!$pickupData || !$dropoffData) {
+                return $this->sendError(__('Please select both pickup and drop-off locations.'));
+            }
+            $distanceKm = $this->calculateDistanceKm($pickupData, $dropoffData);
+            if ($distanceKm === null) {
+                return $this->sendError(__('Unable to determine the travel distance. Please adjust the locations and try again.'));
+            }
+            $pricePerKm = (float)($this->price_per_km ?? 0);
+            if ($pricePerKm <= 0) {
+                return $this->sendError(__('Please configure a valid price per kilometer before enabling distance pricing.'));
+            }
+            $baseDistancePrice = round($distanceKm * $pricePerKm, 2);
+            $this->tmp_price = $baseDistancePrice;
+            if ($start_date instanceof \DateTimeInterface) {
+                $dateKey = $start_date->format('Y-m-d');
+                $this->tmp_dates = [
+                    $dateKey => [
+                        'price' => $baseDistancePrice,
+                        'number' => $number,
+                        'status' => true,
+                    ],
+                ];
+            }
+            $distanceMeta = [
+                'pickup' => $pickupData,
+                'dropoff' => $dropoffData,
+                'distance_km' => round($distanceKm, 2),
+                'distance_text' => $this->formatDistanceText($distanceKm),
+                'price_per_km' => $pricePerKm,
+                'base_total' => $baseDistancePrice,
+            ];
+        }
+
         $total = $this->tmp_price * $number;
+        $base_total_before_extras = $total;
+        if ($distanceMeta) {
+            $distanceMeta['quantity'] = $number;
+            $distanceMeta['total'] = $base_total_before_extras;
+        }
 
         $duration_in_day = max(1,ceil(($end_date->getTimestamp() - $start_date->getTimestamp()) / DAY_IN_SECONDS ) + 1 );
         if ($this->enable_extra_price and !empty($this->extra_price)) {
@@ -228,6 +403,9 @@ class Car extends Bookable
                 }
             }
         }
+        if ($distanceMeta) {
+            $distanceMeta['total_with_extras'] = $total;
+        }
 
         //Buyer Fees for Admin
         $total_before_fees = $total;
@@ -243,6 +421,9 @@ class Car extends Bookable
         if(!empty($this->enable_service_fee) and !empty($list_service_fee = $this->service_fee)){
             $total_service_fee = $this->calculateServiceFees($list_service_fee , $total_before_fees , 1);
             $total += $total_service_fee;
+        }
+        if ($distanceMeta) {
+            $distanceMeta['total_with_fees'] = $total;
         }
 
         if (empty($start_date) or empty($end_date)) {
@@ -264,6 +445,7 @@ class Car extends Bookable
         $booking->buyer_fees = $list_buyer_fees ?? '';
         $booking->total_before_fees = $total_before_fees;
         $booking->total_before_discount = $total_before_fees;
+        $booking->total_before_extra_price = $base_total_before_extras;
 
         $booking->calculateCommission();
         $booking->number = $number;
@@ -294,10 +476,19 @@ class Car extends Bookable
 
             $this->bookingClass::clearDraftBookings();
             $booking->addMeta('duration', $this->duration);
-            $booking->addMeta('base_price', $this->price);
-            $booking->addMeta('sale_price', $this->sale_price);
+            $booking->addMeta('base_price', Arr::get((array)$distanceMeta, 'base_total', $this->price));
+            $booking->addMeta('sale_price', $distanceMeta ? Arr::get((array)$distanceMeta, 'price_per_km') : $this->sale_price);
             $booking->addMeta('extra_price', $extra_price);
             $booking->addMeta('tmp_dates', $this->tmp_dates);
+            if ($pickupData) {
+                $booking->addMeta('transfer_pickup', $pickupData);
+            }
+            if ($dropoffData) {
+                $booking->addMeta('transfer_dropoff', $dropoffData);
+            }
+            if ($distanceMeta) {
+                $booking->addMeta('distance_pricing', $distanceMeta);
+            }
             if($this->isDepositEnable())
             {
                 $booking->addMeta('deposit_info',[
@@ -444,6 +635,16 @@ class Car extends Bookable
             $end_html = request()->input('end') ? display_date(request()->input('end')) : "";
             $date_html = $start_html . '<i class="fa fa-long-arrow-right" style="font-size: inherit"></i>' . $end_html;
         }
+        $requestedTransferDate = request()->input('car_date', request()->input('transfer_date'));
+        $normalizedTransferDate = '';
+        if ($requestedTransferDate) {
+            $timestamp = strtotime($requestedTransferDate);
+            if ($timestamp) {
+                $normalizedTransferDate = date('Y-m-d', $timestamp);
+            } else {
+                $normalizedTransferDate = $requestedTransferDate;
+            }
+        }
         $booking_data = [
             'id'              => $this->id,
             'extra_price'     => [],
@@ -459,7 +660,15 @@ class Car extends Bookable
             'deposit_fomular'=>$this->getDepositFomular(),
             'is_form_enquiry_and_book'=> $this->isFormEnquiryAndBook(),
             'enquiry_type'=> $this->getBookingEnquiryType(),
+            'number' => max(1, (int)request()->input('number', 1)),
+            'transfer_date' => $normalizedTransferDate,
+            'transfer_time' => request()->input('transfer_time', ''),
+            'transfer_datetime' => request()->input('transfer_datetime', ''),
+            'base_display_price' => $this->display_price ?? '',
+            'base_display_sale_price' => $this->display_sale_price ?? '',
+            'base_price_value' => $this->getBasePriceValue(),
         ];
+        $booking_data['pricing_meta'] = $this->buildPricingMeta();
         $lang = app()->getLocale();
         if ($this->enable_extra_price) {
             $booking_data['extra_price'] = $this->extra_price;

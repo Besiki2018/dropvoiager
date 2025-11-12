@@ -1,6 +1,35 @@
 <?php
 $translation = $service->translate();
 $lang_local = app()->getLocale();
+$pickupMeta = $booking->getJsonMeta('transfer_pickup') ?: [];
+$dropoffMeta = $booking->getJsonMeta('transfer_dropoff') ?: [];
+$distanceMeta = $booking->getJsonMeta('distance_pricing') ?: [];
+$buildMapLink = function ($meta) {
+    if (empty($meta)) {
+        return '';
+    }
+    $lat = $meta['lat'] ?? null;
+    $lng = $meta['lng'] ?? null;
+    $query = '';
+    if (is_numeric($lat) && is_numeric($lng)) {
+        $query = $lat . ',' . $lng;
+    } elseif (!empty($meta['display_name'])) {
+        $query = $meta['display_name'];
+    } elseif (!empty($meta['address'])) {
+        $query = $meta['address'];
+    }
+    if ($query === '') {
+        return '';
+    }
+    $params = [
+        'api=1',
+        'query=' . urlencode($query)
+    ];
+    if (!empty($meta['place_id'])) {
+        $params[] = 'query_place_id=' . urlencode($meta['place_id']);
+    }
+    return 'https://www.google.com/maps/search/?' . implode('&', $params);
+};
 ?>
 <div class="b-panel-title">{{__('Car information')}}</div>
 <div class="b-table-wrap">
@@ -40,6 +69,49 @@ $lang_local = app()->getLocale();
                 </td>
             @endif
         </tr>
+        @if(!empty($pickupMeta))
+            @php $pickupLink = $buildMapLink($pickupMeta); @endphp
+            <tr>
+                <td class="label">{{ __('Pickup location') }}</td>
+                <td class="val">
+                    @if($pickupLink)
+                        <a href="{{ $pickupLink }}" target="_blank">{{ $pickupMeta['display_name'] ?? $pickupMeta['address'] ?? '' }}</a>
+                    @else
+                        {{ $pickupMeta['display_name'] ?? $pickupMeta['address'] ?? '' }}
+                    @endif
+                </td>
+            </tr>
+        @endif
+        @if(!empty($dropoffMeta))
+            @php $dropoffLink = $buildMapLink($dropoffMeta); @endphp
+            <tr>
+                <td class="label">{{ __('Drop-off location') }}</td>
+                <td class="val">
+                    @if($dropoffLink)
+                        <a href="{{ $dropoffLink }}" target="_blank">{{ $dropoffMeta['display_name'] ?? $dropoffMeta['address'] ?? '' }}</a>
+                    @else
+                        {{ $dropoffMeta['display_name'] ?? $dropoffMeta['address'] ?? '' }}
+                    @endif
+                </td>
+            </tr>
+        @endif
+        @if(!empty($distanceMeta['distance_text']))
+            <tr>
+                <td class="label">{{ __('Route distance') }}</td>
+                <td class="val">
+                    {{ $distanceMeta['distance_text'] }}
+                    @if(!empty($distanceMeta['total']))
+                        <span>({{ format_money($distanceMeta['total']) }})</span>
+                    @endif
+                </td>
+            </tr>
+        @endif
+        @if(!empty($distanceMeta['price_per_km']))
+            <tr>
+                <td class="label">{{ __('Price per kilometer') }}</td>
+                <td class="val">{{ format_money($distanceMeta['price_per_km']) }}</td>
+            </tr>
+        @endif
         @if($booking->start_date && $booking->end_date)
             <tr>
                 <td class="label">{{__('Start date')}}</td>
